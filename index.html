@@ -203,7 +203,8 @@ body.dark-mode .mode-btn.active, body.dark-mode .cat-tab.active, body.dark-mode 
         <div class="picker-sec" id="sec-ex" style="display:none;">
           <div class="sec-lbl">Exercise</div>
           <div class="drop-select-row">
-            <select class="picker-select" id="ex-select" onchange="pickExFromSelect()"></select>
+            <select class="picker-select" id="ex-select"></select>
+            <button class="icon-btn" onclick="pickExFromSelect()">Add</button>
             <button class="icon-btn" onclick="openExSettingsModal()"><i class="ti ti-settings"></i></button>
             <button class="icon-btn" onclick="toggleAddEx()"><i class="ti ti-plus"></i></button>
           </div>
@@ -468,12 +469,6 @@ function pickExFromSelect(){
   if(mode === 'normal'){ addSingle(name); renderExSelect(); }
   else if(mode === 'superset'){ pickSS(name); }
   else if(mode === 'dropset'){ addDropset(name); renderExSelect(); }
-  // reset to first unselected option so it doesn't look stuck
-  setTimeout(()=>{
-    const sel = document.getElementById('ex-select');
-    const first = [...sel.options].find(o => !o.disabled);
-    if(first) sel.value = first.value;
-  }, 50);
 }
 
 function pickEx(name){
@@ -775,33 +770,45 @@ function renderLookup(){
     return;
   }
   if(!selEx||!names.includes(selEx)) selEx=names[0];
-  let pw=0, pr=0;
   const sessions = data[selEx]||[];
-  sessions.forEach(s => s.sets.forEach(set => {
-    const w=parseFloat(set.weight)||0, r=parseFloat(set.reps)||0;
-    if(w>pw||(w===pw&&r>pr)){ pw=w; pr=r; }
-  }));
-  const psi = sessions.findIndex(ss => ss.sets.some(x=>(parseFloat(x.weight)||0)===pw));
+
+  // PB = session with highest single-set weight; ties broken by total reps
+  let pbIdx=-1, pbMaxW=0, pbTotalR=0;
+  sessions.forEach((sess,si) => {
+    const maxW = Math.max(...sess.sets.map(s=>parseFloat(s.weight)||0));
+    const totalR = sess.sets.reduce((a,s)=>a+(parseFloat(s.reps)||0),0);
+    if(maxW>pbMaxW||(maxW===pbMaxW&&totalR>pbTotalR)){ pbMaxW=maxW; pbTotalR=totalR; pbIdx=si; }
+  });
+  const pbSess = pbIdx>=0 ? sessions[pbIdx] : null;
+
+  const pbBlock = pbSess ? `
+    <div style="background:var(--bs);border-radius:var(--r1);padding:10px 12px;margin-bottom:1.25rem;">
+      <div style="font-size:11px;color:var(--ts);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">🏆 Personal best &mdash; ${pbSess.date}</div>
+      ${pbSess.sets.map((s,i)=>
+        `<div style="font-size:14px;color:var(--tp);line-height:1.8;">Set ${i+1}: <strong>${fw(s.weight)}</strong> &times; <strong>${fr(s.reps)} reps</strong></div>`
+      ).join('')}
+    </div>` : '';
+
   el.innerHTML = `
     <div class="ex-list">${names.map(n => `
       <div class="ex-item ${n===selEx?'active':''}" onclick="selExercise('${esc(n)}')">
         <span class="ex-item-name">${n}</span>
-        <span class="ex-item-count">${data[n].length}×</span>
+        <span class="ex-item-count">${data[n].length}x</span>
       </div>`).join('')}
     </div>
     <div class="ex-detail">
       <div class="ex-detail-name">${selEx}</div>
       <div class="stat-row">
-        <div class="stat-pill"><div class="stat-lbl">Best weight</div><div class="stat-val">${pw?pw+' lbs':'—'}</div></div>
+        <div class="stat-pill"><div class="stat-lbl">Best weight</div><div class="stat-val">${pbMaxW?pbMaxW+' lbs':'—'}</div></div>
         <div class="stat-pill"><div class="stat-lbl">Sessions</div><div class="stat-val">${sessions.length}</div></div>
         <div class="stat-pill"><div class="stat-lbl">Last weight</div><div class="stat-val">${sessions.length?Math.max(...sessions[0].sets.map(s=>parseFloat(s.weight)||0))+' lbs':'—'}</div></div>
       </div>
+      ${pbBlock}
       ${sessions.map((sess,si) => `<div class="sess-row">
-        <div class="sess-date">${sess.date}</div>
-        <div class="sess-grid">${sess.sets.map(s => {
-          const isPR = (parseFloat(s.weight)||0)===pw && si===psi;
-          return `<span class="set-badge ${isPR?'pr':''}">${fw(s.weight)} × ${fr(s.reps)} reps${isPR?' 🏆':''}</span>`;
-        }).join('')}</div>
+        <div class="sess-date">${sess.date}${si===pbIdx?' <span style="font-size:11px;color:#3B6D11;margin-left:6px;">🏆 PB</span>':''}</div>
+        <div class="sess-grid">${sess.sets.map((s,j) =>
+          `<span class="set-badge ${si===pbIdx?'pr':''}">Set ${j+1}: ${fw(s.weight)} x ${fr(s.reps)} reps</span>`
+        ).join('')}</div>
       </div>`).join('')}
     </div>`;
 }
