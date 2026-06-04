@@ -88,6 +88,7 @@ body.dark-mode .mode-btn.active, body.dark-mode .cat-tab.active, body.dark-mode 
 .picker-select { flex: 1; font-size: 14px; padding: 8px 12px; border: 1.5px solid var(--bo3); border-radius: var(--r1); background: var(--bp); color: var(--tp); cursor: pointer; appearance: auto; }
 .picker-select:focus { outline: none; border-color: var(--bo1); }
 .picker-select.active-sel { outline: 3px solid #1a1a1a; outline-offset: -1px; border-color: transparent; }
+.add-btn { font-size: 14px; font-weight: 500; padding: 8px 14px; border-radius: var(--r1); cursor: pointer; background: var(--tp); color: var(--bp); border: none; flex-shrink: 0; }
 /* Inline add rows (shared pattern) */
 .add-inline-row { display: none; gap: 8px; margin-top: 10px; }
 .add-inline-row.open { display: flex; }
@@ -105,10 +106,17 @@ body.dark-mode .mode-btn.active, body.dark-mode .cat-tab.active, body.dark-mode 
 .save-btn { width: 100%; padding: 14px; font-size: 16px; font-weight: 500; background: var(--tp); color: var(--bp); border: none; border-radius: var(--r2); cursor: pointer; }
 .save-btn:active { opacity: .8; }
 .save-msg { text-align: center; font-size: 13px; color: var(--ts); margin-top: 8px; min-height: 20px; }
-.hist-entry { border: 0.5px solid var(--bo3); border-radius: var(--r2); padding: 1rem; margin-bottom: 10px; background: var(--bp); }
-.hist-hdr { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
-.hist-date { font-size: 12px; color: var(--ts); }
-.hist-tag { font-size: 12px; font-weight: 500; color: var(--tp); background: var(--bs); padding: 3px 10px; border-radius: 20px; border: 0.5px solid var(--bo3); cursor: pointer; white-space: nowrap; }
+.hist-entry { border: 0.5px solid var(--bo3); border-radius: var(--r2); margin-bottom: 8px; background: var(--bp); overflow: hidden; }
+.hist-hdr { display: flex; justify-content: space-between; align-items: center; padding: 12px 1rem; cursor: pointer; user-select: none; }
+.hist-hdr-left { display: flex; flex-direction: column; gap: 3px; }
+.hist-date { font-size: 13px; font-weight: 500; color: var(--tp); }
+.hist-label-row { display: flex; align-items: center; gap: 6px; }
+.hist-tag { font-size: 12px; font-weight: 500; color: var(--tp); background: var(--bs); padding: 2px 8px; border-radius: 20px; border: 0.5px solid var(--bo3); white-space: nowrap; }
+.hist-preview { font-size: 12px; color: var(--ts); }
+.hist-chevron { font-size: 16px; color: var(--ts); transition: transform .2s; flex-shrink: 0; }
+.hist-entry.open .hist-chevron { transform: rotate(180deg); }
+.hist-body { display: none; border-top: 0.5px solid var(--bo3); padding: 1rem; }
+.hist-entry.open .hist-body { display: block; }
 .hist-block { margin-bottom: 10px; }
 .hist-block:last-child { margin-bottom: 0; }
 .hist-name { font-size: 14px; font-weight: 500; color: var(--tp); margin-bottom: 4px; }
@@ -174,6 +182,7 @@ body.dark-mode .mode-btn.active, body.dark-mode .cat-tab.active, body.dark-mode 
   </div>
 
   <div id="tab-log">
+    <div id="blocks-list"></div>
     <div class="picker-area">
       <div class="add-trigger" id="add-trigger" onclick="openPicker()">
         <div class="add-trigger-icon"><i class="ti ti-plus"></i></div>
@@ -204,7 +213,7 @@ body.dark-mode .mode-btn.active, body.dark-mode .cat-tab.active, body.dark-mode 
           <div class="sec-lbl">Exercise</div>
           <div class="drop-select-row">
             <select class="picker-select" id="ex-select"></select>
-            <button class="icon-btn" onclick="pickExFromSelect()">Add</button>
+            <button class="add-btn" onclick="pickExFromSelect()">Add</button>
             <button class="icon-btn" onclick="openExSettingsModal()"><i class="ti ti-settings"></i></button>
             <button class="icon-btn" onclick="toggleAddEx()"><i class="ti ti-plus"></i></button>
           </div>
@@ -216,7 +225,6 @@ body.dark-mode .mode-btn.active, body.dark-mode .cat-tab.active, body.dark-mode 
         </div>
       </div>
     </div>
-    <div id="blocks-list"></div>
     <div class="save-area">
       <div class="save-sec">
         <div class="sec-lbl">Workout name <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:11px;">(optional)</span></div>
@@ -816,41 +824,62 @@ function renderLookup(){
 function selExercise(n){ selEx=n; renderLookup(); }
 
 // History tab
+function toggleHistEntry(idx){
+  const el = document.getElementById('hist-'+idx);
+  el.classList.toggle('open');
+}
+
 function renderHistory(){
   const el = document.getElementById('hist-list');
   if(!history.length){
     el.innerHTML = '<div class="empty"><i class="ti ti-history" style="font-size:32px;display:block;margin-bottom:8px"></i>No workouts saved yet</div>';
     return;
   }
-  el.innerHTML = history.map((entry, idx) => `
-    <div class="hist-entry">
-      <div class="hist-hdr">
-        <div class="hist-date">${entry.date}</div>
-        ${entry.label ? `<span class="hist-tag" onclick="repeatWorkout(${idx});switchTab('log')">${entry.label} <i class="ti ti-repeat" style="font-size:11px"></i></span>` : ''}
+  el.innerHTML = history.map((entry, idx) => {
+    // Build preview: exercise names joined
+    const exNames = entry.blocks.flatMap(b => b.exercises.map(e => e.name));
+    const preview = exNames.slice(0,3).join(', ') + (exNames.length>3 ? ` +${exNames.length-3} more` : '');
+
+    const bodyBlocks = entry.blocks.map(b => {
+      if(b.type==='single'){
+        const ex=b.exercises[0];
+        const lines = ex.sets.map((s,i) => `Set ${i+1}: ${fw(s.w)} × ${fr(s.r)} reps`).join('<br>');
+        return `<div class="hist-block"><div class="hist-name">${ex.name}</div><div class="hist-sets">${lines}</div></div>`;
+      }
+      if(b.type==='superset'){
+        const [e1,e2]=b.exercises, ms=Math.max(e1.sets.length,e2.sets.length);
+        const lines = Array.from({length:ms},(_,i)=>{
+          const s1=e1.sets[i],s2=e2.sets[i];
+          return `Set ${i+1}: ${s1?`${fw(s1.w)} × ${fr(s1.r)} reps`:'—'} / ${s2?`${fw(s2.w)} × ${fr(s2.r)} reps`:'—'}`;
+        }).join('<br>');
+        return `<div class="hist-block"><div class="hist-name">${e1.name} / ${e2.name}</div><div class="hist-sets">${lines}</div></div>`;
+      }
+      if(b.type==='dropset'){
+        const ex=b.exercises[0];
+        const lines = ex.dropSets.map((drops,i) =>
+          `Set ${i+1}: `+drops.map(d=>`${fw(d.w)} × ${fr(d.r)} reps`).join(' → ')
+        ).join('<br>');
+        return `<div class="hist-block"><div class="hist-name">${ex.name} <span style="font-size:11px;background:#FEF3E2;color:#A05C00;padding:2px 7px;border-radius:20px;font-weight:500;">↓ Dropset</span></div><div class="hist-sets">${lines}</div></div>`;
+      }
+    }).join('');
+
+    return `<div class="hist-entry" id="hist-${idx}">
+      <div class="hist-hdr" onclick="toggleHistEntry(${idx})">
+        <div class="hist-hdr-left">
+          <div class="hist-date">${entry.date}</div>
+          <div class="hist-label-row">
+            ${entry.label ? `<span class="hist-tag">${entry.label}</span>` : ''}
+            <span class="hist-preview">${preview}</span>
+          </div>
+        </div>
+        <i class="ti ti-chevron-down hist-chevron"></i>
       </div>
-      ${entry.blocks.map(b => {
-        if(b.type==='single'){
-          const ex=b.exercises[0];
-          const lines = ex.sets.map((s,i) => `Set ${i+1}: ${fw(s.w)} × ${fr(s.r)} reps`).join('<br>');
-          return `<div class="hist-block"><div class="hist-name">${ex.name}</div><div class="hist-sets">${lines}</div></div>`;
-        }
-        if(b.type==='superset'){
-          const [e1,e2]=b.exercises, ms=Math.max(e1.sets.length,e2.sets.length);
-          const lines = Array.from({length:ms},(_,i)=>{
-            const s1=e1.sets[i],s2=e2.sets[i];
-            return `Set ${i+1}: ${s1?`${fw(s1.w)} × ${fr(s1.r)} reps`:'—'} / ${s2?`${fw(s2.w)} × ${fr(s2.r)} reps`:'—'}`;
-          }).join('<br>');
-          return `<div class="hist-block"><div class="hist-name">${e1.name} / ${e2.name}</div><div class="hist-sets">${lines}</div></div>`;
-        }
-        if(b.type==='dropset'){
-          const ex=b.exercises[0];
-          const lines = ex.dropSets.map((drops,i) =>
-            `Set ${i+1}: `+drops.map(d=>`${fw(d.w)} × ${fr(d.r)} reps`).join(' → ')
-          ).join('<br>');
-          return `<div class="hist-block"><div class="hist-name">${ex.name} <span style="font-size:11px;background:#FEF3E2;color:#A05C00;padding:2px 7px;border-radius:20px;font-weight:500;">↓ Dropset</span></div><div class="hist-sets">${lines}</div></div>`;
-        }
-      }).join('')}
-    </div>`).join('');
+      <div class="hist-body">
+        ${entry.label ? `<div style="margin-bottom:10px;display:flex;justify-content:flex-end;"><button class="icon-btn" style="font-size:12px;padding:4px 10px;" onclick="repeatWorkout(${idx});switchTab('log')"><i class="ti ti-repeat"></i> Repeat</button></div>` : ''}
+        ${bodyBlocks}
+      </div>
+    </div>`;
+  }).join('');
 }
 
 function repeatWorkout(idx){
