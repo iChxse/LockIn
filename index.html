@@ -8,6 +8,7 @@
 <meta name="apple-mobile-web-app-title" content="Workout Log">
 <title>Workout Log</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root {
   --tp: #111; --ts: #666; --bp: #fff; --bs: #f5f5f5;
@@ -167,6 +168,41 @@ body.dark-mode .mode-btn.active, body.dark-mode .cat-tab.active, body.dark-mode 
 .exm-name { flex: 1; font-size: 14px; color: var(--tp); }
 .exm-cat { font-size: 12px; color: var(--ts); }
 .action-btn { background: none; border: none; cursor: pointer; color: var(--ts); font-size: 16px; padding: 4px; line-height: 1; flex-shrink: 0; }
+
+/* ── Auth screen ── */
+.auth-screen { display:none; position:fixed; inset:0; background:var(--bs); z-index:200; align-items:center; justify-content:center; padding:1.5rem; }
+.auth-screen.show { display:flex; }
+.auth-box { background:var(--bp); border:0.5px solid var(--bo3); border-radius:var(--r2); padding:2rem; width:100%; max-width:360px; }
+.auth-logo { font-size:28px; font-weight:600; color:var(--tp); margin-bottom:4px; }
+.auth-sub { font-size:14px; color:var(--ts); margin-bottom:2rem; }
+.auth-tabs { display:flex; border-bottom:0.5px solid var(--bo3); margin-bottom:1.5rem; }
+.auth-tab { flex:1; font-size:14px; padding:8px 4px; cursor:pointer; color:var(--ts); border-bottom:2px solid transparent; margin-bottom:-1px; background:none; border-top:none; border-left:none; border-right:none; text-align:center; }
+.auth-tab.active { color:var(--tp); border-bottom-color:var(--tp); font-weight:500; }
+.auth-field { margin-bottom:1rem; }
+.auth-field label { display:block; font-size:12px; color:var(--ts); margin-bottom:5px; }
+.auth-field input { width:100%; font-size:15px; padding:10px 12px; border:0.5px solid var(--bo3); border-radius:var(--r1); background:var(--bs); color:var(--tp); }
+.auth-field input:focus { outline:none; border-color:var(--bo1); }
+.auth-btn { width:100%; padding:12px; font-size:15px; font-weight:500; background:var(--tp); color:var(--bp); border:none; border-radius:var(--r1); cursor:pointer; margin-top:0.5rem; }
+.auth-btn:active { opacity:.8; }
+.auth-msg { font-size:13px; text-align:center; margin-top:1rem; min-height:20px; color:var(--ts); }
+.auth-msg.error { color:#E24B4A; }
+.auth-msg.success { color:#3B6D11; }
+/* ── Profile bar ── */
+.profile-bar { display:flex; align-items:center; justify-content:space-between; margin-bottom:1.25rem; }
+.profile-bar-left { display:flex; flex-direction:column; gap:2px; }
+.profile-btn { background:none; border:0.5px solid var(--bo3); border-radius:var(--r1); cursor:pointer; color:var(--ts); font-size:13px; padding:5px 10px; display:flex; align-items:center; gap:5px; }
+/* ── Friends tab ── */
+.friend-card { background:var(--bp); border:0.5px solid var(--bo3); border-radius:var(--r2); padding:1rem; margin-bottom:10px; }
+.friend-name { font-size:15px; font-weight:500; color:var(--tp); margin-bottom:2px; }
+.friend-meta { font-size:12px; color:var(--ts); }
+.friend-actions { display:flex; gap:8px; margin-top:10px; }
+.friend-btn { flex:1; font-size:13px; padding:8px; border-radius:var(--r1); cursor:pointer; border:0.5px solid var(--bo3); background:var(--bs); color:var(--tp); }
+.friend-btn.primary { background:var(--tp); color:var(--bp); border-color:var(--tp); }
+.friend-btn.danger { background:#A32D2D; color:#fff; border-color:#A32D2D; }
+.search-friends-row { display:flex; gap:8px; margin-bottom:1rem; }
+.search-friends-row input { flex:1; font-size:14px; padding:9px 12px; border:0.5px solid var(--bo3); border-radius:var(--r1); background:var(--bp); color:var(--tp); }
+.search-friends-row input:focus { outline:none; }
+.friend-section-lbl { font-size:11px; font-weight:500; color:var(--ts); text-transform:uppercase; letter-spacing:.05em; margin-bottom:8px; margin-top:1rem; }
 </style>
 </head>
 <body>
@@ -174,11 +210,12 @@ body.dark-mode .mode-btn.active, body.dark-mode .cat-tab.active, body.dark-mode 
 <div class="app">
   <div class="date" id="today-date"></div>
   <div class="title" id="greeting"></div>
-  <div class="sync-bar"><div class="sync-dot" id="sync-dot"></div><span id="sync-status">Loading...</span></div>
+  <div class="profile-bar"><div class="profile-bar-left"><div class="sync-bar"><div class="sync-dot" id="sync-dot"></div><span id="sync-status">Loading...</span></div></div><button class="profile-btn" onclick="openProfileModal()"><i class="ti ti-user-circle"></i> Account</button></div>
   <div class="tabs">
     <button class="tab active" onclick="switchTab('log')">Today</button>
     <button class="tab" onclick="switchTab('lookup')">Exercises</button>
     <button class="tab" onclick="switchTab('history')">History</button>
+    <button class="tab" onclick="switchTab('friends')">Friends</button>
   </div>
 
   <div id="tab-log">
@@ -244,6 +281,7 @@ body.dark-mode .mode-btn.active, body.dark-mode .cat-tab.active, body.dark-mode 
   </div>
 
   <div id="tab-history" style="display:none;"><div id="hist-list"></div></div>
+  <div id="tab-friends" style="display:none;"><div id="friends-content"></div></div>
 </div>
 
 <!-- Modals -->
@@ -299,7 +337,307 @@ body.dark-mode .mode-btn.active, body.dark-mode .cat-tab.active, body.dark-mode 
   <button class="modal-btn" style="width:100%;text-align:center;" onclick="closeModal('ex-settings-modal')">Done</button>
 </div></div>
 
+
+<!-- Auth screen -->
+<div class="auth-screen" id="auth-screen">
+  <div class="auth-box">
+    <div class="auth-logo">💪 Workout Log</div>
+    <div class="auth-sub">Track your gains, share your progress</div>
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="showAuthTab('login')">Sign in</button>
+      <button class="auth-tab" onclick="showAuthTab('signup')">Create account</button>
+    </div>
+    <div id="auth-login">
+      <div class="auth-field"><label>Email</label><input type="email" id="login-email" placeholder="you@example.com" autocomplete="email"></div>
+      <div class="auth-field"><label>Password</label><input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password"></div>
+      <button class="auth-btn" onclick="doLogin()">Sign in</button>
+      <button class="auth-btn" onclick="doForgotPassword()" style="background:none;color:var(--ts);border:none;font-size:13px;margin-top:8px;">Forgot password?</button>
+    </div>
+    <div id="auth-signup" style="display:none;">
+      <div class="auth-field"><label>Your name</label><input type="text" id="signup-name" placeholder="e.g. Alex" autocomplete="name"></div>
+      <div class="auth-field"><label>Username</label><input type="text" id="signup-username" placeholder="e.g. alexlifts" autocomplete="off" oninput="this.value=this.value.toLowerCase().replace(/[^a-z0-9_]/g,'')"><div style="font-size:11px;color:var(--ts);margin-top:4px;">Lowercase letters, numbers, underscores only</div></div>
+      <div class="auth-field"><label>Email</label><input type="email" id="signup-email" placeholder="you@example.com" autocomplete="email"></div>
+      <div class="auth-field"><label>Password</label><input type="password" id="signup-password" placeholder="At least 6 characters" autocomplete="new-password"></div>
+      <button class="auth-btn" onclick="doSignup()">Create account</button>
+    </div>
+    <div class="auth-msg" id="auth-msg"></div>
+  </div>
+</div>
+
+<!-- Profile modal -->
+<div class="modal-bg" id="profile-modal"><div class="modal">
+  <div class="modal-title">Profile</div>
+  <div class="modal-lbl">Your name</div>
+  <input type="text" class="modal-inp" id="profile-name-inp" placeholder="Your name">
+  <div class="modal-lbl">Username</div>
+  <input type="text" class="modal-inp" id="profile-username-inp" placeholder="e.g. alexlifts" oninput="this.value=this.value.toLowerCase().replace(/[^a-z0-9_]/g,'')">
+  <div style="font-size:11px;color:var(--ts);margin-top:-16px;margin-bottom:1.25rem;">Your unique @username for finding friends</div>
+  <div class="modal-lbl">Email</div>
+  <div style="font-size:14px;color:var(--ts);margin-bottom:1.25rem;" id="profile-email-display"></div>
+  <div class="modal-actions" style="justify-content:space-between;">
+    <button class="modal-btn danger" onclick="doSignOut()">Sign out</button>
+    <div style="display:flex;gap:8px;">
+      <button class="modal-btn" onclick="closeModal('profile-modal')">Cancel</button>
+      <button class="modal-btn primary" onclick="saveProfile()">Save</button>
+    </div>
+  </div>
+</div></div>
+
+<!-- Friend workout viewer modal -->
+<div class="modal-bg" id="friend-history-modal"><div class="modal">
+  <div class="modal-title" id="friend-history-title">Workouts</div>
+  <div id="friend-history-list" style="max-height:60vh;overflow-y:auto;"></div>
+  <div class="modal-actions" style="margin-top:1rem;">
+    <button class="modal-btn" onclick="closeModal('friend-history-modal')">Close</button>
+  </div>
+</div></div>
+
 <script>
+
+// ═══════════════════════════════════════════
+// SUPABASE CONFIG — replace with your values
+// ═══════════════════════════════════════════
+const SUPABASE_URL = 'https://dzoxngugytzvmicjbpce.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_cv94GdtbeTYlNIAt7gCpLA_1GnrVMCk';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let currentUser = null;
+let currentProfile = null;
+
+// ── Auth helpers ──
+function showAuthTab(tab){
+  document.getElementById('auth-login').style.display = tab==='login' ? '' : 'none';
+  document.getElementById('auth-signup').style.display = tab==='signup' ? '' : 'none';
+  document.querySelectorAll('.auth-tab').forEach((t,i) => t.classList.toggle('active', (i===0&&tab==='login')||(i===1&&tab==='signup')));
+  setAuthMsg('');
+}
+
+function setAuthMsg(msg, type=''){
+  const el = document.getElementById('auth-msg');
+  el.textContent = msg;
+  el.className = 'auth-msg' + (type ? ' '+type : '');
+}
+
+async function doLogin(){
+  const email = document.getElementById('login-email').value.trim();
+  const pass  = document.getElementById('login-password').value;
+  if(!email||!pass){ setAuthMsg('Please fill in all fields.','error'); return; }
+  setAuthMsg('Signing in...');
+  const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+  if(error){ setAuthMsg(error.message,'error'); return; }
+  await onAuthSuccess(data.user);
+}
+
+async function doSignup(){
+  const name     = document.getElementById('signup-name').value.trim();
+  const username = document.getElementById('signup-username').value.trim().toLowerCase();
+  const email    = document.getElementById('signup-email').value.trim();
+  const pass     = document.getElementById('signup-password').value;
+  if(!name||!username||!email||!pass){ setAuthMsg('Please fill in all fields.','error'); return; }
+  if(username.length < 3){ setAuthMsg('Username must be at least 3 characters.','error'); return; }
+  if(pass.length < 6){ setAuthMsg('Password must be at least 6 characters.','error'); return; }
+  // Check username is taken
+  setAuthMsg('Checking username...');
+  const { data: existing } = await sb.from('profiles').select('id').eq('username', username).single();
+  if(existing){ setAuthMsg('That username is taken — try another.','error'); return; }
+  setAuthMsg('Creating account...');
+  const { data, error } = await sb.auth.signUp({ email, password: pass, options:{ data:{ name } } });
+  if(error){ setAuthMsg(error.message,'error'); return; }
+  if(data.user){
+    await sb.from('profiles').upsert({ id: data.user.id, name, username, email });
+    setAuthMsg('Account created! Signing you in...','success');
+    setTimeout(()=>{ doLogin(); }, 800);
+  }
+}
+
+async function doForgotPassword(){
+  const email = document.getElementById('login-email').value.trim();
+  if(!email){ setAuthMsg('Enter your email first.','error'); return; }
+  const { error } = await sb.auth.resetPasswordForEmail(email);
+  if(error) setAuthMsg(error.message,'error');
+  else setAuthMsg('Reset email sent!','success');
+}
+
+async function doSignOut(){
+  await sb.auth.signOut();
+  currentUser = null; currentProfile = null;
+  history = []; EX = JSON.parse(JSON.stringify(DEF));
+  renderBlocks(); renderDayChips();
+  closeModal('profile-modal');
+  document.getElementById('auth-screen').classList.add('show');
+  document.getElementById('greeting').textContent = '';
+  document.getElementById('today-date').textContent = '';
+  setSS('ok','Signed out');
+}
+
+async function onAuthSuccess(user){
+  currentUser = user;
+  document.getElementById('auth-screen').classList.remove('show');
+  // Load or create profile
+  let { data: profile } = await sb.from('profiles').select('*').eq('id', user.id).single();
+  if(!profile){
+    const name = user.user_metadata?.name || user.email.split('@')[0];
+    await sb.from('profiles').upsert({ id: user.id, name, email: user.email });
+    profile = { id: user.id, name, email: user.email };
+  }
+  currentProfile = profile;
+  updateGreeting();
+  await loadFromSupabase();
+  renderDayChips();
+}
+
+// ── Profile modal ──
+function openProfileModal(){
+  if(!currentProfile) return;
+  document.getElementById('profile-name-inp').value = currentProfile.name || '';
+  document.getElementById('profile-username-inp').value = currentProfile.username || '';
+  document.getElementById('profile-email-display').textContent = currentProfile.email || currentUser?.email || '';
+  openModal('profile-modal');
+}
+
+async function saveProfile(){
+  const name     = document.getElementById('profile-name-inp').value.trim();
+  const username = document.getElementById('profile-username-inp').value.trim().toLowerCase();
+  if(!name || !currentUser) return;
+  if(username && username.length < 3){ alert('Username must be at least 3 characters.'); return; }
+  // Check username not taken by someone else
+  if(username && username !== currentProfile.username){
+    const { data: existing } = await sb.from('profiles').select('id').eq('username', username).single();
+    if(existing && existing.id !== currentUser.id){ alert('That username is already taken.'); return; }
+  }
+  await sb.from('profiles').update({ name, username: username || null }).eq('id', currentUser.id);
+  currentProfile.name = name;
+  currentProfile.username = username;
+  updateGreeting();
+  closeModal('profile-modal');
+}
+
+// ── Cloud save/load ──
+async function loadFromSupabase(){
+  if(!currentUser){ load(); return; }
+  setSS('saving','Loading...');
+  try {
+    const [wRes, eRes] = await Promise.all([
+      sb.from('workouts').select('*').eq('user_id', currentUser.id).order('ts', {ascending:false}).limit(100),
+      sb.from('exercise_lists').select('*').eq('user_id', currentUser.id).single()
+    ]);
+    if(wRes.data) history = wRes.data.map(r => ({ date:r.date, ts:r.ts, label:r.label, blocks:r.blocks, id:r.id }));
+    if(eRes.data?.exercises) EX = eRes.data.exercises;
+    setSS('ok','Synced');
+  } catch(e){ load(); setSS('ok','Loaded locally'); }
+  if(!EX[activeCat]) activeCat = Object.keys(EX)[0];
+}
+
+async function saveToSupabase(newEntry){
+  if(!currentUser){ save(); return; }
+  setSS('saving','Saving...');
+  try {
+    // Save workout row
+    if(newEntry){
+      await sb.from('workouts').insert({
+        user_id: currentUser.id,
+        date: newEntry.date,
+        ts: newEntry.ts,
+        label: newEntry.label,
+        blocks: newEntry.blocks
+      });
+    }
+    // Save exercise list
+    await sb.from('exercise_lists').upsert({ user_id: currentUser.id, exercises: EX });
+    // Also mirror to localStorage as backup
+    localStorage.setItem('wl_history', JSON.stringify(history.slice(0,100)));
+    localStorage.setItem('wl_exercises', JSON.stringify(EX));
+    setSS('ok','Saved');
+  } catch(e){
+    save();
+    setSS('error','Saved locally');
+  }
+}
+
+// ── Friends ──
+async function renderFriendsTab(){
+  const el = document.getElementById('friends-content');
+  if(!currentUser){ el.innerHTML='<div class="empty">Sign in to use Friends.</div>'; return; }
+  el.innerHTML = '<div style="color:var(--ts);font-size:13px;padding:1rem 0;">Loading...</div>';
+
+  // Get accepted friends
+  const { data: friendships } = await sb.from('friendships')
+    .select('*, requester:profiles!friendships_requester_id_fkey(id,name,email), addressee:profiles!friendships_addressee_id_fkey(id,name,email)')
+    .or(`requester_id.eq.${currentUser.id},addressee_id.eq.${currentUser.id}`)
+    .eq('status','accepted');
+
+  // Get pending requests sent TO me
+  const { data: pending } = await sb.from('friendships')
+    .select('*, requester:profiles!friendships_requester_id_fkey(id,name,email)')
+    .eq('addressee_id', currentUser.id)
+    .eq('status','pending');
+
+  let html = `
+    <div class="search-friends-row">
+      <input type="text" id="friend-search-inp" placeholder="Search by @username or name...">
+      <button class="icon-btn" onclick="searchFriends()">Search</button>
+    </div>
+    <div id="friend-search-results"></div>`;
+
+  if(pending && pending.length){
+    html += `<div class="friend-section-lbl">Pending requests (${pending.length})</div>`;
+    html += pending.map(f => `
+      <div class="friend-card">
+        <div class="friend-name">${f.requester.name}${f.requester.username?` <span style="font-size:12px;color:var(--ts);">@${f.requester.username}</span>`:''}</div>
+        <div class="friend-actions">
+          <button class="friend-btn primary" onclick="acceptFriend('${f.id}')">Accept</button>
+          <button class="friend-btn danger" onclick="declineFriend('${f.id}')">Decline</button>
+        </div>
+      </div>`).join('');
+  }
+
+  if(friendships && friendships.length){
+    html += `<div class="friend-section-lbl">Friends (${friendships.length})</div>`;
+    html += friendships.map(f => {
+      const friend = f.requester_id === currentUser.id ? f.addressee : f.requester;
+      return `
+        <div class="friend-card">
+          <div class="friend-name">${friend.name}${friend.username?` <span style="font-size:12px;color:var(--ts);">@${friend.username}</span>`:''}</div>
+          <div class="friend-actions">
+            <button class="friend-btn" onclick="viewFriendWorkouts('${friend.id}', '${friend.name}')"><i class="ti ti-history"></i> View workouts</button>
+            <button class="friend-btn danger" onclick="removeFriend('${f.id}')">Remove</button>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  if((!friendships || !friendships.length) && (!pending || !pending.length)){
+    html += '<div class="empty" style="padding:2rem 0;"><i class="ti ti-users" style="font-size:32px;display:block;margin-bottom:8px"></i>No friends yet — search above to add someone</div>';
+  }
+
+  el.innerHTML = html;
+}
+
+async function searchFriends(){
+  let q = document.getElementById('friend-search-inp').value.trim();
+  if(!q) return;
+  const el = document.getElementById('friend-search-results');
+  el.innerHTML = '<div style="font-size:13px;color:var(--ts);padding:8px 0;">Searching...</div>';
+  const uq = q.startsWith('@') ? q.slice(1) : q;
+  const { data } = await sb.from('profiles')
+    .select('id,name,username,email')
+    .or('username.ilike.' + uq + '%,name.ilike.%' + q + '%')
+    .neq('id', currentUser.id)
+    .limit(10);
+  if(!data || !data.length){ el.innerHTML='<div style="font-size:13px;color:var(--ts);padding:8px 0;">No users found.</div>'; return; }
+  // Store results globally so onclick handlers can reference by index
+  window._searchResults = data;
+  el.innerHTML = data.map(function(u, i){
+    const uname = u.username ? ' <span style="font-size:12px;color:var(--ts);">@' + u.username + '</span>' : '';
+    return '<div class="friend-card">' +
+      '<div class="friend-name">' + u.name + uname + '</div>' +
+      '<div class="friend-actions">' +
+        '<button class="friend-btn primary" onclick="sendFriendRequest(window._searchResults[' + i + '].id)">Add friend</button>' +
+        '<button class="friend-btn" onclick="viewFriendWorkouts(window._searchResults[' + i + '].id, window._searchResults[' + i + '].name)">View workouts</button>' +
+      '</div></div>';
+  }).join('');
+}
+
 const DEF = {
   Chest: ['Bench press','Incline bench','Decline bench','Chest fly','Push-up','Cable fly'],
   Back: ['Deadlift','Pull-up','Lat pulldown','Seated row','Bent-over row','T-bar row'],
@@ -329,7 +667,8 @@ function updateGreeting() {
         text = "Time to recover";
     }
 
-    document.getElementById("greeting").textContent = text;
+    const name = currentProfile?.name ? ", " + currentProfile.name : "";
+    document.getElementById("greeting").textContent = text + name;
 }
 
 function fw(w){ return w ? w+' lbs' : '—'; }
@@ -393,6 +732,15 @@ function initTheme(){
 
 function init(){
   initTheme();
+  // Check existing session
+  sb.auth.getSession().then(({ data: { session } }) => {
+    if(session && session.user){
+      onAuthSuccess(session.user);
+    } else {
+      document.getElementById('auth-screen').classList.add('show');
+      load(); // load local data as fallback
+    }
+  });
   const d = new Date();
   document.getElementById('today-date').textContent = d.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
   load();
@@ -532,7 +880,7 @@ function addCategory(){
   EX[name] = []; inp.value = '';
   document.getElementById('add-cat-row').classList.remove('open');
   activeCat = name;
-  renderCatSelect(); save();
+  renderCatSelect(); saveToSupabase(null);
 }
 
 function removeBlock(i){ blocks.splice(i,1); renderBlocks(); renderExSelect(); }
@@ -626,7 +974,7 @@ function saveWorkout(){
   });
   blocks=[]; renderBlocks(); renderExSelect(); closePicker();
   document.getElementById('day-inp').value = '';
-  showMsg('Saving...'); save(); renderDayChips(); showMsg('Workout saved!');
+  showMsg('Saving...'); saveToSupabase(history[0]); renderDayChips(); showMsg('Workout saved!');
 }
 
 function showMsg(m){
@@ -652,7 +1000,7 @@ function renameCat(old, n){
   keys.forEach(k => { ne[k===old?n:k] = EX[k]; });
   EX = ne;
   if(activeCat===old) activeCat = n;
-  renderCatSelect(); save();
+  renderCatSelect(); saveToSupabase(null);
 }
 
 // Exercise settings modal — shows exercises in the currently selected category
@@ -685,7 +1033,7 @@ function confirmDelCat(){
   delete EX[delCatName];
   if(activeCat===delCatName) activeCat = Object.keys(EX)[0]||'';
   closeModal('del-cat-modal'); delCatName=null;
-  renderCatSelect(); save();
+  renderCatSelect(); saveToSupabase(null);
 }
 
 // Exercise manage modal
@@ -718,7 +1066,7 @@ function confirmDelEx(){
   if(!delExName) return;
   for(const cat of Object.keys(EX)) EX[cat] = EX[cat].filter(e => e!==delExName);
   closeModal('del-ex-modal'); delExName=null;
-  renderCatSelect(); renderLookup(); save();
+  renderCatSelect(); renderLookup(); saveToSupabase(null);
 }
 
 function openEditEx(name){
@@ -747,7 +1095,7 @@ function confirmEditEx(){
   history.forEach(e => e.blocks.forEach(b => b.exercises.forEach(ex => { if(ex.name===editExName) ex.name=nn; })));
   if(selEx===editExName) selEx=nn;
   closeModal('edit-ex-modal'); editExName=null;
-  renderCatSelect(); renderLookup(); save();
+  renderCatSelect(); renderLookup(); saveToSupabase(null);
 }
 
 // Lookup tab
@@ -894,6 +1242,65 @@ function repeatWorkout(idx){
   renderBlocks(); renderExSelect();
 }
 
+async function sendFriendRequest(addresseeId){
+  const { error } = await sb.from('friendships').insert({ requester_id: currentUser.id, addressee_id: addresseeId, status:'pending' });
+  if(error) alert('Could not send request: ' + error.message);
+  else { document.getElementById('friend-search-results').innerHTML='<div style="font-size:13px;color:#3B6D11;padding:8px 0;">Friend request sent!</div>'; }
+}
+
+async function acceptFriend(id){ await sb.from('friendships').update({ status:'accepted' }).eq('id', id); renderFriendsTab(); }
+async function declineFriend(id){ await sb.from('friendships').delete().eq('id', id); renderFriendsTab(); }
+async function removeFriend(id){ await sb.from('friendships').delete().eq('id', id); renderFriendsTab(); }
+
+async function viewFriendWorkouts(userId, name){
+  document.getElementById('friend-history-title').textContent = name + "'s Workouts";
+  document.getElementById('friend-history-list').innerHTML = '<div style="font-size:13px;color:var(--ts);padding:1rem 0;">Loading...</div>';
+  openModal('friend-history-modal');
+  const { data } = await sb.from('workouts').select('*').eq('user_id', userId).order('ts',{ascending:false}).limit(50);
+  if(!data || !data.length){
+    document.getElementById('friend-history-list').innerHTML = '<div style="font-size:13px;color:var(--ts);text-align:center;padding:1rem;">No workouts yet.</div>';
+    return;
+  }
+  document.getElementById('friend-history-list').innerHTML = data.map(function(entry, idx){
+    const exNames = entry.blocks.flatMap(function(b){ return b.exercises.map(function(e){ return e.name; }); });
+    const preview = exNames.slice(0,3).join(', ') + (exNames.length>3 ? ' +' + (exNames.length-3) + ' more' : '');
+    const bodyBlocks = entry.blocks.map(function(b){
+      if(b.type==='single'){
+        const ex=b.exercises[0];
+        const lines=ex.sets.map(function(s,i){ return 'Set '+(i+1)+': '+fw(s.w)+' × '+fr(s.r)+' reps'; }).join('<br>');
+        return '<div class="hist-block"><div class="hist-name">'+ex.name+'</div><div class="hist-sets">'+lines+'</div></div>';
+      }
+      if(b.type==='superset'){
+        const e1=b.exercises[0], e2=b.exercises[1], ms=Math.max(e1.sets.length,e2.sets.length);
+        const lines=Array.from({length:ms},function(_,i){
+          const s1=e1.sets[i],s2=e2.sets[i];
+          return 'Set '+(i+1)+': '+(s1?fw(s1.w)+' × '+fr(s1.r)+' reps':'—')+' / '+(s2?fw(s2.w)+' × '+fr(s2.r)+' reps':'—');
+        }).join('<br>');
+        return '<div class="hist-block"><div class="hist-name">'+e1.name+' / '+e2.name+'</div><div class="hist-sets">'+lines+'</div></div>';
+      }
+      if(b.type==='dropset'){
+        const ex=b.exercises[0];
+        const lines=ex.dropSets.map(function(drops,i){ return 'Set '+(i+1)+': '+drops.map(function(d){ return fw(d.w)+' × '+fr(d.r)+' reps'; }).join(' → '); }).join('<br>');
+        return '<div class="hist-block"><div class="hist-name">'+ex.name+' <span style="font-size:11px;background:#FEF3E2;color:#A05C00;padding:2px 7px;border-radius:20px;font-weight:500;">↓ Dropset</span></div><div class="hist-sets">'+lines+'</div></div>';
+      }
+      return '';
+    }).join('');
+    return '<div class="hist-entry" id="fhist-'+idx+'">' +
+      '<div class="hist-hdr" onclick="document.getElementById(\'fhist-'+idx+'\').classList.toggle(\'open\')">' +
+        '<div class="hist-hdr-left">' +
+          '<div class="hist-date">'+entry.date+'</div>' +
+          '<div class="hist-label-row">' +
+            (entry.label ? '<span class="hist-tag">'+entry.label+'</span>' : '') +
+            '<span class="hist-preview">'+preview+'</span>' +
+          '</div>' +
+        '</div>' +
+        '<i class="ti ti-chevron-down hist-chevron"></i>' +
+      '</div>' +
+      '<div class="hist-body">'+bodyBlocks+'</div>' +
+    '</div>';
+  }).join('');
+}
+
 function openModal(id){ document.getElementById(id).classList.add('open'); }
 function closeModal(id){ document.getElementById(id).classList.remove('open'); }
 document.querySelectorAll('.modal-bg').forEach(el => {
@@ -901,10 +1308,11 @@ document.querySelectorAll('.modal-bg').forEach(el => {
 });
 
 function switchTab(tab){
-  ['log','lookup','history'].forEach(t => document.getElementById('tab-'+t).style.display = t===tab?'':'none');
-  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', ['log','lookup','history'][i]===tab));
+  ['log','lookup','history','friends'].forEach(t => document.getElementById('tab-'+t).style.display = t===tab?'':'none');
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', ['log','lookup','history','friends'][i]===tab));
   if(tab==='lookup') renderLookup();
   if(tab==='history') renderHistory();
+  if(tab==='friends') renderFriendsTab();
 }
 
 init();
