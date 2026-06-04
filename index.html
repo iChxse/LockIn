@@ -80,8 +80,14 @@ input,select,button { font-family: var(--font); }
 .mode-btn.active { color: var(--tp); font-weight: 500; outline: 3px solid #1a1a1a; outline-offset: -1px; border-color: transparent; }
 body.dark-mode { --tp: #f0f0f0; --ts: #999; --bp: #1a1a1a; --bs: #252525; --bo1: #555; --bo2: #444; --bo3: #333; }
 body.dark-mode .mode-btn.active, body.dark-mode .cat-tab.active, body.dark-mode .ex-item.active { outline-color: #f0f0f0; }
-.theme-btn { position: fixed; top: 1rem; right: 1rem; z-index: 50; background: var(--bp); border: 0.5px solid var(--bo3); border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 17px; color: var(--ts); box-shadow: 0 1px 4px rgba(0,0,0,.12); }
-.theme-btn:active { opacity: .7; }
+.toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-top: 0.5px solid var(--bo3); margin-top: 4px; }
+.toggle-lbl { font-size: 14px; color: var(--tp); }
+.toggle-switch { position: relative; width: 44px; height: 26px; flex-shrink: 0; }
+.toggle-switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+.toggle-track { position: absolute; inset: 0; background: var(--bo2); border-radius: 20px; cursor: pointer; transition: background .2s; }
+.toggle-switch input:checked + .toggle-track { background: var(--tp); }
+.toggle-track::after { content: ''; position: absolute; width: 20px; height: 20px; left: 3px; top: 3px; background: var(--bp); border-radius: 50%; transition: transform .2s; }
+.toggle-switch input:checked + .toggle-track::after { transform: translateX(18px); }
 @media (prefers-color-scheme: dark) { .mode-btn.active, .cat-tab.active, .ex-item.active { outline-color: #f0f0f0; } }
 .icon-btn { background: none; border: 0.5px solid var(--bo3); border-radius: var(--r1); cursor: pointer; color: var(--ts); font-size: 16px; padding: 5px 7px; line-height: 1; flex-shrink: 0; }
 /* Dropdown rows — category and exercise */
@@ -202,11 +208,43 @@ body.dark-mode .mode-btn.active, body.dark-mode .cat-tab.active, body.dark-mode 
 .search-friends-row { display:flex; gap:8px; margin-bottom:1rem; }
 .search-friends-row input { flex:1; font-size:14px; padding:9px 12px; border:0.5px solid var(--bo3); border-radius:var(--r1); background:var(--bp); color:var(--tp); }
 .search-friends-row input:focus { outline:none; }
+/* ── Friends sub-tabs ── */
+.friends-subtabs { display:flex; border-bottom:0.5px solid var(--bo3); margin-bottom:1.25rem; }
+.friends-subtab { flex:1; font-size:14px; padding:9px 4px; cursor:pointer; color:var(--ts); border-bottom:2px solid transparent; margin-bottom:-1px; background:none; border-top:none; border-left:none; border-right:none; text-align:center; }
+.friends-subtab.active { color:var(--tp); border-bottom-color:var(--tp); font-weight:500; }
+/* ── Activity feed ── */
+.activity-card { background:var(--bp); border:0.5px solid var(--bo3); border-radius:var(--r2); margin-bottom:12px; overflow:hidden; }
+.activity-hdr { display:flex; align-items:center; gap:10px; padding:12px 1rem; }
+.activity-avatar { width:36px; height:36px; border-radius:50%; background:var(--bs); border:0.5px solid var(--bo3); display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:600; color:var(--tp); flex-shrink:0; }
+.activity-meta { flex:1; min-width:0; }
+.activity-name { font-size:14px; font-weight:500; color:var(--tp); }
+.activity-time { font-size:12px; color:var(--ts); }
+.activity-preview { padding:0 1rem 10px; font-size:13px; color:var(--ts); }
+.activity-workout-name { font-size:14px; font-weight:500; color:var(--tp); margin-bottom:2px; }
+.activity-sets-preview { font-size:13px; color:var(--ts); }
+.activity-expand { width:100%; background:none; border:none; border-top:0.5px solid var(--bo3); padding:8px; font-size:12px; color:var(--ts); cursor:pointer; text-align:center; }
+.activity-detail { display:none; border-top:0.5px solid var(--bo3); padding:1rem; }
+.activity-detail.open { display:block; }
+.activity-actions { display:flex; border-top:0.5px solid var(--bo3); }
+.activity-action-btn { flex:1; background:none; border:none; padding:10px; font-size:13px; color:var(--ts); cursor:pointer; display:flex; align-items:center; justify-content:center; gap:5px; }
+.activity-action-btn:hover { color:var(--tp); }
+.activity-action-btn.liked { color:#E24B4A; }
+.activity-action-btn + .activity-action-btn { border-left:0.5px solid var(--bo3); }
+.comments-section { border-top:0.5px solid var(--bo3); padding:10px 1rem; display:none; }
+.comments-section.open { display:block; }
+.comment-row { display:flex; gap:8px; margin-bottom:10px; }
+.comment-avatar { width:26px; height:26px; border-radius:50%; background:var(--bs); display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:600; color:var(--tp); flex-shrink:0; }
+.comment-body { flex:1; }
+.comment-author { font-size:12px; font-weight:500; color:var(--tp); }
+.comment-text { font-size:13px; color:var(--ts); line-height:1.5; }
+.comment-time { font-size:11px; color:var(--ts); margin-top:2px; }
+.comment-input-row { display:flex; gap:8px; margin-top:6px; }
+.comment-input-row input { flex:1; font-size:13px; padding:7px 10px; border:0.5px solid var(--bo3); border-radius:var(--r1); background:var(--bs); color:var(--tp); }
+.comment-input-row input:focus { outline:none; border-color:var(--bo1); }
 .friend-section-lbl { font-size:11px; font-weight:500; color:var(--ts); text-transform:uppercase; letter-spacing:.05em; margin-bottom:8px; margin-top:1rem; }
 </style>
 </head>
 <body>
-<button class="theme-btn" id="theme-btn" onclick="toggleTheme()" aria-label="Toggle dark mode"><i class="ti ti-sun" id="theme-icon"></i></button>
 <div class="app">
   <div class="date" id="today-date"></div>
   <div class="title" id="greeting"></div>
@@ -281,7 +319,14 @@ body.dark-mode .mode-btn.active, body.dark-mode .cat-tab.active, body.dark-mode 
   </div>
 
   <div id="tab-history" style="display:none;"><div id="hist-list"></div></div>
-  <div id="tab-friends" style="display:none;"><div id="friends-content"></div></div>
+  <div id="tab-friends" style="display:none;">
+    <div class="friends-subtabs">
+      <button class="friends-subtab active" id="fsub-feed" onclick="switchFriendsSub('feed')">Activity</button>
+      <button class="friends-subtab" id="fsub-friends" onclick="switchFriendsSub('friends')">Friends</button>
+    </div>
+    <div id="friends-feed-content"></div>
+    <div id="friends-content" style="display:none;"></div>
+  </div>
 </div>
 
 <!-- Modals -->
@@ -374,7 +419,14 @@ body.dark-mode .mode-btn.active, body.dark-mode .cat-tab.active, body.dark-mode 
   <div style="font-size:11px;color:var(--ts);margin-top:-16px;margin-bottom:1.25rem;">Your unique @username for finding friends</div>
   <div class="modal-lbl">Email</div>
   <div style="font-size:14px;color:var(--ts);margin-bottom:1.25rem;" id="profile-email-display"></div>
-  <div class="modal-actions" style="justify-content:space-between;">
+  <div class="toggle-row">
+    <span class="toggle-lbl">Dark mode</span>
+    <label class="toggle-switch">
+      <input type="checkbox" id="dark-mode-toggle" onchange="toggleTheme()">
+      <div class="toggle-track"></div>
+    </label>
+  </div>
+  <div class="modal-actions" style="justify-content:space-between;margin-top:1.25rem;">
     <button class="modal-btn danger" onclick="doSignOut()">Sign out</button>
     <div style="display:flex;gap:8px;">
       <button class="modal-btn" onclick="closeModal('profile-modal')">Cancel</button>
@@ -446,7 +498,9 @@ async function doSignup(){
   if(data.user){
     await sb.from('profiles').upsert({ id: data.user.id, name, username, email });
     setAuthMsg('Account created! Signing you in...','success');
-    setTimeout(()=>{ doLogin(); }, 800);
+    const { data: signInData, error: signInError } = await sb.auth.signInWithPassword({ email, password: pass });
+    if(signInError){ setAuthMsg('Account created! Please sign in.','success'); showAuthTab('login'); return; }
+    await onAuthSuccess(signInData.user);
   }
 }
 
@@ -492,6 +546,7 @@ function openProfileModal(){
   document.getElementById('profile-name-inp').value = currentProfile.name || '';
   document.getElementById('profile-username-inp').value = currentProfile.username || '';
   document.getElementById('profile-email-display').textContent = currentProfile.email || currentUser?.email || '';
+  syncThemeToggle();
   openModal('profile-modal');
 }
 
@@ -555,58 +610,218 @@ async function saveToSupabase(newEntry){
 }
 
 // ── Friends ──
+function switchFriendsSub(sub){
+  document.getElementById('friends-feed-content').style.display = sub==='feed' ? '' : 'none';
+  document.getElementById('friends-content').style.display = sub==='friends' ? '' : 'none';
+  document.getElementById('fsub-feed').classList.toggle('active', sub==='feed');
+  document.getElementById('fsub-friends').classList.toggle('active', sub==='friends');
+  if(sub==='feed') renderFeed();
+  if(sub==='friends') renderFriendsTab();
+}
+
+// ── Activity Feed ──
+async function renderFeed(){
+  const el = document.getElementById('friends-feed-content');
+  if(!currentUser){ el.innerHTML='<div class="empty">Sign in to see activity.</div>'; return; }
+  el.innerHTML = '<div style="color:var(--ts);font-size:13px;padding:1rem 0;">Loading...</div>';
+
+  const { data: friendships } = await sb.from('friendships')
+    .select('requester_id,addressee_id')
+    .or('requester_id.eq.'+currentUser.id+',addressee_id.eq.'+currentUser.id)
+    .eq('status','accepted');
+
+  const friendIds = (friendships||[]).map(f => f.requester_id===currentUser.id ? f.addressee_id : f.requester_id);
+  const allIds = [currentUser.id, ...friendIds];
+
+  const { data: workouts } = await sb.from('workouts')
+    .select('*, profile:profiles(id,name,username)')
+    .in('user_id', allIds)
+    .order('ts', {ascending:false})
+    .limit(40);
+
+  if(!workouts || !workouts.length){
+    el.innerHTML = '<div class="empty"><i class="ti ti-activity" style="font-size:32px;display:block;margin-bottom:8px"></i>No activity yet — workouts from you and your friends will appear here</div>';
+    return;
+  }
+
+  const wIds = workouts.map(w=>w.id);
+  const { data: allLikes } = await sb.from('workout_likes').select('workout_id,user_id').in('workout_id', wIds);
+  const { data: allComments } = await sb.from('workout_comments').select('*,profile:profiles(id,name,username)').in('workout_id', wIds).order('created_at',{ascending:true});
+
+  window._feedWorkouts = workouts;
+
+  el.innerHTML = workouts.map(function(w, i){
+    const isMe = w.user_id === currentUser.id;
+    const pname = (w.profile && w.profile.name) ? w.profile.name : 'Unknown';
+    const initial = pname.charAt(0).toUpperCase();
+    const likes = (allLikes||[]).filter(function(l){return l.workout_id===w.id;});
+    const likeCount = likes.length;
+    const iLiked = likes.some(function(l){return l.user_id===currentUser.id;});
+    const comments = (allComments||[]).filter(function(c){return c.workout_id===w.id;});
+    const commentCount = comments.length;
+
+    const exNames = w.blocks.flatMap(function(b){return b.exercises.map(function(e){return e.name;});});
+    const preview = exNames.slice(0,3).join(', ') + (exNames.length>3 ? ' +' + (exNames.length-3) + ' more' : '');
+
+    const detailBlocks = w.blocks.map(function(b){
+      if(b.type==='single'){const ex=b.exercises[0];const lines=ex.sets.map(function(s,j){return 'Set '+(j+1)+': '+fw(s.w)+' \xd7 '+fr(s.r)+' reps';}).join('<br>');return '<div class="hist-block"><div class="hist-name">'+ex.name+'</div><div class="hist-sets">'+lines+'</div></div>';}
+      if(b.type==='superset'){const e1=b.exercises[0],e2=b.exercises[1],ms=Math.max(e1.sets.length,e2.sets.length);const lines=Array.from({length:ms},function(_,j){const s1=e1.sets[j],s2=e2.sets[j];return 'Set '+(j+1)+': '+(s1?fw(s1.w)+' \xd7 '+fr(s1.r)+' reps':'—')+' / '+(s2?fw(s2.w)+' \xd7 '+fr(s2.r)+' reps':'—');}).join('<br>');return '<div class="hist-block"><div class="hist-name">'+e1.name+' / '+e2.name+'</div><div class="hist-sets">'+lines+'</div></div>';}
+      if(b.type==='dropset'){const ex=b.exercises[0];const lines=ex.dropSets.map(function(drops,j){return 'Set '+(j+1)+': '+drops.map(function(d){return fw(d.w)+' \xd7 '+fr(d.r)+' reps';}).join(' \u2192 ');}).join('<br>');return '<div class="hist-block"><div class="hist-name">'+ex.name+' <span style="font-size:11px;background:#FEF3E2;color:#A05C00;padding:2px 7px;border-radius:20px;font-weight:500;">\u2193 Dropset</span></div><div class="hist-sets">'+lines+'</div></div>';}
+      return '';
+    }).join('');
+
+    const commentsHtml = comments.map(function(c){
+      const cname = (c.profile && c.profile.name) ? c.profile.name : '?';
+      const cinit = cname.charAt(0).toUpperCase();
+      const cusername = (c.profile && c.profile.username) ? ' @'+c.profile.username : '';
+      return '<div class="comment-row">' +
+        '<div class="comment-avatar">'+cinit+'</div>' +
+        '<div class="comment-body">' +
+          '<div class="comment-author">'+cname+cusername+'</div>' +
+          '<div class="comment-text">'+c.body+'</div>' +
+          '<div class="comment-time">'+timeAgo(c.created_at)+'</div>' +
+        '</div></div>';
+    }).join('');
+
+    const ago = timeAgo(w.ts);
+    const byLine = isMe ? 'You completed a workout' : pname + ' completed a workout';
+    const wlabel = w.label ? '<div class="activity-workout-name">'+w.label+'</div>' : '';
+    const copyBtn = isMe ? '<button class="icon-btn" style="font-size:12px;padding:4px 8px;" onclick="copyFeedWorkout('+i+')"><i class="ti ti-copy"></i></button>' : '';
+    const likedClass = iLiked ? ' liked' : '';
+    const likeIcon = iLiked ? 'ti ti-thumb-up-filled' : 'ti ti-thumb-up';
+    const likeLabel = 'Like' + (likeCount===1?'':'s');
+    const likeNum = likeCount > 0 ? likeCount+' ' : '';
+    const commentLabel = 'Comment' + (commentCount===1?'':'s');
+    const commentNum = commentCount > 0 ? commentCount+' ' : '';
+
+    return '<div class="activity-card" id="acard-'+i+'">' +
+      '<div class="activity-hdr">' +
+        '<div class="activity-avatar">'+initial+'</div>' +
+        '<div class="activity-meta">' +
+          '<div class="activity-name">'+byLine+'</div>' +
+          '<div class="activity-time">'+ago+'</div>' +
+        '</div>' +
+        copyBtn +
+      '</div>' +
+      '<div class="activity-preview">' +
+        wlabel +
+        '<div class="activity-sets-preview">'+preview+'</div>' +
+      '</div>' +
+      '<button class="activity-expand" onclick="toggleFeedDetail('+i+')">' +
+        '<span id="aexpand-lbl-'+i+'">Show sets <i class="ti ti-chevron-down"></i></span>' +
+      '</button>' +
+      '<div class="activity-detail" id="adetail-'+i+'">'+detailBlocks+'</div>' +
+      '<div class="activity-actions">' +
+        '<button class="activity-action-btn'+likedClass+'" id="alike-btn-'+i+'" onclick="toggleLike(\''+w.id+'\','+i+','+iLiked+')">' +
+          '<i class="'+likeIcon+'"></i> '+likeNum+likeLabel +
+        '</button>' +
+        '<button class="activity-action-btn" onclick="toggleComments('+i+')">' +
+          '<i class="ti ti-message"></i> '+commentNum+commentLabel +
+        '</button>' +
+      '</div>' +
+      '<div class="comments-section" id="acomments-'+i+'">' +
+        commentsHtml +
+        '<div class="comment-input-row">' +
+          '<input type="text" id="comment-inp-'+i+'" placeholder="Add a comment..." onkeydown="if(event.key===\'Enter\')postComment(\''+w.id+'\','+i+')">' +
+          '<button class="icon-btn" onclick="postComment(\''+w.id+'\','+i+')"><i class="ti ti-send"></i></button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+function timeAgo(ts){
+  const diff = (Date.now() - new Date(ts)) / 1000;
+  if(diff < 60) return 'just now';
+  if(diff < 3600) return Math.floor(diff/60)+'m ago';
+  if(diff < 86400) return Math.floor(diff/3600)+'h ago';
+  if(diff < 604800) return Math.floor(diff/86400)+'d ago';
+  return new Date(ts).toLocaleDateString('en-US',{month:'short',day:'numeric'});
+}
+
+function toggleFeedDetail(i){
+  const el = document.getElementById('adetail-'+i);
+  const lbl = document.getElementById('aexpand-lbl-'+i);
+  el.classList.toggle('open');
+  lbl.innerHTML = el.classList.contains('open') ? 'Hide sets <i class="ti ti-chevron-up"></i>' : 'Show sets <i class="ti ti-chevron-down"></i>';
+}
+
+function toggleComments(i){
+  document.getElementById('acomments-'+i).classList.toggle('open');
+}
+
+async function toggleLike(workoutId, i, iLiked){
+  if(iLiked){
+    await sb.from('workout_likes').delete().eq('workout_id',workoutId).eq('user_id',currentUser.id);
+  } else {
+    await sb.from('workout_likes').insert({workout_id:workoutId, user_id:currentUser.id});
+  }
+  renderFeed();
+}
+
+async function postComment(workoutId, i){
+  const inp = document.getElementById('comment-inp-'+i);
+  const body = inp.value.trim();
+  if(!body) return;
+  inp.value = '';
+  await sb.from('workout_comments').insert({workout_id:workoutId, user_id:currentUser.id, body});
+  renderFeed();
+}
+
+function copyFeedWorkout(i){
+  const entry = window._feedWorkouts[i];
+  if(!entry) return;
+  blocks = entry.blocks.map(b => {
+    if(b.type==='dropset') return {type:'dropset', exercises:[{name:b.exercises[0].name, dropSets:b.exercises[0].dropSets.map(ds=>ds.map(()=>({w:'',r:''})))}]};
+    return {type:b.type, exercises:b.exercises.map(ex=>({name:ex.name, sets:(ex.sets||[]).map(()=>({w:'',r:''}))}))};
+  });
+  if(entry.label) document.getElementById('day-inp').value = entry.label;
+  switchTab('log'); renderBlocks(); renderExSelect();
+}
+
+// ── Friends manage tab ──
 async function renderFriendsTab(){
   const el = document.getElementById('friends-content');
   if(!currentUser){ el.innerHTML='<div class="empty">Sign in to use Friends.</div>'; return; }
   el.innerHTML = '<div style="color:var(--ts);font-size:13px;padding:1rem 0;">Loading...</div>';
 
-  // Get accepted friends
   const { data: friendships } = await sb.from('friendships')
-    .select('*, requester:profiles!friendships_requester_id_fkey(id,name,email), addressee:profiles!friendships_addressee_id_fkey(id,name,email)')
+    .select('*, requester:profiles!friendships_requester_id_fkey(id,name,username), addressee:profiles!friendships_addressee_id_fkey(id,name,username)')
     .or(`requester_id.eq.${currentUser.id},addressee_id.eq.${currentUser.id}`)
     .eq('status','accepted');
 
-  // Get pending requests sent TO me
   const { data: pending } = await sb.from('friendships')
-    .select('*, requester:profiles!friendships_requester_id_fkey(id,name,email)')
+    .select('*, requester:profiles!friendships_requester_id_fkey(id,name,username)')
     .eq('addressee_id', currentUser.id)
     .eq('status','pending');
 
-  let html = `
-    <div class="search-friends-row">
-      <input type="text" id="friend-search-inp" placeholder="Search by @username or name...">
-      <button class="icon-btn" onclick="searchFriends()">Search</button>
-    </div>
-    <div id="friend-search-results"></div>`;
+  let html = `<div class="search-friends-row">
+    <input type="text" id="friend-search-inp" placeholder="Search by @username or name...">
+    <button class="icon-btn" onclick="searchFriends()">Search</button>
+  </div><div id="friend-search-results"></div>`;
 
   if(pending && pending.length){
     html += `<div class="friend-section-lbl">Pending requests (${pending.length})</div>`;
-    html += pending.map(f => `
-      <div class="friend-card">
-        <div class="friend-name">${f.requester.name}${f.requester.username?` <span style="font-size:12px;color:var(--ts);">@${f.requester.username}</span>`:''}</div>
-        <div class="friend-actions">
-          <button class="friend-btn primary" onclick="acceptFriend('${f.id}')">Accept</button>
-          <button class="friend-btn danger" onclick="declineFriend('${f.id}')">Decline</button>
-        </div>
-      </div>`).join('');
+    html += pending.map(f => `<div class="friend-card">
+      <div class="friend-name">${f.requester.name}${f.requester.username?` <span style="font-size:12px;color:var(--ts);">@${f.requester.username}</span>`:''}</div>
+      <div class="friend-actions">
+        <button class="friend-btn primary" onclick="acceptFriend('${f.id}')">Accept</button>
+        <button class="friend-btn danger" onclick="declineFriend('${f.id}')">Decline</button>
+      </div></div>`).join('');
   }
 
   if(friendships && friendships.length){
     html += `<div class="friend-section-lbl">Friends (${friendships.length})</div>`;
     html += friendships.map(f => {
-      const friend = f.requester_id === currentUser.id ? f.addressee : f.requester;
-      return `
-        <div class="friend-card">
-          <div class="friend-name">${friend.name}${friend.username?` <span style="font-size:12px;color:var(--ts);">@${friend.username}</span>`:''}</div>
-          <div class="friend-actions">
-            <button class="friend-btn" onclick="viewFriendWorkouts('${friend.id}', '${friend.name}')"><i class="ti ti-history"></i> View workouts</button>
-            <button class="friend-btn danger" onclick="removeFriend('${f.id}')">Remove</button>
-          </div>
-        </div>`;
+      const friend = f.requester_id===currentUser.id ? f.addressee : f.requester;
+      return `<div class="friend-card">
+        <div class="friend-name">${friend.name}${friend.username?` <span style="font-size:12px;color:var(--ts);">@${friend.username}</span>`:''}</div>
+        <div class="friend-actions">
+          <button class="friend-btn danger" onclick="removeFriend('${f.id}')">Remove</button>
+        </div></div>`;
     }).join('');
   }
 
-  if((!friendships || !friendships.length) && (!pending || !pending.length)){
+  if((!friendships||!friendships.length)&&(!pending||!pending.length)){
     html += '<div class="empty" style="padding:2rem 0;"><i class="ti ti-users" style="font-size:32px;display:block;margin-bottom:8px"></i>No friends yet — search above to add someone</div>';
   }
 
@@ -713,21 +928,23 @@ function renderDayChips(){
 }
 
 function toggleTheme(){
-  const dark = document.body.classList.toggle('dark-mode');
-  document.getElementById('theme-icon').className = dark ? 'ti ti-sun' : 'ti ti-moon';
-  localStorage.setItem('wl_theme', dark ? 'dark' : 'light');
+  const isDark = document.getElementById('dark-mode-toggle').checked;
+  document.body.classList.toggle('dark-mode', isDark);
+  localStorage.setItem('wl_theme', isDark ? 'dark' : 'light');
 }
 
 function initTheme(){
   const saved = localStorage.getItem('wl_theme');
-  // Default is dark — only go light if explicitly saved as 'light'
   const isDark = saved !== 'light';
-  if(isDark){
-    document.body.classList.add('dark-mode');
-    document.getElementById('theme-icon').className = 'ti ti-sun';
-  } else {
-    document.getElementById('theme-icon').className = 'ti ti-moon';
-  }
+  document.body.classList.toggle('dark-mode', isDark);
+  // sync checkbox if it exists yet
+  const cb = document.getElementById('dark-mode-toggle');
+  if(cb) cb.checked = isDark;
+}
+
+function syncThemeToggle(){
+  const cb = document.getElementById('dark-mode-toggle');
+  if(cb) cb.checked = document.body.classList.contains('dark-mode');
 }
 
 function init(){
@@ -1216,14 +1433,17 @@ function renderHistory(){
         <div class="hist-hdr-left">
           <div class="hist-date">${entry.date}</div>
           <div class="hist-label-row">
-            ${entry.label ? `<span class="hist-tag">${entry.label}</span>` : ''}
-            <span class="hist-preview">${preview}</span>
+            ${entry.label ? `<span class="hist-tag">${entry.label}</span>` : `<span class="hist-preview" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;">${preview}</span>`}
           </div>
         </div>
-        <i class="ti ti-chevron-down hist-chevron"></i>
+        <div style="display:flex;align-items:center;gap:4px;flex-shrink:0;">
+          <button class="icon-btn" style="padding:5px 7px;" title="Repeat" onclick="event.stopPropagation();repeatWorkout(${idx});switchTab('log')"><i class="ti ti-repeat"></i></button>
+          <button class="icon-btn" style="padding:5px 7px;" title="Edit" onclick="event.stopPropagation();openEditWorkout(${idx})"><i class="ti ti-pencil"></i></button>
+          <button class="icon-btn" style="padding:5px 7px;color:#E24B4A;border-color:#E24B4A;" title="Delete" onclick="event.stopPropagation();openDeleteWorkout(${idx})"><i class="ti ti-trash"></i></button>
+          <i class="ti ti-chevron-down hist-chevron" style="margin-left:2px;"></i>
+        </div>
       </div>
       <div class="hist-body">
-        ${entry.label ? `<div style="margin-bottom:10px;display:flex;justify-content:flex-end;"><button class="icon-btn" style="font-size:12px;padding:4px 10px;" onclick="repeatWorkout(${idx});switchTab('log')"><i class="ti ti-repeat"></i> Repeat</button></div>` : ''}
         ${bodyBlocks}
       </div>
     </div>`;
@@ -1261,6 +1481,7 @@ async function viewFriendWorkouts(userId, name){
     document.getElementById('friend-history-list').innerHTML = '<div style="font-size:13px;color:var(--ts);text-align:center;padding:1rem;">No workouts yet.</div>';
     return;
   }
+  window._friendWorkouts = data;
   document.getElementById('friend-history-list').innerHTML = data.map(function(entry, idx){
     const exNames = entry.blocks.flatMap(function(b){ return b.exercises.map(function(e){ return e.name; }); });
     const preview = exNames.slice(0,3).join(', ') + (exNames.length>3 ? ' +' + (exNames.length-3) + ' more' : '');
@@ -1290,15 +1511,33 @@ async function viewFriendWorkouts(userId, name){
         '<div class="hist-hdr-left">' +
           '<div class="hist-date">'+entry.date+'</div>' +
           '<div class="hist-label-row">' +
-            (entry.label ? '<span class="hist-tag">'+entry.label+'</span>' : '') +
-            '<span class="hist-preview">'+preview+'</span>' +
+            (entry.label ? '<span class="hist-tag">'+entry.label+'</span>' : '<span class="hist-preview" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px;">'+preview+'</span>') +
           '</div>' +
         '</div>' +
-        '<i class="ti ti-chevron-down hist-chevron"></i>' +
+        '<div style="display:flex;align-items:center;gap:8px;">' +
+          '<button class="icon-btn" style="font-size:12px;padding:4px 10px;" onclick="event.stopPropagation();copyFriendWorkout('+idx+')"><i class="ti ti-copy"></i> Copy</button>' +
+          '<i class="ti ti-chevron-down hist-chevron"></i>' +
+        '</div>' +
       '</div>' +
       '<div class="hist-body">'+bodyBlocks+'</div>' +
     '</div>';
   }).join('');
+}
+
+function copyFriendWorkout(idx){
+  const entry = window._friendWorkouts[idx];
+  if(!entry) return;
+  blocks = entry.blocks.map(function(b){
+    if(b.type==='dropset'){
+      return {type:'dropset', exercises:[{name:b.exercises[0].name, dropSets:b.exercises[0].dropSets.map(function(ds){ return ds.map(function(){ return {w:'',r:''}; }); })}]};
+    }
+    return {type:b.type, exercises:b.exercises.map(function(ex){ return {name:ex.name, sets:(ex.sets||[]).map(function(){ return {w:'',r:''}; })}; })};
+  });
+  if(entry.label) document.getElementById('day-inp').value = entry.label;
+  closeModal('friend-history-modal');
+  switchTab('log');
+  renderBlocks();
+  renderExSelect();
 }
 
 function openModal(id){ document.getElementById(id).classList.add('open'); }
@@ -1307,15 +1546,130 @@ document.querySelectorAll('.modal-bg').forEach(el => {
   el.addEventListener('click', e => { if(e.target===el) el.classList.remove('open'); });
 });
 
+let pendingDeleteWorkoutIdx = null;
+let pendingEditWorkoutIdx = null;
+
+function openDeleteWorkout(idx){
+  pendingDeleteWorkoutIdx = idx;
+  openModal('del-workout-modal');
+}
+
+async function confirmDeleteWorkout(){
+  if(pendingDeleteWorkoutIdx === null) return;
+  const entry = history[pendingDeleteWorkoutIdx];
+  // Delete from Supabase if it has an id
+  if(currentUser && entry.id){
+    await sb.from('workouts').delete().eq('id', entry.id);
+  }
+  history.splice(pendingDeleteWorkoutIdx, 1);
+  localStorage.setItem('wl_history', JSON.stringify(history.slice(0,100)));
+  pendingDeleteWorkoutIdx = null;
+  closeModal('del-workout-modal');
+  renderHistory();
+}
+
+function openEditWorkout(idx){
+  pendingEditWorkoutIdx = idx;
+  const entry = history[idx];
+  document.getElementById('edit-workout-label').value = entry.label || '';
+  // Build editable set inputs for each block
+  const container = document.getElementById('edit-workout-blocks');
+  container.innerHTML = entry.blocks.map((b, bi) => {
+    if(b.type === 'single'){
+      const ex = b.exercises[0];
+      return `<div style="margin-bottom:1rem;">
+        <div class="modal-lbl" style="margin-bottom:6px;">${ex.name}</div>
+        ${ex.sets.map((s,si) => `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+          <span style="font-size:12px;color:var(--ts);width:40px;">Set ${si+1}</span>
+          <input class="modal-inp" style="margin:0;flex:1;" type="number" inputmode="decimal" placeholder="lbs" value="${s.w}" oninput="editSetVal(${bi},0,${si},'w',this.value)">
+          <span style="font-size:12px;color:var(--ts);">×</span>
+          <input class="modal-inp" style="margin:0;flex:1;" type="number" inputmode="numeric" placeholder="reps" value="${s.r}" oninput="editSetVal(${bi},0,${si},'r',this.value)">
+        </div>`).join('')}
+      </div>`;
+    }
+    if(b.type === 'superset'){
+      return b.exercises.map((ex, ei) => `<div style="margin-bottom:1rem;">
+        <div class="modal-lbl" style="margin-bottom:6px;">${ex.name} <span style="font-weight:400;color:var(--ts);">(Superset)</span></div>
+        ${ex.sets.map((s,si) => `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+          <span style="font-size:12px;color:var(--ts);width:40px;">Set ${si+1}</span>
+          <input class="modal-inp" style="margin:0;flex:1;" type="number" inputmode="decimal" placeholder="lbs" value="${s.w}" oninput="editSetVal(${bi},${ei},${si},'w',this.value)">
+          <span style="font-size:12px;color:var(--ts);">×</span>
+          <input class="modal-inp" style="margin:0;flex:1;" type="number" inputmode="numeric" placeholder="reps" value="${s.r}" oninput="editSetVal(${bi},${ei},${si},'r',this.value)">
+        </div>`).join('')}
+      </div>`).join('');
+    }
+    if(b.type === 'dropset'){
+      const ex = b.exercises[0];
+      return `<div style="margin-bottom:1rem;">
+        <div class="modal-lbl" style="margin-bottom:6px;">${ex.name} <span style="font-weight:400;color:var(--ts);">(Dropset)</span></div>
+        ${ex.dropSets.map((drops, di) => drops.map((d, dri) => `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+          <span style="font-size:12px;color:var(--ts);width:56px;">S${di+1} D${dri+1}</span>
+          <input class="modal-inp" style="margin:0;flex:1;" type="number" inputmode="decimal" placeholder="lbs" value="${d.w}" oninput="editDropVal(${bi},${di},${dri},'w',this.value)">
+          <span style="font-size:12px;color:var(--ts);">×</span>
+          <input class="modal-inp" style="margin:0;flex:1;" type="number" inputmode="numeric" placeholder="reps" value="${d.r}" oninput="editDropVal(${bi},${di},${dri},'r',this.value)">
+        </div>`).join('')).join('')}
+      </div>`;
+    }
+    return '';
+  }).join('');
+  openModal('edit-workout-modal');
+}
+
+function editSetVal(bi, ei, si, f, v){
+  if(pendingEditWorkoutIdx === null) return;
+  history[pendingEditWorkoutIdx].blocks[bi].exercises[ei].sets[si][f] = v;
+}
+
+function editDropVal(bi, di, dri, f, v){
+  if(pendingEditWorkoutIdx === null) return;
+  history[pendingEditWorkoutIdx].blocks[bi].exercises[0].dropSets[di][dri][f] = v;
+}
+
+async function confirmEditWorkout(){
+  if(pendingEditWorkoutIdx === null) return;
+  const entry = history[pendingEditWorkoutIdx];
+  entry.label = document.getElementById('edit-workout-label').value.trim() || null;
+  // Save to Supabase if it has an id
+  if(currentUser && entry.id){
+    await sb.from('workouts').update({ label: entry.label, blocks: entry.blocks }).eq('id', entry.id);
+  }
+  localStorage.setItem('wl_history', JSON.stringify(history.slice(0,100)));
+  pendingEditWorkoutIdx = null;
+  closeModal('edit-workout-modal');
+  renderHistory();
+}
+
 function switchTab(tab){
   ['log','lookup','history','friends'].forEach(t => document.getElementById('tab-'+t).style.display = t===tab?'':'none');
   document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', ['log','lookup','history','friends'][i]===tab));
   if(tab==='lookup') renderLookup();
   if(tab==='history') renderHistory();
-  if(tab==='friends') renderFriendsTab();
+  if(tab==='friends') switchFriendsSub('feed');
 }
 
 init();
 </script>
+<!-- Delete workout confirm -->
+<div class="modal-bg" id="del-workout-modal"><div class="modal">
+  <div class="modal-title">Delete workout?</div>
+  <div class="modal-body">This will permanently remove this workout from your history. This can't be undone.</div>
+  <div class="modal-actions">
+    <button class="modal-btn" onclick="closeModal('del-workout-modal')">Cancel</button>
+    <button class="modal-btn danger" onclick="confirmDeleteWorkout()">Delete</button>
+  </div>
+</div></div>
+
+<!-- Edit workout modal -->
+<div class="modal-bg" id="edit-workout-modal"><div class="modal" style="max-width:420px;">
+  <div class="modal-title">Edit workout</div>
+  <div class="modal-lbl">Workout name</div>
+  <input type="text" class="modal-inp" id="edit-workout-label" placeholder="e.g. Push day (optional)">
+  <div id="edit-workout-blocks"></div>
+  <div class="modal-actions" style="margin-top:1rem;">
+    <button class="modal-btn" onclick="closeModal('edit-workout-modal')">Cancel</button>
+    <button class="modal-btn primary" onclick="confirmEditWorkout()">Save</button>
+  </div>
+</div></div>
+
 </body>
 </html>
