@@ -1,233 +1,171 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
-
-    <title>Workout Tracker</title>
-</head>
-<body>
-
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Workout Log">
+<title>Workout Log</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
 <style>
+:root {
+  --tp: #111; --ts: #666; --bp: #fff; --bs: #f5f5f5;
+  --bo1: #999; --bo2: #ccc; --bo3: #e0e0e0;
+  --r1: 8px; --r2: 12px;
+  --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --tp: #f0f0f0; --ts: #999; --bp: #1a1a1a; --bs: #252525; --bo1: #555; --bo2: #444; --bo3: #333; }
+}
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-.app { max-width: 480px; margin: 0 auto; padding: 1rem 0 5rem; }
-.date { font-size: 13px; color: var(--color-text-secondary); }
-.title { font-size: 22px; font-weight: 500; color: var(--color-text-primary); }
-.sync-bar { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--color-text-secondary); margin-top: 4px; margin-bottom: 1.25rem; }
+html,body { height: 100%; }
+body { font-family: var(--font); background: var(--bs); color: var(--tp); }
+input,select,button { font-family: var(--font); }
+.app { max-width: 480px; margin: 0 auto; padding: 1rem 1rem 5rem; min-height: 100vh; }
+.date { font-size: 13px; color: var(--ts); }
+.title { font-size: 22px; font-weight: 500; color: var(--tp); }
+.sync-bar { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ts); margin-top: 4px; margin-bottom: 1.25rem; }
 .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: #97C459; flex-shrink: 0; }
 .sync-dot.saving { background: #EF9F27; }
 .sync-dot.error { background: #E24B4A; }
-.tabs { display: flex; border-bottom: 0.5px solid var(--color-border-tertiary); margin-bottom: 1.25rem; }
-.tab { flex: 1; font-size: 14px; padding: 10px 4px; cursor: pointer; color: var(--color-text-secondary); border-bottom: 2px solid transparent; margin-bottom: -1px; background: none; border-top: none; border-left: none; border-right: none; text-align: center; }
-.tab.active { color: var(--color-text-primary); border-bottom-color: var(--color-text-primary); font-weight: 500; }
-.exercise-card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1rem; margin-bottom: 12px; }
-.superset-card { background: var(--color-background-primary); border: 2px solid #AFA9EC; border-radius: var(--border-radius-lg); margin-bottom: 12px; overflow: hidden; }
-.superset-label { background: #EEEDFE; color: #3C3489; font-size: 11px; font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase; padding: 6px 14px; display: flex; align-items: center; justify-content: space-between; }
+.tabs { display: flex; border-bottom: 0.5px solid var(--bo3); margin-bottom: 1.25rem; }
+.tab { flex: 1; font-size: 14px; padding: 10px 4px; cursor: pointer; color: var(--ts); border-bottom: 2px solid transparent; margin-bottom: -1px; background: none; border-top: none; border-left: none; border-right: none; text-align: center; }
+.tab.active { color: var(--tp); border-bottom-color: var(--tp); font-weight: 500; }
+.exercise-card { background: var(--bp); border: 0.5px solid var(--bo3); border-radius: var(--r2); padding: 1rem; margin-bottom: 12px; }
+.superset-card { background: var(--bp); border: 2px solid #AFA9EC; border-radius: var(--r2); margin-bottom: 12px; overflow: hidden; }
+.dropset-card { background: var(--bp); border: 2px solid #F5A623; border-radius: var(--r2); padding: 1rem; margin-bottom: 12px; }
+.superset-label { background: #EEEDFE; color: #3C3489; font-size: 11px; font-weight: 500; letter-spacing: .05em; text-transform: uppercase; padding: 6px 14px; display: flex; align-items: center; justify-content: space-between; }
 .superset-ex { padding: 1rem; border-top: 0.5px solid #AFA9EC; }
 .superset-ex:first-of-type { border-top: none; }
-.superset-divider-line { padding: 4px 14px; background: #EEEDFE; font-size: 11px; color: #534AB7; font-weight: 500; }
-.exercise-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-.exercise-name { font-size: 15px; font-weight: 500; color: var(--color-text-primary); }
-.remove-btn { background: none; border: none; cursor: pointer; color: var(--color-text-secondary); font-size: 20px; padding: 4px; line-height: 1; }
+.superset-divider { padding: 4px 14px; background: #EEEDFE; font-size: 11px; color: #534AB7; font-weight: 500; }
+.ex-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.ex-name { font-size: 15px; font-weight: 500; color: var(--tp); }
+.ex-badge { font-size: 11px; background: #FEF3E2; color: #A05C00; border-radius: 20px; padding: 2px 8px; margin-left: 6px; font-weight: 500; vertical-align: middle; }
+.remove-btn { background: none; border: none; cursor: pointer; color: var(--ts); font-size: 20px; padding: 4px; line-height: 1; }
 .sets-table { width: 100%; border-collapse: collapse; }
-.sets-table th { font-size: 11px; color: var(--color-text-secondary); text-align: center; padding: 0 4px 6px; font-weight: 400; }
+.sets-table th { font-size: 11px; color: var(--ts); text-align: center; padding: 0 4px 6px; font-weight: 400; }
 .sets-table th:first-child { text-align: left; width: 28px; }
 .sets-table td { padding: 4px; vertical-align: middle; text-align: center; }
-.set-num { font-size: 13px; color: var(--color-text-secondary); text-align: left; }
-.set-input { width: 100%; font-size: 16px; border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); padding: 8px 4px; background: var(--color-background-secondary); color: var(--color-text-primary); text-align: center; min-width: 0; }
-.set-input:focus { outline: none; border-color: var(--color-border-primary); }
-.x-label { font-size: 13px; color: var(--color-text-secondary); width: 16px; }
-.del-set-btn { background: none; border: none; cursor: pointer; color: var(--color-text-secondary); font-size: 18px; padding: 4px; opacity: 0.5; width: 28px; }
-.add-set-btn { margin-top: 10px; font-size: 13px; color: var(--color-text-secondary); background: none; border: 0.5px dashed var(--color-border-tertiary); border-radius: var(--border-radius-md); padding: 8px 12px; cursor: pointer; width: 100%; }
-.add-exercise-area { background: var(--color-background-secondary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); overflow: hidden; margin-bottom: 14px; }
-.picker-section { padding: 1rem; }
-.picker-section + .picker-section { border-top: 0.5px solid var(--color-border-tertiary); }
-.section-label { font-size: 11px; font-weight: 500; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; }
+.set-num { font-size: 13px; color: var(--ts); text-align: left; }
+.set-inp { width: 100%; font-size: 16px; border: 0.5px solid var(--bo3); border-radius: var(--r1); padding: 8px 4px; background: var(--bs); color: var(--tp); text-align: center; min-width: 0; }
+.set-inp:focus { outline: none; border-color: var(--bo1); }
+.xlbl { font-size: 13px; color: var(--ts); width: 16px; }
+.del-set-btn { background: none; border: none; cursor: pointer; color: var(--ts); font-size: 18px; padding: 4px; opacity: .5; width: 28px; }
+.add-set-btn { margin-top: 10px; font-size: 13px; color: var(--ts); background: none; border: 0.5px dashed var(--bo3); border-radius: var(--r1); padding: 8px 12px; cursor: pointer; width: 100%; }
+.ds-block { margin-bottom: 14px; border: 0.5px solid #F5A623; border-radius: var(--r1); overflow: hidden; }
+.ds-block:last-of-type { margin-bottom: 0; }
+.ds-header { display: flex; justify-content: space-between; align-items: center; background: #FEF3E2; padding: 5px 10px; }
+.ds-label { font-size: 12px; font-weight: 500; color: #7A4A00; }
+.ds-del { background: none; border: none; cursor: pointer; color: #A05C00; font-size: 15px; padding: 2px; }
+.drop-rows { padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; }
+.drop-row { display: flex; align-items: center; gap: 6px; }
+.drop-lbl { font-size: 11px; color: #A05C00; width: 44px; flex-shrink: 0; font-weight: 500; }
+.drop-inp { flex: 1; font-size: 15px; border: 0.5px solid #F5A623; border-radius: var(--r1); padding: 7px 6px; background: var(--bs); color: var(--tp); text-align: center; min-width: 0; }
+.drop-inp:focus { outline: none; border-color: #D4780A; }
+.drop-x { font-size: 12px; color: var(--ts); flex-shrink: 0; }
+.drop-del { background: none; border: none; cursor: pointer; color: var(--ts); font-size: 15px; padding: 3px; opacity: .5; flex-shrink: 0; }
+.add-drop-btn { font-size: 12px; color: #A05C00; background: none; border: 0.5px dashed #F5A623; border-radius: var(--r1); padding: 5px 10px; cursor: pointer; width: 100%; margin-top: 4px; }
+.add-ds-btn { margin-top: 10px; font-size: 13px; color: #A05C00; background: none; border: 0.5px dashed #F5A623; border-radius: var(--r1); padding: 8px 12px; cursor: pointer; width: 100%; }
+.picker-area { background: var(--bs); border: 0.5px solid var(--bo3); border-radius: var(--r2); overflow: hidden; margin-bottom: 14px; }
+.picker-sec { padding: 1rem; }
+.picker-sec + .picker-sec { border-top: 0.5px solid var(--bo3); }
+.sec-lbl { font-size: 11px; font-weight: 500; color: var(--ts); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 10px; }
 .add-trigger { display: flex; align-items: center; gap: 10px; padding: 1rem; cursor: pointer; }
-.add-trigger-icon { width: 28px; height: 28px; border-radius: 50%; background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); display: flex; align-items: center; justify-content: center; font-size: 18px; color: var(--color-text-secondary); flex-shrink: 0; line-height: 1; }
-.add-trigger-label { font-size: 14px; color: var(--color-text-secondary); }
-.add-mode-toggle { display: flex; gap: 8px; }
-.mode-btn { flex: 1; font-size: 14px; padding: 10px 16px; border-radius: var(--border-radius-md); cursor: pointer; text-align: center; background: var(--color-background-primary); color: var(--color-text-secondary); border: 1.5px solid var(--color-border-tertiary); font-weight: 400; }
-.mode-btn.active { color: var(--color-text-primary); font-weight: 500; outline: 3px solid #1a1a1a; outline-offset: -1px; border-color: transparent; }
-.cat-row-header { display: flex; align-items: center; gap: 6px; }
-.category-tabs { display: flex; gap: 6px; flex-wrap: wrap; flex: 1; }
-.cat-tab { font-size: 12px; padding: 6px 12px; border-radius: 20px; cursor: pointer; background: var(--color-background-primary); color: var(--color-text-secondary); border: 1.5px solid var(--color-border-tertiary); font-weight: 400; }
-.cat-tab.active { color: var(--color-text-primary); font-weight: 500; outline: 3px solid #1a1a1a; outline-offset: -1px; border-color: transparent; }
-.icon-btn { background: none; border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); cursor: pointer; color: var(--color-text-secondary); font-size: 16px; padding: 5px 7px; line-height: 1; flex-shrink: 0; }
-.icon-btn:hover { color: var(--color-text-primary); }
-.add-cat-inline { display: none; margin-top: 10px; }
-.add-cat-inline.open { display: flex; gap: 8px; }
-.add-cat-inline input { flex: 1; font-size: 14px; }
-.exercise-picker { display: flex; gap: 8px; flex-wrap: wrap; }
-.ex-chip { font-size: 13px; padding: 7px 13px; border: 0.5px solid var(--color-border-tertiary); border-radius: 20px; cursor: pointer; background: var(--color-background-primary); color: var(--color-text-primary); }
+.add-trigger-icon { width: 28px; height: 28px; border-radius: 50%; background: var(--bp); border: 0.5px solid var(--bo3); display: flex; align-items: center; justify-content: center; font-size: 18px; color: var(--ts); flex-shrink: 0; }
+.add-trigger-lbl { font-size: 14px; color: var(--ts); }
+.mode-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.mode-btn { font-size: 13px; padding: 9px 14px; border-radius: var(--r1); cursor: pointer; background: var(--bp); color: var(--ts); border: 1.5px solid var(--bo3); font-weight: 400; }
+.mode-btn.active { color: var(--tp); font-weight: 500; outline: 3px solid #1a1a1a; outline-offset: -1px; border-color: transparent; }
+@media (prefers-color-scheme: dark) { .mode-btn.active, .cat-tab.active { outline-color: #f0f0f0; } }
+.cat-row { display: flex; align-items: center; gap: 6px; }
+.cat-tabs { display: flex; gap: 6px; flex-wrap: wrap; flex: 1; }
+.cat-tab { font-size: 12px; padding: 6px 12px; border-radius: 20px; cursor: pointer; background: var(--bp); color: var(--ts); border: 1.5px solid var(--bo3); font-weight: 400; }
+.cat-tab.active { color: var(--tp); font-weight: 500; outline: 3px solid #1a1a1a; outline-offset: -1px; border-color: transparent; }
+.icon-btn { background: none; border: 0.5px solid var(--bo3); border-radius: var(--r1); cursor: pointer; color: var(--ts); font-size: 16px; padding: 5px 7px; line-height: 1; flex-shrink: 0; }
+.add-cat-row { display: none; gap: 8px; margin-top: 10px; }
+.add-cat-row.open { display: flex; }
+.add-ex-row { display: none; flex: 1; }
+.add-ex-row.open { display: flex; gap: 8px; }
+.ex-footer { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+.add-icon-btn { background: none; border: 0.5px solid var(--bo3); border-radius: var(--r1); cursor: pointer; color: var(--ts); font-size: 14px; padding: 6px 10px; line-height: 1; flex-shrink: 0; }
+.ex-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.ex-chip { font-size: 13px; padding: 7px 13px; border: 0.5px solid var(--bo3); border-radius: 20px; cursor: pointer; background: var(--bp); color: var(--tp); }
 .ex-chip.selected { background: #EEEDFE; border-color: #AFA9EC; color: #3C3489; }
-.ex-chip.added { background: var(--color-background-secondary); color: var(--color-text-secondary); border-style: dashed; }
-.ex-row-footer { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
-.add-ex-inline { display: none; flex: 1; }
-.add-ex-inline.open { display: flex; gap: 8px; }
-.add-ex-inline input { flex: 1; font-size: 14px; }
-.add-icon-btn { background: none; border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); cursor: pointer; color: var(--color-text-secondary); font-size: 14px; padding: 6px 10px; line-height: 1; flex-shrink: 0; }
-.add-icon-btn:hover { color: var(--color-text-primary); }
-.superset-confirm { margin-top: 12px; padding: 8px 12px; background: #EEEDFE; border-radius: var(--border-radius-md); font-size: 13px; color: #3C3489; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.confirm-btn { font-size: 13px; padding: 5px 12px; background: #534AB7; color: #fff; border: none; border-radius: var(--border-radius-md); cursor: pointer; }
-.save-area { background: var(--color-background-secondary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); overflow: hidden; margin-bottom: 14px; }
-.save-area-section { padding: 1rem; }
-.save-area-section + .save-area-section { border-top: 0.5px solid var(--color-border-tertiary); }
-.day-label-input { width: 100%; font-size: 15px; padding: 8px 12px; border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); background: var(--color-background-primary); color: var(--color-text-primary); }
-.day-label-input:focus { outline: none; }
-.day-suggestions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
-.day-chip { font-size: 12px; padding: 4px 10px; border: 0.5px solid var(--color-border-tertiary); border-radius: 20px; cursor: pointer; background: var(--color-background-primary); color: var(--color-text-secondary); }
-.save-btn { width: 100%; padding: 14px; font-size: 16px; font-weight: 500; background: var(--color-text-primary); color: var(--color-background-primary); border: none; border-radius: var(--border-radius-lg); cursor: pointer; }
-.save-btn:active { opacity: 0.8; }
-.save-msg { text-align:center; font-size:13px; color:var(--color-text-secondary); margin-top:8px; min-height:20px; }
-.history-entry { border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1rem; margin-bottom: 10px; background: var(--color-background-primary); }
-.history-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
-.history-date { font-size: 12px; color: var(--color-text-secondary); }
-.history-day-tag { font-size: 12px; font-weight: 500; color: var(--color-text-primary); background: var(--color-background-secondary); padding: 3px 10px; border-radius: 20px; border: 0.5px solid var(--color-border-tertiary); cursor: pointer; white-space: nowrap; }
-.history-block { margin-bottom: 10px; }
-.history-block:last-child { margin-bottom: 0; }
-.history-ex-name { font-size: 14px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 4px; }
-.history-set-line { font-size: 13px; color: var(--color-text-secondary); line-height: 1.7; }
-.empty-state { text-align: center; padding: 3rem 1rem; color: var(--color-text-secondary); font-size: 14px; }
+.ex-chip.added { background: var(--bs); color: var(--ts); border-style: dashed; }
+.ss-confirm { margin-top: 12px; padding: 8px 12px; background: #EEEDFE; border-radius: var(--r1); font-size: 13px; color: #3C3489; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.confirm-btn { font-size: 13px; padding: 5px 12px; background: #534AB7; color: #fff; border: none; border-radius: var(--r1); cursor: pointer; }
+.save-area { background: var(--bs); border: 0.5px solid var(--bo3); border-radius: var(--r2); overflow: hidden; margin-bottom: 14px; }
+.save-sec { padding: 1rem; }
+.save-sec + .save-sec { border-top: 0.5px solid var(--bo3); }
+.day-inp { width: 100%; font-size: 15px; padding: 8px 12px; border: 0.5px solid var(--bo3); border-radius: var(--r1); background: var(--bp); color: var(--tp); }
+.day-inp:focus { outline: none; }
+.day-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.day-chip { font-size: 12px; padding: 4px 10px; border: 0.5px solid var(--bo3); border-radius: 20px; cursor: pointer; background: var(--bp); color: var(--ts); }
+.save-btn { width: 100%; padding: 14px; font-size: 16px; font-weight: 500; background: var(--tp); color: var(--bp); border: none; border-radius: var(--r2); cursor: pointer; }
+.save-btn:active { opacity: .8; }
+.save-msg { text-align: center; font-size: 13px; color: var(--ts); margin-top: 8px; min-height: 20px; }
+.hist-entry { border: 0.5px solid var(--bo3); border-radius: var(--r2); padding: 1rem; margin-bottom: 10px; background: var(--bp); }
+.hist-hdr { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+.hist-date { font-size: 12px; color: var(--ts); }
+.hist-tag { font-size: 12px; font-weight: 500; color: var(--tp); background: var(--bs); padding: 3px 10px; border-radius: 20px; border: 0.5px solid var(--bo3); cursor: pointer; white-space: nowrap; }
+.hist-block { margin-bottom: 10px; }
+.hist-block:last-child { margin-bottom: 0; }
+.hist-name { font-size: 14px; font-weight: 500; color: var(--tp); margin-bottom: 4px; }
+.hist-sets { font-size: 13px; color: var(--ts); line-height: 1.8; }
+.empty { text-align: center; padding: 3rem 1rem; color: var(--ts); font-size: 14px; }
 .search-wrap { position: relative; margin-bottom: 14px; }
-.search-wrap i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--color-text-secondary); font-size: 16px; pointer-events: none; }
-.search-input { width: 100%; padding: 10px 12px 10px 36px; font-size: 15px; border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); background: var(--color-background-secondary); color: var(--color-text-primary); }
-.search-input:focus { outline: none; }
+.search-wrap i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--ts); font-size: 16px; pointer-events: none; }
+.search-inp { width: 100%; padding: 10px 12px 10px 36px; font-size: 15px; border: 0.5px solid var(--bo3); border-radius: var(--r2); background: var(--bs); color: var(--tp); }
+.search-inp:focus { outline: none; }
 .ex-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
-.ex-list-item { display: flex; align-items: center; padding: 10px 12px; background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); cursor: pointer; gap: 8px; }
-.ex-list-item.active { border-color: #AFA9EC; background: #EEEDFE; }
-.ex-list-name { font-size: 14px; color: var(--color-text-primary); flex: 1; }
-.ex-list-item.active .ex-list-name { color: #3C3489; font-weight: 500; }
-.ex-session-count { font-size: 12px; color: var(--color-text-secondary); }
-.ex-list-item.active .ex-session-count { color: #534AB7; }
-.ex-detail { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1.25rem; }
-.ex-detail-name { font-size: 18px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 12px; }
+.ex-item { display: flex; align-items: center; padding: 10px 12px; background: var(--bp); border: 0.5px solid var(--bo3); border-radius: var(--r1); cursor: pointer; gap: 8px; }
+.ex-item.active { border-color: #AFA9EC; background: #EEEDFE; }
+.ex-item-name { font-size: 14px; color: var(--tp); flex: 1; }
+.ex-item.active .ex-item-name { color: #3C3489; font-weight: 500; }
+.ex-item-count { font-size: 12px; color: var(--ts); }
+.ex-detail { background: var(--bp); border: 0.5px solid var(--bo3); border-radius: var(--r2); padding: 1.25rem; }
+.ex-detail-name { font-size: 18px; font-weight: 500; color: var(--tp); margin-bottom: 12px; }
 .stat-row { display: flex; gap: 8px; margin-bottom: 1.25rem; }
-.stat-pill { flex: 1; background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 10px 12px; }
-.stat-pill-label { font-size: 11px; color: var(--color-text-secondary); margin-bottom: 3px; }
-.stat-pill-val { font-size: 16px; font-weight: 500; color: var(--color-text-primary); }
-.session-row { border-top: 0.5px solid var(--color-border-tertiary); padding-top: 10px; margin-top: 10px; }
-.session-row-date { font-size: 12px; color: var(--color-text-secondary); margin-bottom: 6px; }
-.session-sets-grid { display: flex; gap: 6px; flex-wrap: wrap; }
-.set-badge { font-size: 12px; padding: 4px 10px; border-radius: var(--border-radius-md); background: var(--color-background-secondary); color: var(--color-text-primary); }
+.stat-pill { flex: 1; background: var(--bs); border-radius: var(--r1); padding: 10px 12px; }
+.stat-lbl { font-size: 11px; color: var(--ts); margin-bottom: 3px; }
+.stat-val { font-size: 16px; font-weight: 500; color: var(--tp); }
+.sess-row { border-top: 0.5px solid var(--bo3); padding-top: 10px; margin-top: 10px; }
+.sess-date { font-size: 12px; color: var(--ts); margin-bottom: 6px; }
+.sess-grid { display: flex; gap: 6px; flex-wrap: wrap; }
+.set-badge { font-size: 12px; padding: 4px 10px; border-radius: var(--r1); background: var(--bs); color: var(--tp); }
 .set-badge.pr { background: #EAF3DE; color: #3B6D11; }
-.modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 100; align-items: center; justify-content: center; padding: 1rem; }
-.modal-backdrop.open { display: flex; }
-.modal { background: var(--color-background-primary); border-radius: var(--border-radius-lg); padding: 1.5rem; width: 100%; max-width: 360px; border: 0.5px solid var(--color-border-tertiary); max-height: 80vh; overflow-y: auto; }
-.modal-title { font-size: 16px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 8px; }
-.modal-body { font-size: 14px; color: var(--color-text-secondary); margin-bottom: 1.25rem; line-height: 1.6; }
+.modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 100; align-items: center; justify-content: center; padding: 1rem; }
+.modal-bg.open { display: flex; }
+.modal { background: var(--bp); border-radius: var(--r2); padding: 1.5rem; width: 100%; max-width: 360px; border: 0.5px solid var(--bo3); max-height: 80vh; overflow-y: auto; }
+.modal-title { font-size: 16px; font-weight: 500; color: var(--tp); margin-bottom: 8px; }
+.modal-body { font-size: 14px; color: var(--ts); margin-bottom: 1.25rem; line-height: 1.6; }
 .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
-.modal-btn { font-size: 14px; padding: 8px 16px; border-radius: var(--border-radius-md); cursor: pointer; border: 0.5px solid var(--color-border-tertiary); background: var(--color-background-secondary); color: var(--color-text-primary); }
+.modal-btn { font-size: 14px; padding: 8px 16px; border-radius: var(--r1); cursor: pointer; border: 0.5px solid var(--bo3); background: var(--bs); color: var(--tp); }
 .modal-btn.danger { background: #A32D2D; color: #fff; border-color: #A32D2D; }
-.modal-btn.primary { background: var(--color-text-primary); color: var(--color-background-primary); border-color: var(--color-text-primary); }
-.modal-input { width: 100%; font-size: 15px; padding: 8px 12px; border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); background: var(--color-background-secondary); color: var(--color-text-primary); margin-bottom: 1.25rem; }
-.modal-input:focus { outline: none; }
-.modal-warning { font-size: 13px; background: #FCEBEB; color: #791F1F; padding: 8px 12px; border-radius: var(--border-radius-md); margin-bottom: 1rem; }
-.modal-hint { font-size: 12px; color: var(--color-text-secondary); margin-bottom: 1.25rem; }
-.modal-label { font-size: 12px; color: var(--color-text-secondary); margin-bottom: 6px; }
-.modal-select { width: 100%; font-size: 15px; padding: 8px 12px; border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); background: var(--color-background-secondary); color: var(--color-text-primary); margin-bottom: 1.25rem; }
-.cat-manage-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 1.25rem; max-height: 260px; overflow-y: auto; }
-.cat-manage-row { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); background: var(--color-background-secondary); }
-.cat-manage-input { flex: 1; font-size: 14px; padding: 4px 8px; border: 0.5px solid var(--color-border-primary); border-radius: var(--border-radius-md); background: var(--color-background-primary); color: var(--color-text-primary); }
-.cat-manage-input:focus { outline: none; }
-.ex-manage-list { display: flex; flex-direction: column; gap: 6px; max-height: 300px; overflow-y: auto; margin-bottom: 1rem; }
-.ex-manage-row { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); background: var(--color-background-secondary); }
-.ex-manage-name { flex: 1; font-size: 14px; color: var(--color-text-primary); }
-.ex-manage-cat { font-size: 12px; color: var(--color-text-secondary); }
-.ex-action-btn { background: none; border: none; cursor: pointer; color: var(--color-text-secondary); font-size: 16px; padding: 4px; line-height: 1; flex-shrink: 0; }
-.ex-action-btn:hover { color: var(--color-text-primary); }
-.ex-action-btn.danger:hover { color: #A32D2D; }
-
-:root {
-  --color-background-primary: #121212;
-  --color-background-secondary: #1c1c1f;
-  --color-border-primary: #8b5cf6;
-  --color-border-tertiary: #2d2d33;
-
-  --color-text-primary: #f4f4f5;
-  --color-text-secondary: #a1a1aa;
-
-  --border-radius-md: 10px;
-  --border-radius-lg: 16px;
-}
-
-body {
-  background: linear-gradient(180deg, #17131f 0%, #0d0d10 100%);
-  color: var(--color-text-primary);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  min-height: 100vh;
-  padding: 0 14px;
-}
-
-.title {
-  font-size: 28px;
-  font-weight: 700;
-  letter-spacing: -0.04em;
-}
-
-.exercise-card,
-.add-exercise-area,
-.save-area,
-.ex-detail,
-.history-entry {
-  box-shadow: 0 10px 30px rgba(0,0,0,0.25);
-}
-
-.tab.active {
-  color: #c4b5fd;
-  border-bottom-color: #8b5cf6;
-}
-
-.mode-btn.active,
-.cat-tab.active {
-  background: #8b5cf6;
-  color: white;
-  outline: none;
-  border-color: #8b5cf6;
-}
-
-.ex-chip.selected,
-.ex-list-item.active {
-  background: rgba(139, 92, 246, 0.18);
-  border-color: #8b5cf6;
-  color: #ddd6fe;
-}
-
-.set-input:focus,
-.search-input:focus,
-.day-label-input:focus {
-  border-color: #8b5cf6;
-  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.18);
-}
-
-.save-btn,
-.confirm-btn,
-.modal-btn.primary {
-  background: linear-gradient(135deg, #8b5cf6, #6366f1);
-  color: white;
-}
-
-.add-trigger-icon {
-    background: linear-gradient(135deg,#8b5cf6,#6366f1);
-    color: white;
-    font-size: 24px;
-    font-weight: 300;
-    
-}
-
+.modal-btn.primary { background: var(--tp); color: var(--bp); border-color: var(--tp); }
+.modal-inp { width: 100%; font-size: 15px; padding: 8px 12px; border: 0.5px solid var(--bo3); border-radius: var(--r1); background: var(--bs); color: var(--tp); margin-bottom: 1.25rem; }
+.modal-inp:focus { outline: none; }
+.modal-warn { font-size: 13px; background: #FCEBEB; color: #791F1F; padding: 8px 12px; border-radius: var(--r1); margin-bottom: 1rem; }
+.modal-hint { font-size: 12px; color: var(--ts); margin-bottom: 1.25rem; }
+.modal-lbl { font-size: 12px; color: var(--ts); margin-bottom: 6px; }
+.modal-sel { width: 100%; font-size: 15px; padding: 8px 12px; border: 0.5px solid var(--bo3); border-radius: var(--r1); background: var(--bs); color: var(--tp); margin-bottom: 1.25rem; }
+.cat-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 1.25rem; max-height: 260px; overflow-y: auto; }
+.cat-row-m { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 0.5px solid var(--bo3); border-radius: var(--r1); background: var(--bs); }
+.cat-inp { flex: 1; font-size: 14px; padding: 4px 8px; border: 0.5px solid var(--bo1); border-radius: var(--r1); background: var(--bp); color: var(--tp); }
+.cat-inp:focus { outline: none; }
+.exm-list { display: flex; flex-direction: column; gap: 6px; max-height: 300px; overflow-y: auto; margin-bottom: 1rem; }
+.exm-row { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 0.5px solid var(--bo3); border-radius: var(--r1); background: var(--bs); }
+.exm-name { flex: 1; font-size: 14px; color: var(--tp); }
+.exm-cat { font-size: 12px; color: var(--ts); }
+.action-btn { background: none; border: none; cursor: pointer; color: var(--ts); font-size: 16px; padding: 4px; line-height: 1; flex-shrink: 0; }
 </style>
-
-
+</head>
+<body>
 <div class="app">
-  <h2 class="sr-only">Gym workout tracker</h2>
   <div class="date" id="today-date"></div>
-  <div class="title">Workout log</div>
-  <div class="sync-bar">
-    <div class="sync-dot" id="sync-dot"></div>
-    <span id="sync-status">Loading...</span>
-  </div>
+  <div class="title" id="greeting"></div>
+  <div class="sync-bar"><div class="sync-dot" id="sync-dot"></div><span id="sync-status">Loading...</span></div>
   <div class="tabs">
     <button class="tab active" onclick="switchTab('log')">Today</button>
     <button class="tab" onclick="switchTab('lookup')">Exercises</button>
@@ -235,462 +173,636 @@ body {
   </div>
 
   <div id="tab-log">
-    <div class="add-exercise-area">
+    <div class="picker-area">
       <div class="add-trigger" id="add-trigger" onclick="openPicker()">
         <div class="add-trigger-icon"><i class="ti ti-plus"></i></div>
-        <span class="add-trigger-label">Add exercise</span>
+        <span class="add-trigger-lbl">Add exercise</span>
       </div>
-      <div id="picker-expanded" style="display:none;">
-        <div class="picker-section">
-          <div class="section-label">Type</div>
-          <div class="add-mode-toggle">
+      <div id="picker-exp" style="display:none;">
+        <div class="picker-sec">
+          <div class="sec-lbl">Type</div>
+          <div class="mode-row">
             <button class="mode-btn" id="mode-normal" onclick="setMode('normal')">Single</button>
-            <button class="mode-btn" id="mode-super" onclick="setMode('superset')"><i class="ti ti-arrows-exchange" aria-hidden="true"></i> Superset</button>
+            <button class="mode-btn" id="mode-super" onclick="setMode('superset')"><i class="ti ti-arrows-exchange"></i> Superset</button>
+            <button class="mode-btn" id="mode-drop" onclick="setMode('dropset')"><i class="ti ti-arrow-down"></i> Dropset</button>
           </div>
         </div>
-        <div class="picker-section" id="section-category" style="display:none;">
-          <div class="section-label">Category</div>
-          <div class="cat-row-header">
-            <div class="category-tabs" id="cat-tabs"></div>
-            <button class="icon-btn" onclick="openCategoryModal()" aria-label="Manage categories"><i class="ti ti-settings" aria-hidden="true"></i></button>
-            <button class="add-icon-btn" onclick="toggleAddCat()"><i class="ti ti-plus" aria-hidden="true"></i></button>
+        <div class="picker-sec" id="sec-cat" style="display:none;">
+          <div class="sec-lbl">Category</div>
+          <div class="cat-row">
+            <div class="cat-tabs" id="cat-tabs"></div>
+            <button class="icon-btn" onclick="openCatModal()"><i class="ti ti-settings"></i></button>
+            <button class="add-icon-btn" onclick="toggleAddCat()"><i class="ti ti-plus"></i></button>
           </div>
-          <div class="add-cat-inline" id="add-cat-inline">
-            <input type="text" id="new-cat-input" placeholder="New category name..." />
+          <div class="add-cat-row" id="add-cat-row">
+            <input type="text" id="new-cat-inp" placeholder="New category..." style="flex:1;font-size:14px;padding:7px 10px;border:0.5px solid var(--bo3);border-radius:var(--r1);background:var(--bp);color:var(--tp);">
             <button class="icon-btn" onclick="addCategory()">Add</button>
           </div>
         </div>
-        <div class="picker-section" id="section-exercise" style="display:none;">
-          <div class="section-label">Exercise</div>
-          <div class="exercise-picker" id="ex-picker"></div>
-          <div class="ex-row-footer">
-            <button class="add-icon-btn" onclick="toggleAddEx()"><i class="ti ti-plus" aria-hidden="true"></i> Custom</button>
+        <div class="picker-sec" id="sec-ex" style="display:none;">
+          <div class="sec-lbl">Exercise</div>
+          <div class="ex-chips" id="ex-chips"></div>
+          <div class="ex-footer">
+            <button class="add-icon-btn" onclick="toggleAddEx()"><i class="ti ti-plus"></i> Custom</button>
           </div>
-          <div class="add-ex-inline" id="add-ex-inline">
-            <input type="text" id="custom-ex-input" placeholder="Exercise name..." />
-            <button class="icon-btn" onclick="addCustomExercise()">Add</button>
+          <div class="add-ex-row" id="add-ex-row">
+            <input type="text" id="new-ex-inp" placeholder="Exercise name..." style="flex:1;font-size:14px;padding:7px 10px;border:0.5px solid var(--bo3);border-radius:var(--r1);background:var(--bp);color:var(--tp);">
+            <button class="icon-btn" onclick="addCustomEx()">Add</button>
           </div>
-          <div id="superset-pending" style="display:none;"></div>
+          <div id="ss-pending" style="display:none;"></div>
         </div>
       </div>
     </div>
-
-    <div id="exercises-list"></div>
-
+    <div id="blocks-list"></div>
     <div class="save-area">
-      <div class="save-area-section">
-        <div class="section-label">Workout name <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:11px;">(optional)</span></div>
-        <input type="text" class="day-label-input" id="day-label-input" placeholder="e.g. Chest/Tri, Push day, Legs..." />
-        <div class="day-suggestions" id="day-suggestions"></div>
+      <div class="save-sec">
+        <div class="sec-lbl">Workout name <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:11px;">(optional)</span></div>
+        <input type="text" class="day-inp" id="day-inp" placeholder="e.g. Chest/Tri, Push day, Legs...">
+        <div class="day-chips" id="day-chips"></div>
       </div>
-      <div class="save-area-section">
-        <button class="save-btn" onclick="saveWorkout()"><i class="ti ti-device-floppy" aria-hidden="true"></i> Save workout</button>
+      <div class="save-sec">
+        <button class="save-btn" onclick="saveWorkout()"><i class="ti ti-device-floppy"></i> Save workout</button>
         <div class="save-msg" id="save-msg"></div>
       </div>
     </div>
   </div>
 
   <div id="tab-lookup" style="display:none;">
-    <div class="search-wrap">
-      <i class="ti ti-search" aria-hidden="true"></i>
-      <input type="text" class="search-input" id="ex-search" placeholder="Search exercises..." oninput="renderLookup()" />
-    </div>
+    <div class="search-wrap"><i class="ti ti-search"></i><input type="text" class="search-inp" id="ex-search" placeholder="Search exercises..." oninput="renderLookup()"></div>
     <div id="lookup-content"></div>
   </div>
 
-  <div id="tab-history" style="display:none;">
-    <div id="history-list"></div>
-  </div>
+  <div id="tab-history" style="display:none;"><div id="hist-list"></div></div>
 </div>
 
-<!-- Category manager -->
-<div class="modal-backdrop" id="category-modal"><div class="modal">
+<!-- Modals -->
+<div class="modal-bg" id="cat-modal"><div class="modal">
   <div class="modal-title">Manage categories</div>
-  <div class="cat-manage-list" id="cat-manage-list"></div>
-  <button class="modal-btn" style="width:100%;text-align:center;" onclick="closeModal('category-modal')">Done</button>
+  <div class="cat-list" id="cat-list"></div>
+  <button class="modal-btn" style="width:100%;text-align:center;" onclick="closeModal('cat-modal')">Done</button>
 </div></div>
 
-<!-- Delete category -->
-<div class="modal-backdrop" id="delete-cat-modal"><div class="modal">
+<div class="modal-bg" id="del-cat-modal"><div class="modal">
   <div class="modal-title">Delete category?</div>
-  <div id="delete-cat-body" class="modal-body"></div>
-  <div id="delete-cat-warning" class="modal-warning" style="display:none;"></div>
-  <div class="modal-actions"><button class="modal-btn" onclick="closeModal('delete-cat-modal');openCategoryModal()">Cancel</button><button class="modal-btn danger" onclick="confirmDeleteCategory()">Delete</button></div>
+  <div id="del-cat-body" class="modal-body"></div>
+  <div id="del-cat-warn" class="modal-warn" style="display:none;"></div>
+  <div class="modal-actions">
+    <button class="modal-btn" onclick="closeModal('del-cat-modal');openCatModal()">Cancel</button>
+    <button class="modal-btn danger" onclick="confirmDelCat()">Delete</button>
+  </div>
 </div></div>
 
-<!-- Edit exercise -->
-<div class="modal-backdrop" id="edit-modal"><div class="modal">
+<div class="modal-bg" id="edit-ex-modal"><div class="modal">
   <div class="modal-title">Edit exercise</div>
-  <div class="modal-label">Name</div>
-  <input type="text" class="modal-input" id="edit-name-input" placeholder="Exercise name" />
-  <div class="modal-label">Category</div>
-  <select class="modal-select" id="edit-cat-select"></select>
+  <div class="modal-lbl">Name</div>
+  <input type="text" class="modal-inp" id="edit-ex-name" placeholder="Exercise name">
+  <div class="modal-lbl">Category</div>
+  <select class="modal-sel" id="edit-ex-cat"></select>
   <div class="modal-hint">More options coming soon — photo, notes.</div>
-  <div class="modal-actions"><button class="modal-btn" onclick="closeModal('edit-modal')">Cancel</button><button class="modal-btn primary" onclick="confirmEdit()">Save</button></div>
+  <div class="modal-actions">
+    <button class="modal-btn" onclick="closeModal('edit-ex-modal')">Cancel</button>
+    <button class="modal-btn primary" onclick="confirmEditEx()">Save</button>
+  </div>
 </div></div>
 
-<!-- Delete exercise -->
-<div class="modal-backdrop" id="delete-modal"><div class="modal">
+<div class="modal-bg" id="del-ex-modal"><div class="modal">
   <div class="modal-title">Delete exercise?</div>
-  <div id="delete-modal-body" class="modal-body"></div>
-  <div id="delete-modal-warning" class="modal-warning" style="display:none;"></div>
-  <div class="modal-actions"><button class="modal-btn" onclick="closeModal('delete-modal')">Cancel</button><button class="modal-btn danger" onclick="confirmDelete()">Delete</button></div>
+  <div id="del-ex-body" class="modal-body"></div>
+  <div id="del-ex-warn" class="modal-warn" style="display:none;"></div>
+  <div class="modal-actions">
+    <button class="modal-btn" onclick="closeModal('del-ex-modal')">Cancel</button>
+    <button class="modal-btn danger" onclick="confirmDelEx()">Delete</button>
+  </div>
 </div></div>
 
-<!-- Manage exercises modal (from category gear > exercises button) -->
-<div class="modal-backdrop" id="manage-ex-modal"><div class="modal">
+<div class="modal-bg" id="mgex-modal"><div class="modal">
   <div class="modal-title">Manage exercises</div>
-  <div class="ex-manage-list" id="ex-manage-list"></div>
-  <button class="modal-btn" style="width:100%;text-align:center;" onclick="closeModal('manage-ex-modal')">Done</button>
+  <div class="exm-list" id="exm-list"></div>
+  <button class="modal-btn" style="width:100%;text-align:center;" onclick="closeModal('mgex-modal')">Done</button>
 </div></div>
 
 <script>
-const DEFAULT_EXERCISES = {
+const DEF = {
   Chest: ['Bench press','Incline bench','Decline bench','Chest fly','Push-up','Cable fly'],
   Back: ['Deadlift','Pull-up','Lat pulldown','Seated row','Bent-over row','T-bar row'],
   Legs: ['Squat','Leg press','Romanian deadlift','Leg curl','Leg extension','Calf raise'],
   Shoulders: ['Overhead press','Lateral raise','Front raise','Rear delt fly','Arnold press'],
   Arms: ['Barbell curl','Hammer curl','Tricep pushdown','Skull crusher','Dip','Preacher curl'],
-  Core: ['Plank','Crunch','Cable crunch','Hanging leg raise','Ab wheel'],
+  Core: ['Plank','Crunch','Cable crunch','Hanging leg raise','Ab wheel']
 };
 
-let exercises = JSON.parse(JSON.stringify(DEFAULT_EXERCISES));
-let blocks=[], activeCategory='Chest', addMode=null, supersetFirstEx=null;
-let selectedExercise=null, cloudHistory=[], syncTimeout=null;
-let pendingDeleteName=null, pendingEditName=null, pendingDeleteCat=null;
+let EX = JSON.parse(JSON.stringify(DEF));
+let blocks = [], activeCat = 'Chest', mode = null, ssFirst = null;
+let selEx = null, history = [], stimer = null;
+let delExName = null, editExName = null, delCatName = null;
 
-function fmtWeight(w){return w?w+' lbs':'—';}
-function fmtReps(r){return r||'—';}
+function updateGreeting() {
+    const hour = new Date().getHours();
 
-async function loadFromCloud(){
-  setSyncStatus('saving','Loading...');
+    let text;
+
+    if (hour < 12) {
+        text = "Good morning";
+    } else if (hour < 17) {
+        text = "Good afternoon";
+    } else if (hour < 24) {
+        text = "Good evening";
+    } else {
+        text = "Time to recover";
+    }
+
+    document.getElementById("greeting").textContent = text;
+}
+
+function fw(w){ return w ? w+' lbs' : '—'; }
+function fr(r){ return r || '—'; }
+
+function load(){
+  setSS('saving','Loading...');
   try {
-    const [wRes,eRes]=await Promise.all([window.storage.get('gym_workouts').catch(()=>null),window.storage.get('gym_exercises').catch(()=>null)]);
-    cloudHistory=wRes?JSON.parse(wRes.value):[];
-    if(eRes)exercises=JSON.parse(eRes.value);
-    setSyncStatus('ok','Synced');
-  } catch(e){cloudHistory=JSON.parse(localStorage.getItem('gym_history_v2')||'[]');setSyncStatus('ok','Loaded locally');}
-  if(!exercises[activeCategory])activeCategory=Object.keys(exercises)[0];
+    const h = localStorage.getItem('wl_history');
+    const e = localStorage.getItem('wl_exercises');
+    if(h) history = JSON.parse(h);
+    if(e) EX = JSON.parse(e);
+    setSS('ok','Ready');
+  } catch(err){ setSS('error','Load error'); }
+  if(!EX[activeCat]) activeCat = Object.keys(EX)[0];
 }
 
-async function saveToCloud(){
-  setSyncStatus('saving','Saving...');
+function save(){
+  setSS('saving','Saving...');
   try {
-    await Promise.all([window.storage.set('gym_workouts',JSON.stringify(cloudHistory.slice(0,60))),window.storage.set('gym_exercises',JSON.stringify(exercises))]);
-    localStorage.setItem('gym_history_v2',JSON.stringify(cloudHistory.slice(0,60)));
-    setSyncStatus('ok','Saved');
-  } catch(e){localStorage.setItem('gym_history_v2',JSON.stringify(cloudHistory.slice(0,60)));setSyncStatus('error','Saved locally');}
+    localStorage.setItem('wl_history', JSON.stringify(history.slice(0,100)));
+    localStorage.setItem('wl_exercises', JSON.stringify(EX));
+    setSS('ok','Saved');
+  } catch(err){ setSS('error','Save failed'); }
 }
 
-function setSyncStatus(state,msg){
-  document.getElementById('sync-dot').className='sync-dot'+(state==='saving'?' saving':state==='error'?' error':'');
-  document.getElementById('sync-status').textContent=msg;
+function setSS(s, m){
+  document.getElementById('sync-dot').className = 'sync-dot' + (s==='saving'?' saving':s==='error'?' error':'');
+  document.getElementById('sync-status').textContent = m;
 }
 
-function getPastDayLabels(){const seen=new Set(),out=[];cloudHistory.forEach(e=>{if(e.dayLabel&&!seen.has(e.dayLabel)){seen.add(e.dayLabel);out.push(e.dayLabel);}});return out;}
-function renderDaySuggestions(){
-  document.getElementById('day-suggestions').innerHTML=getPastDayLabels().slice(0,6).map(l=>
-    `<button class="day-chip" onclick="document.getElementById('day-label-input').value='${l.replace(/'/g,"\\'")}'">${l}</button>`).join('');
+function pastLabels(){
+  const seen = new Set(), out = [];
+  history.forEach(e => { if(e.label && !seen.has(e.label)){ seen.add(e.label); out.push(e.label); }});
+  return out;
+}
+
+function renderDayChips(){
+  document.getElementById('day-chips').innerHTML = pastLabels().slice(0,6).map(l =>
+    `<button class="day-chip" onclick="document.getElementById('day-inp').value='${l.replace(/'/g,"&#39;")}';">${l}</button>`
+  ).join('');
 }
 
 function init(){
-  const d=new Date();
-  document.getElementById('today-date').textContent=d.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
-  loadFromCloud().then(()=>{renderCategoryTabs();renderExPicker();renderDaySuggestions();});
+  const d = new Date();
+  document.getElementById('today-date').textContent = d.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+  load();
+  updateGreeting();
+  renderCatTabs();
+  renderExChips();
+  renderDayChips();
 }
 
 function openPicker(){
-  document.getElementById('add-trigger').style.display='none';
-  document.getElementById('picker-expanded').style.display='block';
-}
-function closePicker(){
-  addMode=null;supersetFirstEx=null;
-  document.getElementById('mode-normal').classList.remove('active');
-  document.getElementById('mode-super').classList.remove('active');
-  document.getElementById('section-category').style.display='none';
-  document.getElementById('section-exercise').style.display='none';
-  document.getElementById('superset-pending').style.display='none';
-  document.getElementById('add-cat-inline').classList.remove('open');
-  document.getElementById('add-ex-inline').classList.remove('open');
-  document.getElementById('picker-expanded').style.display='none';
-  document.getElementById('add-trigger').style.display='flex';
+  document.getElementById('add-trigger').style.display = 'none';
+  document.getElementById('picker-exp').style.display = 'block';
 }
 
-function setMode(mode){
-  if(addMode===mode){closePicker();return;}
-  addMode=mode;supersetFirstEx=null;document.getElementById('superset-pending').style.display='none';
-  document.getElementById('mode-normal').classList.toggle('active',mode==='normal');
-  document.getElementById('mode-super').classList.toggle('active',mode==='superset');
-  document.getElementById('section-category').style.display='block';
-  document.getElementById('section-exercise').style.display='block';
-  renderCategoryTabs();renderExPicker();
+function closePicker(){
+  mode = null; ssFirst = null;
+  ['mode-normal','mode-super','mode-drop'].forEach(id => document.getElementById(id).classList.remove('active'));
+  document.getElementById('sec-cat').style.display = 'none';
+  document.getElementById('sec-ex').style.display = 'none';
+  document.getElementById('ss-pending').style.display = 'none';
+  document.getElementById('add-cat-row').classList.remove('open');
+  document.getElementById('add-ex-row').classList.remove('open');
+  document.getElementById('picker-exp').style.display = 'none';
+  document.getElementById('add-trigger').style.display = 'flex';
+}
+
+function setMode(m){
+  if(mode === m){ closePicker(); return; }
+  mode = m; ssFirst = null;
+  document.getElementById('ss-pending').style.display = 'none';
+  ['mode-normal','mode-super','mode-drop'].forEach(id => document.getElementById(id).classList.remove('active'));
+  const ids = {normal:'mode-normal', superset:'mode-super', dropset:'mode-drop'};
+  document.getElementById(ids[m]).classList.add('active');
+  document.getElementById('sec-cat').style.display = 'block';
+  document.getElementById('sec-ex').style.display = 'block';
+  renderCatTabs();
+  renderExChips();
 }
 
 function toggleAddCat(){
-  const el=document.getElementById('add-cat-inline');el.classList.toggle('open');
-  if(el.classList.contains('open'))setTimeout(()=>document.getElementById('new-cat-input').focus(),50);
-}
-function toggleAddEx(){
-  const el=document.getElementById('add-ex-inline');el.classList.toggle('open');
-  if(el.classList.contains('open'))setTimeout(()=>document.getElementById('custom-ex-input').focus(),50);
+  const el = document.getElementById('add-cat-row');
+  el.classList.toggle('open');
+  if(el.classList.contains('open')) setTimeout(()=>document.getElementById('new-cat-inp').focus(), 50);
 }
 
-function renderCategoryTabs(){
-  document.getElementById('cat-tabs').innerHTML=Object.keys(exercises).map(cat=>
-    `<button class="cat-tab ${cat===activeCategory?'active':''}" onclick="setCategory('${cat.replace(/'/g,"\\'")}') ">${cat}</button>`
+function toggleAddEx(){
+  const el = document.getElementById('add-ex-row');
+  el.classList.toggle('open');
+  if(el.classList.contains('open')) setTimeout(()=>document.getElementById('new-ex-inp').focus(), 50);
+}
+
+function renderCatTabs(){
+  document.getElementById('cat-tabs').innerHTML = Object.keys(EX).map(cat =>
+    `<button class="cat-tab ${cat===activeCat?'active':''}" onclick="setCat('${esc(cat)}')">${cat}</button>`
   ).join('');
 }
-function setCategory(cat){activeCategory=cat;renderCategoryTabs();renderExPicker();}
 
-function renderExPicker(){
-  const list=exercises[activeCategory]||[];
-  const addedNames=new Set(blocks.flatMap(b=>b.exercises.map(e=>e.name)));
-  document.getElementById('ex-picker').innerHTML=list.map(ex=>{
-    const isAdded=addedNames.has(ex),isSuperFirst=supersetFirstEx===ex;
-    return `<button class="ex-chip ${isSuperFirst?'selected':isAdded?'added':''}" onclick="handleExercisePick('${ex.replace(/'/g,"\\'")}') ">${ex}${isAdded?' ✓':''}</button>`;
+function setCat(cat){ activeCat = cat; renderCatTabs(); renderExChips(); }
+
+function renderExChips(){
+  const list = EX[activeCat] || [];
+  const added = new Set(blocks.flatMap(b => b.exercises.map(e => e.name)));
+  document.getElementById('ex-chips').innerHTML = list.map(ex => {
+    const isAdded = added.has(ex), isFirst = ssFirst === ex;
+    return `<button class="ex-chip ${isFirst?'selected':isAdded?'added':''}" onclick="pickEx('${esc(ex)}')">${ex}${isAdded?' ✓':''}</button>`;
   }).join('');
 }
 
-function handleExercisePick(name){
-  if(addMode==='normal'){addSingleExercise(name);renderExPicker();}
-  else{handleSupersetPick(name);}
+function esc(s){ return s.replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+
+function pickEx(name){
+  if(mode === 'normal'){ addSingle(name); renderExChips(); }
+  else if(mode === 'superset'){ pickSS(name); }
+  else if(mode === 'dropset'){ addDropset(name); renderExChips(); }
 }
-function addSingleExercise(name){
-  if(blocks.find(b=>b.type==='single'&&b.exercises[0].name===name))return;
-  blocks.push({type:'single',exercises:[{name,sets:[{weight:'',reps:''}]}]});renderBlocks();
+
+function addSingle(name){
+  if(blocks.find(b => b.type==='single' && b.exercises[0].name===name)) return;
+  blocks.push({type:'single', exercises:[{name, sets:[{w:'',r:''}]}]});
+  renderBlocks();
 }
-function handleSupersetPick(name){
-  if(!supersetFirstEx){
-    supersetFirstEx=name;renderExPicker();
-    const p=document.getElementById('superset-pending');p.style.display='block';
-    p.innerHTML=`<div class="superset-confirm"><span><i class="ti ti-arrows-exchange" aria-hidden="true"></i> <strong>${name}</strong> — pick second exercise</span><button class="confirm-btn" onclick="cancelSuperset()">Cancel</button></div>`;
+
+function addDropset(name){
+  if(blocks.find(b => b.type==='dropset' && b.exercises[0].name===name)) return;
+  blocks.push({type:'dropset', exercises:[{name, dropSets:[[{w:'',r:''},{w:'',r:''}]]}]});
+  renderBlocks();
+}
+
+function pickSS(name){
+  if(!ssFirst){
+    ssFirst = name; renderExChips();
+    const p = document.getElementById('ss-pending'); p.style.display = 'block';
+    p.innerHTML = `<div class="ss-confirm"><span><i class="ti ti-arrows-exchange"></i> <strong>${name}</strong> — pick second exercise</span><button class="confirm-btn" onclick="cancelSS()">Cancel</button></div>`;
   } else {
-    if(name===supersetFirstEx)return;
-    blocks.push({type:'superset',exercises:[{name:supersetFirstEx,sets:[{weight:'',reps:''}]},{name,sets:[{weight:'',reps:''}]}]});
-    supersetFirstEx=null;document.getElementById('superset-pending').style.display='none';
-    renderBlocks();renderExPicker();
+    if(name === ssFirst) return;
+    blocks.push({type:'superset', exercises:[
+      {name:ssFirst, sets:[{w:'',r:''}]},
+      {name, sets:[{w:'',r:''}]}
+    ]});
+    ssFirst = null;
+    document.getElementById('ss-pending').style.display = 'none';
+    renderBlocks(); renderExChips();
   }
 }
-function cancelSuperset(){supersetFirstEx=null;document.getElementById('superset-pending').style.display='none';renderExPicker();}
 
-function addCustomExercise(){
-  const input=document.getElementById('custom-ex-input'),name=input.value.trim();if(!name)return;
-  if(!exercises[activeCategory].includes(name))exercises[activeCategory].push(name);
-  if(addMode==='normal'){addSingleExercise(name);renderExPicker();}else{handleSupersetPick(name);}
-  input.value='';document.getElementById('add-ex-inline').classList.remove('open');
+function cancelSS(){ ssFirst=null; document.getElementById('ss-pending').style.display='none'; renderExChips(); }
+
+function addCustomEx(){
+  const inp = document.getElementById('new-ex-inp'), name = inp.value.trim();
+  if(!name) return;
+  if(!EX[activeCat].includes(name)) EX[activeCat].push(name);
+  pickEx(name);
+  inp.value = '';
+  document.getElementById('add-ex-row').classList.remove('open');
 }
+
 function addCategory(){
-  const input=document.getElementById('new-cat-input'),name=input.value.trim();
-  if(!name||exercises[name])return;
-  exercises[name]=[];input.value='';
-  document.getElementById('add-cat-inline').classList.remove('open');
-  renderCategoryTabs();renderExPicker();saveToCloud();
+  const inp = document.getElementById('new-cat-inp'), name = inp.value.trim();
+  if(!name || EX[name]) return;
+  EX[name] = []; inp.value = '';
+  document.getElementById('add-cat-row').classList.remove('open');
+  renderCatTabs(); renderExChips(); save();
 }
 
-function removeBlock(bIdx){blocks.splice(bIdx,1);renderBlocks();renderExPicker();}
-function addSet(bIdx,eIdx){blocks[bIdx].exercises[eIdx].sets.push({weight:'',reps:''});renderBlocks();}
-function removeSet(bIdx,eIdx,sIdx){if(blocks[bIdx].exercises[eIdx].sets.length===1)return;blocks[bIdx].exercises[eIdx].sets.splice(sIdx,1);renderBlocks();}
-function updateSet(bIdx,eIdx,sIdx,field,val){blocks[bIdx].exercises[eIdx].sets[sIdx][field]=val;}
+function removeBlock(i){ blocks.splice(i,1); renderBlocks(); renderExChips(); }
+function addSet(bi,ei){ blocks[bi].exercises[ei].sets.push({w:'',r:''}); renderBlocks(); }
+function remSet(bi,ei,si){ if(blocks[bi].exercises[ei].sets.length===1)return; blocks[bi].exercises[ei].sets.splice(si,1); renderBlocks(); }
+function updSet(bi,ei,si,f,v){ blocks[bi].exercises[ei].sets[si][f]=v; }
+function addDS(bi){ blocks[bi].exercises[0].dropSets.push([{w:'',r:''},{w:'',r:''}]); renderBlocks(); }
+function remDS(bi,di){ if(blocks[bi].exercises[0].dropSets.length===1)return; blocks[bi].exercises[0].dropSets.splice(di,1); renderBlocks(); }
+function addDrop(bi,di){ blocks[bi].exercises[0].dropSets[di].push({w:'',r:''}); renderBlocks(); }
+function remDrop(bi,di,dri){ if(blocks[bi].exercises[0].dropSets[di].length<=2)return; blocks[bi].exercises[0].dropSets[di].splice(dri,1); renderBlocks(); }
+function updDrop(bi,di,dri,f,v){ blocks[bi].exercises[0].dropSets[di][dri][f]=v; }
 
-function renderExBody(ex,bIdx,eIdx){
+function renderSetTable(ex, bi, ei){
   return `<table class="sets-table">
     <thead><tr><th>Set</th><th>Weight (lbs)</th><th></th><th>Reps</th><th></th></tr></thead>
-    <tbody>${ex.sets.map((s,j)=>`<tr>
+    <tbody>${ex.sets.map((s,j) => `<tr>
       <td class="set-num">${j+1}</td>
-      <td><input class="set-input" type="number" inputmode="decimal" min="0" placeholder="0" value="${s.weight}" oninput="updateSet(${bIdx},${eIdx},${j},'weight',this.value)"/></td>
-      <td class="x-label">×</td>
-      <td><input class="set-input" type="number" inputmode="numeric" min="0" placeholder="0" value="${s.reps}" oninput="updateSet(${bIdx},${eIdx},${j},'reps',this.value)"/></td>
-      <td><button class="del-set-btn" onclick="removeSet(${bIdx},${eIdx},${j})"><i class="ti ti-minus" aria-hidden="true"></i></button></td>
+      <td><input class="set-inp" type="number" inputmode="decimal" min="0" placeholder="0" value="${s.w}" oninput="updSet(${bi},${ei},${j},'w',this.value)"></td>
+      <td class="xlbl">×</td>
+      <td><input class="set-inp" type="number" inputmode="numeric" min="0" placeholder="0" value="${s.r}" oninput="updSet(${bi},${ei},${j},'r',this.value)"></td>
+      <td><button class="del-set-btn" onclick="remSet(${bi},${ei},${j})"><i class="ti ti-minus"></i></button></td>
     </tr>`).join('')}</tbody>
   </table>
-  <button class="add-set-btn" onclick="addSet(${bIdx},${eIdx})"><i class="ti ti-plus" aria-hidden="true"></i> Add set</button>`;
+  <button class="add-set-btn" onclick="addSet(${bi},${ei})"><i class="ti ti-plus"></i> Add set</button>`;
+}
+
+function renderDSBody(ex, bi){
+  return ex.dropSets.map((drops, di) => `
+    <div class="ds-block">
+      <div class="ds-header">
+        <span class="ds-label">Set ${di+1}</span>
+        <button class="ds-del" onclick="remDS(${bi},${di})"><i class="ti ti-x"></i></button>
+      </div>
+      <div class="drop-rows">
+        ${drops.map((d,dri) => `<div class="drop-row">
+          <span class="drop-lbl">Drop ${dri+1}</span>
+          <input class="drop-inp" type="number" inputmode="decimal" min="0" placeholder="lbs" value="${d.w}" oninput="updDrop(${bi},${di},${dri},'w',this.value)">
+          <span class="drop-x">×</span>
+          <input class="drop-inp" type="number" inputmode="numeric" min="0" placeholder="reps" value="${d.r}" oninput="updDrop(${bi},${di},${dri},'r',this.value)">
+          <button class="drop-del" onclick="remDrop(${bi},${di},${dri})"><i class="ti ti-minus"></i></button>
+        </div>`).join('')}
+        <button class="add-drop-btn" onclick="addDrop(${bi},${di})"><i class="ti ti-plus"></i> Add drop</button>
+      </div>
+    </div>`).join('');
 }
 
 function renderBlocks(){
-  const el=document.getElementById('exercises-list');if(!blocks.length){el.innerHTML='';return;}
-  el.innerHTML=blocks.map((block,bIdx)=>{
-    if(block.type==='single'){const ex=block.exercises[0];return `<div class="exercise-card"><div class="exercise-header"><span class="exercise-name">${ex.name}</span><button class="remove-btn" onclick="removeBlock(${bIdx})"><i class="ti ti-x" aria-hidden="true"></i></button></div>${renderExBody(ex,bIdx,0)}</div>`;}
-    const [ex1,ex2]=block.exercises;
-    return `<div class="superset-card"><div class="superset-label"><span><i class="ti ti-arrows-exchange" aria-hidden="true"></i> Superset</span><button class="remove-btn" onclick="removeBlock(${bIdx})"><i class="ti ti-x" aria-hidden="true"></i></button></div><div class="superset-ex"><div class="exercise-header"><span class="exercise-name">${ex1.name}</span></div>${renderExBody(ex1,bIdx,0)}</div><div class="superset-divider-line">↕ paired with</div><div class="superset-ex"><div class="exercise-header"><span class="exercise-name">${ex2.name}</span></div>${renderExBody(ex2,bIdx,1)}</div></div>`;
+  const el = document.getElementById('blocks-list');
+  if(!blocks.length){ el.innerHTML=''; return; }
+  el.innerHTML = blocks.map((b,bi) => {
+    if(b.type === 'single'){
+      const ex = b.exercises[0];
+      return `<div class="exercise-card">
+        <div class="ex-header"><span class="ex-name">${ex.name}</span>
+        <button class="remove-btn" onclick="removeBlock(${bi})"><i class="ti ti-x"></i></button></div>
+        ${renderSetTable(ex,bi,0)}
+      </div>`;
+    }
+    if(b.type === 'superset'){
+      const [e1,e2] = b.exercises;
+      return `<div class="superset-card">
+        <div class="superset-label"><span><i class="ti ti-arrows-exchange"></i> Superset</span>
+        <button class="remove-btn" onclick="removeBlock(${bi})"><i class="ti ti-x"></i></button></div>
+        <div class="superset-ex"><div class="ex-header"><span class="ex-name">${e1.name}</span></div>${renderSetTable(e1,bi,0)}</div>
+        <div class="superset-divider">↕ paired with</div>
+        <div class="superset-ex"><div class="ex-header"><span class="ex-name">${e2.name}</span></div>${renderSetTable(e2,bi,1)}</div>
+      </div>`;
+    }
+    if(b.type === 'dropset'){
+      const ex = b.exercises[0];
+      return `<div class="dropset-card">
+        <div class="ex-header">
+          <span class="ex-name">${ex.name} <span class="ex-badge"><i class="ti ti-arrow-down"></i> Dropset</span></span>
+          <button class="remove-btn" onclick="removeBlock(${bi})"><i class="ti ti-x"></i></button>
+        </div>
+        ${renderDSBody(ex,bi)}
+        <button class="add-ds-btn" onclick="addDS(${bi})"><i class="ti ti-plus"></i> Add set</button>
+      </div>`;
+    }
   }).join('');
 }
 
-async function saveWorkout(){
-  if(!blocks.length){showMsg('Add at least one exercise first.');return;}
-  const d=new Date(),dayLabel=document.getElementById('day-label-input').value.trim();
-  cloudHistory.unshift({fullDate:d.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'}),ts:d.toISOString(),dayLabel:dayLabel||null,blocks:JSON.parse(JSON.stringify(blocks))});
-  blocks=[];renderBlocks();renderExPicker();closePicker();
-  document.getElementById('day-label-input').value='';
-  showMsg('Saving...');await saveToCloud();renderDaySuggestions();showMsg('Workout saved!');
-}
-function showMsg(msg){const el=document.getElementById('save-msg');el.textContent=msg;clearTimeout(syncTimeout);syncTimeout=setTimeout(()=>{el.textContent='';},3000);}
-
-// ---- CATEGORY MODAL ----
-function openCategoryModal(){
-  document.getElementById('cat-manage-list').innerHTML=Object.keys(exercises).map(cat=>`
-    <div class="cat-manage-row">
-      <input class="cat-manage-input" value="${cat}" onblur="renameCategoryBlur('${cat.replace(/'/g,"\\'")}',this.value)"/>
-      <button class="ex-action-btn" onclick="openManageExModal('${cat.replace(/'/g,"\\'")}') " title="Manage exercises" style="font-size:13px;padding:4px 8px;">Exercises</button>
-      <button class="ex-action-btn danger" onclick="openDeleteCatModal('${cat.replace(/'/g,"\\'")}') "><i class="ti ti-trash" aria-hidden="true"></i></button>
-    </div>`).join('');
-  document.getElementById('category-modal').classList.add('open');
+function saveWorkout(){
+  if(!blocks.length){ showMsg('Add at least one exercise first.'); return; }
+  const d = new Date(), label = document.getElementById('day-inp').value.trim();
+  history.unshift({
+    date: d.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'}),
+    ts: d.toISOString(),
+    label: label || null,
+    blocks: JSON.parse(JSON.stringify(blocks))
+  });
+  blocks=[]; renderBlocks(); renderExChips(); closePicker();
+  document.getElementById('day-inp').value = '';
+  showMsg('Saving...'); save(); renderDayChips(); showMsg('Workout saved!');
 }
 
-function renameCategoryBlur(oldName,newName){
-  newName=newName.trim();if(!newName||newName===oldName||exercises[newName])return;
-  const keys=Object.keys(exercises),newEx={};
-  keys.forEach(k=>{newEx[k===oldName?newName:k]=exercises[k];});
-  exercises=newEx;if(activeCategory===oldName)activeCategory=newName;
-  renderCategoryTabs();saveToCloud();
+function showMsg(m){
+  const el = document.getElementById('save-msg'); el.textContent = m;
+  clearTimeout(stimer); stimer = setTimeout(()=>{ el.textContent=''; }, 3000);
 }
 
-function openDeleteCatModal(cat){
-  pendingDeleteCat=cat;closeModal('category-modal');
-  const exCount=(exercises[cat]||[]).length;
-  document.getElementById('delete-cat-body').textContent=`Delete the "${cat}" category?`;
-  const warn=document.getElementById('delete-cat-warning');
-  if(exCount>0){warn.style.display='block';warn.textContent=`Contains ${exCount} exercise${exCount!==1?'s':''}. History is kept.`;}
-  else warn.style.display='none';
-  document.getElementById('delete-cat-modal').classList.add('open');
-}
-function confirmDeleteCategory(){
-  if(!pendingDeleteCat)return;delete exercises[pendingDeleteCat];
-  if(activeCategory===pendingDeleteCat)activeCategory=Object.keys(exercises)[0]||'';
-  closeModal('delete-cat-modal');pendingDeleteCat=null;
-  renderCategoryTabs();renderExPicker();saveToCloud();
+// Category modal
+function openCatModal(){
+  document.getElementById('cat-list').innerHTML = Object.keys(EX).map(cat =>
+    `<div class="cat-row-m">
+      <input class="cat-inp" value="${cat}" onblur="renameCat('${esc(cat)}',this.value)">
+      <button class="action-btn" onclick="openMgEx('${esc(cat)}');closeModal('cat-modal')" style="font-size:12px;padding:4px 8px;border:0.5px solid var(--bo3);border-radius:var(--r1);">Exercises</button>
+      <button class="action-btn" onclick="openDelCat('${esc(cat)}')" style="color:#A32D2D;"><i class="ti ti-trash"></i></button>
+    </div>`
+  ).join('');
+  openModal('cat-modal');
 }
 
-// ---- MANAGE EXERCISES MODAL ----
-function openManageExModal(cat){
-  closeModal('category-modal');
-  const list=exercises[cat]||[];
-  document.getElementById('ex-manage-list').innerHTML = list.length
-    ? list.map(ex=>`
-        <div class="ex-manage-row">
-          <div style="flex:1;">
-            <div class="ex-manage-name">${ex}</div>
-            <div class="ex-manage-cat">${cat}${getSessionCountForExercise(ex)>0?' · '+getSessionCountForExercise(ex)+' sessions':''}</div>
-          </div>
-          <button class="ex-action-btn" onclick="openEditModal('${ex.replace(/'/g,"\\'")}');closeModal('manage-ex-modal')"><i class="ti ti-pencil" aria-hidden="true"></i></button>
-          <button class="ex-action-btn danger" onclick="openDeleteModal('${ex.replace(/'/g,"\\'")}');closeModal('manage-ex-modal')"><i class="ti ti-trash" aria-hidden="true"></i></button>
-        </div>`).join('')
-    : '<div style="font-size:13px;color:var(--color-text-secondary);text-align:center;padding:1rem;">No exercises in this category yet.</div>';
-  document.getElementById('manage-ex-modal').classList.add('open');
+function renameCat(old, n){
+  n = n.trim();
+  if(!n || n===old || EX[n]) return;
+  const keys = Object.keys(EX), ne = {};
+  keys.forEach(k => { ne[k===old?n:k] = EX[k]; });
+  EX = ne;
+  if(activeCat===old) activeCat = n;
+  renderCatTabs(); save();
 }
 
-// ---- EXERCISE EDIT/DELETE ----
-function findExerciseCategory(name){return Object.keys(exercises).find(cat=>exercises[cat].includes(name))||null;}
-function getSessionCountForExercise(name){return cloudHistory.filter(e=>e.blocks.some(b=>b.exercises.some(ex=>ex.name===name))).length;}
-
-function openDeleteModal(name){
-  pendingDeleteName=name;
-  const count=getSessionCountForExercise(name);
-  document.getElementById('delete-modal-body').textContent=`Remove "${name}" from your exercise list?`;
-  const warn=document.getElementById('delete-modal-warning');
-  if(count>0){warn.style.display='block';warn.textContent=`Appears in ${count} saved workout${count!==1?'s':''}. History will be kept.`;}
-  else warn.style.display='none';
-  document.getElementById('delete-modal').classList.add('open');
-}
-function confirmDelete(){
-  if(!pendingDeleteName)return;
-  for(const cat of Object.keys(exercises))exercises[cat]=exercises[cat].filter(e=>e!==pendingDeleteName);
-  closeModal('delete-modal');pendingDeleteName=null;
-  renderExPicker();renderCategoryTabs();renderLookup();saveToCloud();
+function openDelCat(cat){
+  delCatName = cat; closeModal('cat-modal');
+  const c = (EX[cat]||[]).length;
+  document.getElementById('del-cat-body').textContent = `Delete the "${cat}" category?`;
+  const w = document.getElementById('del-cat-warn');
+  if(c>0){ w.style.display='block'; w.textContent=`Contains ${c} exercise${c!==1?'s':''}. History is kept.`; }
+  else w.style.display='none';
+  openModal('del-cat-modal');
 }
 
-function openEditModal(name){
-  pendingEditName=name;document.getElementById('edit-name-input').value=name;
-  const currentCat=findExerciseCategory(name);
-  document.getElementById('edit-cat-select').innerHTML=Object.keys(exercises).map(cat=>`<option value="${cat}" ${cat===currentCat?'selected':''}>${cat}</option>`).join('');
-  document.getElementById('edit-modal').classList.add('open');
-  setTimeout(()=>document.getElementById('edit-name-input').focus(),50);
-}
-function confirmEdit(){
-  const newName=document.getElementById('edit-name-input').value.trim();
-  const newCat=document.getElementById('edit-cat-select').value;
-  if(!newName||!pendingEditName)return;
-  const oldCat=findExerciseCategory(pendingEditName);
-  if(oldCat){const idx=exercises[oldCat].indexOf(pendingEditName);if(idx!==-1){if(newCat!==oldCat){exercises[oldCat].splice(idx,1);if(!exercises[newCat].includes(newName))exercises[newCat].push(newName);}else exercises[oldCat][idx]=newName;}}
-  cloudHistory.forEach(e=>e.blocks.forEach(b=>b.exercises.forEach(ex=>{if(ex.name===pendingEditName)ex.name=newName;})));
-  if(selectedExercise===pendingEditName)selectedExercise=newName;
-  closeModal('edit-modal');pendingEditName=null;
-  renderExPicker();renderCategoryTabs();renderLookup();saveToCloud();
+function confirmDelCat(){
+  if(!delCatName) return;
+  delete EX[delCatName];
+  if(activeCat===delCatName) activeCat = Object.keys(EX)[0]||'';
+  closeModal('del-cat-modal'); delCatName=null;
+  renderCatTabs(); renderExChips(); save();
 }
 
-// ---- LOOKUP (no edit/delete buttons) ----
-function getAllExerciseData(){
-  const map={};
-  cloudHistory.forEach(e=>e.blocks.forEach(b=>b.exercises.forEach(ex=>{
-    if(!map[ex.name])map[ex.name]=[];
-    const valid=ex.sets.filter(s=>s.weight||s.reps);
-    if(valid.length)map[ex.name].push({date:e.fullDate,sets:valid});
+// Exercise manage modal
+function openMgEx(cat){
+  const list = EX[cat]||[];
+  document.getElementById('exm-list').innerHTML = list.length
+    ? list.map(ex => `<div class="exm-row">
+        <div style="flex:1;"><div class="exm-name">${ex}</div><div class="exm-cat">${cat}${sessCount(ex)>0?' · '+sessCount(ex)+' sessions':''}</div></div>
+        <button class="action-btn" onclick="openEditEx('${esc(ex)}');closeModal('mgex-modal')"><i class="ti ti-pencil"></i></button>
+        <button class="action-btn" onclick="openDelEx('${esc(ex)}');closeModal('mgex-modal')" style="color:#A32D2D;"><i class="ti ti-trash"></i></button>
+      </div>`).join('')
+    : '<div style="font-size:13px;color:var(--ts);text-align:center;padding:1rem;">No exercises yet.</div>';
+  openModal('mgex-modal');
+}
+
+function findCat(name){ return Object.keys(EX).find(cat => EX[cat].includes(name))||null; }
+function sessCount(name){ return history.filter(e => e.blocks.some(b => b.exercises.some(ex => ex.name===name))).length; }
+
+function openDelEx(name){
+  delExName = name;
+  const c = sessCount(name);
+  document.getElementById('del-ex-body').textContent = `Remove "${name}" from your exercise list?`;
+  const w = document.getElementById('del-ex-warn');
+  if(c>0){ w.style.display='block'; w.textContent=`Appears in ${c} saved workout${c!==1?'s':''}. History will be kept.`; }
+  else w.style.display='none';
+  openModal('del-ex-modal');
+}
+
+function confirmDelEx(){
+  if(!delExName) return;
+  for(const cat of Object.keys(EX)) EX[cat] = EX[cat].filter(e => e!==delExName);
+  closeModal('del-ex-modal'); delExName=null;
+  renderExChips(); renderCatTabs(); renderLookup(); save();
+}
+
+function openEditEx(name){
+  editExName = name;
+  document.getElementById('edit-ex-name').value = name;
+  const cc = findCat(name);
+  document.getElementById('edit-ex-cat').innerHTML = Object.keys(EX).map(cat =>
+    `<option value="${cat}" ${cat===cc?'selected':''}>${cat}</option>`
+  ).join('');
+  openModal('edit-ex-modal');
+  setTimeout(()=>document.getElementById('edit-ex-name').focus(), 50);
+}
+
+function confirmEditEx(){
+  const nn = document.getElementById('edit-ex-name').value.trim();
+  const nc = document.getElementById('edit-ex-cat').value;
+  if(!nn||!editExName) return;
+  const oc = findCat(editExName);
+  if(oc){
+    const idx = EX[oc].indexOf(editExName);
+    if(idx!==-1){
+      if(nc!==oc){ EX[oc].splice(idx,1); if(!EX[nc].includes(nn)) EX[nc].push(nn); }
+      else EX[oc][idx] = nn;
+    }
+  }
+  history.forEach(e => e.blocks.forEach(b => b.exercises.forEach(ex => { if(ex.name===editExName) ex.name=nn; })));
+  if(selEx===editExName) selEx=nn;
+  closeModal('edit-ex-modal'); editExName=null;
+  renderExChips(); renderCatTabs(); renderLookup(); save();
+}
+
+// Lookup tab
+function getAllData(){
+  const map = {};
+  history.forEach(e => e.blocks.forEach(b => b.exercises.forEach(ex => {
+    if(!map[ex.name]) map[ex.name]=[];
+    if(ex.dropSets){
+      ex.dropSets.forEach(ds => {
+        const v = ds.filter(d => d.w||d.r);
+        if(v.length) map[ex.name].push({date:e.date, sets:v.map(d=>({weight:d.w,reps:d.r}))});
+      });
+    } else {
+      const v = (ex.sets||[]).filter(s => s.w||s.r);
+      if(v.length) map[ex.name].push({date:e.date, sets:v.map(s=>({weight:s.w,reps:s.r}))});
+    }
   })));
   return map;
 }
 
 function renderLookup(){
-  const query=(document.getElementById('ex-search').value||'').toLowerCase();
-  const data=getAllExerciseData();
-  const names=Object.keys(data).filter(n=>n.toLowerCase().includes(query)).sort();
-  const el=document.getElementById('lookup-content');
-  if(!names.length){el.innerHTML=`<div class="empty-state"><i class="ti ti-barbell" style="font-size:32px;display:block;margin-bottom:8px" aria-hidden="true"></i>${Object.keys(data).length?'No matches':'Log some workouts first'}</div>`;return;}
-  if(!selectedExercise||!names.includes(selectedExercise))selectedExercise=names[0];
-  let prWeight=0,prReps=0;const sessions=data[selectedExercise]||[];
-  sessions.forEach(s=>s.sets.forEach(set=>{const w=parseFloat(set.weight)||0,r=parseFloat(set.reps)||0;if(w>prWeight||(w===prWeight&&r>prReps)){prWeight=w;prReps=r;}}));
-  const prSi=sessions.findIndex(ss=>ss.sets.some(x=>(parseFloat(x.weight)||0)===prWeight));
-  el.innerHTML=`
-    <div class="ex-list">${names.map(n=>`
-      <div class="ex-list-item ${n===selectedExercise?'active':''}" onclick="selectExercise('${n.replace(/'/g,"\\'")}') ">
-        <span class="ex-list-name">${n}</span>
-        <span class="ex-session-count">${data[n].length}×</span>
+  const q = (document.getElementById('ex-search').value||'').toLowerCase();
+  const data = getAllData();
+  const names = Object.keys(data).filter(n=>n.toLowerCase().includes(q)).sort();
+  const el = document.getElementById('lookup-content');
+  if(!names.length){
+    el.innerHTML = `<div class="empty"><i class="ti ti-barbell" style="font-size:32px;display:block;margin-bottom:8px"></i>${Object.keys(data).length?'No matches':'Log some workouts first'}</div>`;
+    return;
+  }
+  if(!selEx||!names.includes(selEx)) selEx=names[0];
+  let pw=0, pr=0;
+  const sessions = data[selEx]||[];
+  sessions.forEach(s => s.sets.forEach(set => {
+    const w=parseFloat(set.weight)||0, r=parseFloat(set.reps)||0;
+    if(w>pw||(w===pw&&r>pr)){ pw=w; pr=r; }
+  }));
+  const psi = sessions.findIndex(ss => ss.sets.some(x=>(parseFloat(x.weight)||0)===pw));
+  el.innerHTML = `
+    <div class="ex-list">${names.map(n => `
+      <div class="ex-item ${n===selEx?'active':''}" onclick="selExercise('${esc(n)}')">
+        <span class="ex-item-name">${n}</span>
+        <span class="ex-item-count">${data[n].length}×</span>
       </div>`).join('')}
     </div>
     <div class="ex-detail">
-      <div class="ex-detail-name">${selectedExercise}</div>
+      <div class="ex-detail-name">${selEx}</div>
       <div class="stat-row">
-        <div class="stat-pill"><div class="stat-pill-label">Best weight</div><div class="stat-pill-val">${prWeight?prWeight+' lbs':'—'}</div></div>
-        <div class="stat-pill"><div class="stat-pill-label">Sessions</div><div class="stat-pill-val">${sessions.length}</div></div>
-        <div class="stat-pill"><div class="stat-pill-label">Last weight</div><div class="stat-pill-val">${sessions.length?Math.max(...sessions[0].sets.map(s=>parseFloat(s.weight)||0))+' lbs':'—'}</div></div>
+        <div class="stat-pill"><div class="stat-lbl">Best weight</div><div class="stat-val">${pw?pw+' lbs':'—'}</div></div>
+        <div class="stat-pill"><div class="stat-lbl">Sessions</div><div class="stat-val">${sessions.length}</div></div>
+        <div class="stat-pill"><div class="stat-lbl">Last weight</div><div class="stat-val">${sessions.length?Math.max(...sessions[0].sets.map(s=>parseFloat(s.weight)||0))+' lbs':'—'}</div></div>
       </div>
-      ${sessions.map((session,si)=>`<div class="session-row"><div class="session-row-date">${session.date}</div><div class="session-sets-grid">${session.sets.map(s=>{const isPR=(parseFloat(s.weight)||0)===prWeight&&si===prSi;return `<span class="set-badge ${isPR?'pr':''}">${fmtWeight(s.weight)} × ${fmtReps(s.reps)} reps${isPR?' 🏆':''}</span>`;}).join('')}</div></div>`).join('')}
+      ${sessions.map((sess,si) => `<div class="sess-row">
+        <div class="sess-date">${sess.date}</div>
+        <div class="sess-grid">${sess.sets.map(s => {
+          const isPR = (parseFloat(s.weight)||0)===pw && si===psi;
+          return `<span class="set-badge ${isPR?'pr':''}">${fw(s.weight)} × ${fr(s.reps)} reps${isPR?' 🏆':''}</span>`;
+        }).join('')}</div>
+      </div>`).join('')}
     </div>`;
 }
-function selectExercise(name){selectedExercise=name;renderLookup();}
 
-// ---- HISTORY ----
+function selExercise(n){ selEx=n; renderLookup(); }
+
+// History tab
 function renderHistory(){
-  const el=document.getElementById('history-list');
-  if(!cloudHistory.length){el.innerHTML='<div class="empty-state"><i class="ti ti-history" style="font-size:32px;display:block;margin-bottom:8px" aria-hidden="true"></i>No workouts saved yet</div>';return;}
-  el.innerHTML=cloudHistory.map((entry,idx)=>`
-    <div class="history-entry">
-      <div class="history-header">
-        <div class="history-date">${entry.fullDate}</div>
-        ${entry.dayLabel?`<span class="history-day-tag" onclick="loadRepeatWorkout(${idx});switchTab('log')">${entry.dayLabel} <i class="ti ti-repeat" style="font-size:11px" aria-hidden="true"></i></span>`:''}
+  const el = document.getElementById('hist-list');
+  if(!history.length){
+    el.innerHTML = '<div class="empty"><i class="ti ti-history" style="font-size:32px;display:block;margin-bottom:8px"></i>No workouts saved yet</div>';
+    return;
+  }
+  el.innerHTML = history.map((entry, idx) => `
+    <div class="hist-entry">
+      <div class="hist-hdr">
+        <div class="hist-date">${entry.date}</div>
+        ${entry.label ? `<span class="hist-tag" onclick="repeatWorkout(${idx});switchTab('log')">${entry.label} <i class="ti ti-repeat" style="font-size:11px"></i></span>` : ''}
       </div>
-      ${entry.blocks.map(block=>{
-        if(block.type==='single'){const ex=block.exercises[0];const lines=ex.sets.map((s,i)=>`Set ${i+1}: ${fmtWeight(s.weight)} × ${fmtReps(s.reps)} reps`).join('<br>');return `<div class="history-block"><div class="history-ex-name">${ex.name}</div><div class="history-set-line">${lines}</div></div>`;}
-        const [ex1,ex2]=block.exercises;const maxSets=Math.max(ex1.sets.length,ex2.sets.length);
-        const lines=Array.from({length:maxSets},(_,i)=>{const s1=ex1.sets[i],s2=ex2.sets[i];return `Set ${i+1}: ${s1?`${fmtWeight(s1.weight)} × ${fmtReps(s1.reps)} reps`:'—'} / ${s2?`${fmtWeight(s2.weight)} × ${fmtReps(s2.reps)} reps`:'—'}`;}).join('<br>');
-        return `<div class="history-block"><div class="history-ex-name">${ex1.name} / ${ex2.name}</div><div class="history-set-line">${lines}</div></div>`;
+      ${entry.blocks.map(b => {
+        if(b.type==='single'){
+          const ex=b.exercises[0];
+          const lines = ex.sets.map((s,i) => `Set ${i+1}: ${fw(s.w)} × ${fr(s.r)} reps`).join('<br>');
+          return `<div class="hist-block"><div class="hist-name">${ex.name}</div><div class="hist-sets">${lines}</div></div>`;
+        }
+        if(b.type==='superset'){
+          const [e1,e2]=b.exercises, ms=Math.max(e1.sets.length,e2.sets.length);
+          const lines = Array.from({length:ms},(_,i)=>{
+            const s1=e1.sets[i],s2=e2.sets[i];
+            return `Set ${i+1}: ${s1?`${fw(s1.w)} × ${fr(s1.r)} reps`:'—'} / ${s2?`${fw(s2.w)} × ${fr(s2.r)} reps`:'—'}`;
+          }).join('<br>');
+          return `<div class="hist-block"><div class="hist-name">${e1.name} / ${e2.name}</div><div class="hist-sets">${lines}</div></div>`;
+        }
+        if(b.type==='dropset'){
+          const ex=b.exercises[0];
+          const lines = ex.dropSets.map((drops,i) =>
+            `Set ${i+1}: `+drops.map(d=>`${fw(d.w)} × ${fr(d.r)} reps`).join(' → ')
+          ).join('<br>');
+          return `<div class="hist-block"><div class="hist-name">${ex.name} <span style="font-size:11px;background:#FEF3E2;color:#A05C00;padding:2px 7px;border-radius:20px;font-weight:500;">↓ Dropset</span></div><div class="hist-sets">${lines}</div></div>`;
+        }
       }).join('')}
     </div>`).join('');
 }
 
-function loadRepeatWorkout(idx){
-  const entry=cloudHistory[idx];
-  blocks=entry.blocks.map(block=>({type:block.type,exercises:block.exercises.map(ex=>({name:ex.name,sets:ex.sets.map(()=>({weight:'',reps:''}))}))}));
-  if(entry.dayLabel)document.getElementById('day-label-input').value=entry.dayLabel;
-  renderBlocks();renderExPicker();
+function repeatWorkout(idx){
+  const entry = history[idx];
+  blocks = entry.blocks.map(b => {
+    if(b.type==='dropset'){
+      return {type:'dropset', exercises:[{name:b.exercises[0].name, dropSets:b.exercises[0].dropSets.map(ds=>ds.map(()=>({w:'',r:''})))}]};
+    }
+    return {type:b.type, exercises:b.exercises.map(ex=>({name:ex.name, sets:(ex.sets||[]).map(()=>({w:'',r:''}))}))};
+  });
+  if(entry.label) document.getElementById('day-inp').value = entry.label;
+  renderBlocks(); renderExChips();
 }
 
-function closeModal(id){document.getElementById(id).classList.remove('open');}
-document.querySelectorAll('.modal-backdrop').forEach(el=>{el.addEventListener('click',e=>{if(e.target===el)el.classList.remove('open');});});
+function openModal(id){ document.getElementById(id).classList.add('open'); }
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-bg').forEach(el => {
+  el.addEventListener('click', e => { if(e.target===el) el.classList.remove('open'); });
+});
 
 function switchTab(tab){
-  ['log','lookup','history'].forEach(t=>document.getElementById('tab-'+t).style.display=t===tab?'':'none');
-  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',['log','lookup','history'][i]===tab));
-  if(tab==='lookup')renderLookup();
-  if(tab==='history')renderHistory();
+  ['log','lookup','history'].forEach(t => document.getElementById('tab-'+t).style.display = t===tab?'':'none');
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', ['log','lookup','history'][i]===tab));
+  if(tab==='lookup') renderLookup();
+  if(tab==='history') renderHistory();
 }
 
 init();
