@@ -77,7 +77,11 @@ input,select,button { font-family: var(--font); }
 .mode-row { display: flex; gap: 8px; flex-wrap: wrap; }
 .mode-btn { font-size: 13px; padding: 9px 14px; border-radius: var(--r1); cursor: pointer; background: var(--bp); color: var(--ts); border: 1.5px solid var(--bo3); font-weight: 400; }
 .mode-btn.active { color: var(--tp); font-weight: 500; outline: 3px solid #1a1a1a; outline-offset: -1px; border-color: transparent; }
-@media (prefers-color-scheme: dark) { .mode-btn.active, .cat-tab.active { outline-color: #f0f0f0; } }
+@media (prefers-color-scheme: dark) { .mode-btn.active, .cat-tab.active, .ex-item.active { outline-color: #f0f0f0; } }
+body.dark-mode { --tp: #f0f0f0; --ts: #999; --bp: #1a1a1a; --bs: #252525; --bo1: #555; --bo2: #444; --bo3: #333; }
+body.dark-mode .mode-btn.active, body.dark-mode .cat-tab.active, body.dark-mode .ex-item.active { outline-color: #f0f0f0; }
+.theme-btn { position: fixed; top: 1rem; right: 1rem; z-index: 50; background: var(--bp); border: 0.5px solid var(--bo3); border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 17px; color: var(--ts); box-shadow: 0 1px 4px rgba(0,0,0,.12); }
+.theme-btn:active { opacity: .7; }
 .cat-row { display: flex; align-items: center; gap: 6px; }
 .cat-tabs { display: flex; gap: 6px; flex-wrap: wrap; flex: 1; }
 .cat-tab { font-size: 12px; padding: 6px 12px; border-radius: 20px; cursor: pointer; background: var(--bp); color: var(--ts); border: 1.5px solid var(--bo3); font-weight: 400; }
@@ -119,10 +123,10 @@ input,select,button { font-family: var(--font); }
 .search-inp { width: 100%; padding: 10px 12px 10px 36px; font-size: 15px; border: 0.5px solid var(--bo3); border-radius: var(--r2); background: var(--bs); color: var(--tp); }
 .search-inp:focus { outline: none; }
 .ex-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
-.ex-item { display: flex; align-items: center; padding: 10px 12px; background: var(--bp); border: 0.5px solid var(--bo3); border-radius: var(--r1); cursor: pointer; gap: 8px; }
-.ex-item.active { border-color: #AFA9EC; background: #EEEDFE; }
+.ex-item { display: flex; align-items: center; padding: 10px 12px; background: var(--bp); border: 1.5px solid var(--bo3); border-radius: var(--r1); cursor: pointer; gap: 8px; }
+.ex-item.active { outline: 3px solid #1a1a1a; outline-offset: -1px; border-color: transparent; }
 .ex-item-name { font-size: 14px; color: var(--tp); flex: 1; }
-.ex-item.active .ex-item-name { color: #3C3489; font-weight: 500; }
+.ex-item.active .ex-item-name { color: var(--tp); font-weight: 500; }
 .ex-item-count { font-size: 12px; color: var(--ts); }
 .ex-detail { background: var(--bp); border: 0.5px solid var(--bo3); border-radius: var(--r2); padding: 1.25rem; }
 .ex-detail-name { font-size: 18px; font-weight: 500; color: var(--tp); margin-bottom: 12px; }
@@ -162,6 +166,7 @@ input,select,button { font-family: var(--font); }
 </style>
 </head>
 <body>
+<button class="theme-btn" id="theme-btn" onclick="toggleTheme()" aria-label="Toggle dark mode"><i class="ti ti-moon" id="theme-icon"></i></button>
 <div class="app">
   <div class="date" id="today-date"></div>
   <div class="title" id="greeting"></div>
@@ -355,7 +360,23 @@ function renderDayChips(){
   ).join('');
 }
 
+function toggleTheme(){
+  const dark = document.body.classList.toggle('dark-mode');
+  document.getElementById('theme-icon').className = dark ? 'ti ti-sun' : 'ti ti-moon';
+  localStorage.setItem('wl_theme', dark ? 'dark' : 'light');
+}
+
+function initTheme(){
+  const saved = localStorage.getItem('wl_theme');
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  if(saved === 'dark' || (!saved && prefersDark)){
+    document.body.classList.add('dark-mode');
+    document.getElementById('theme-icon').className = 'ti ti-sun';
+  }
+}
+
 function init(){
+  initTheme();
   const d = new Date();
   document.getElementById('today-date').textContent = d.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
   load();
