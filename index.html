@@ -256,6 +256,28 @@ body.dark-mode .mode-btn.active, body.dark-mode .cat-tab.active, body.dark-mode 
 .user-profile-name { font-size:18px; font-weight:500; color:var(--tp); }
 .user-profile-username { font-size:13px; color:var(--ts); }
 .feed-link { text-decoration:underline; text-underline-offset:2px; text-decoration-color:var(--bo2); cursor:pointer; }
+
+.week-summary { background:var(--bp); border:0.5px solid var(--bo3); border-radius:var(--r2); padding:1rem; margin-bottom:14px; }
+.week-summary-title { font-size:11px; font-weight:500; color:var(--ts); text-transform:uppercase; letter-spacing:.05em; margin-bottom:10px; }
+.week-stats { display:flex; gap:8px; margin-bottom:8px; }
+.week-stat { flex:1; background:var(--bs); border-radius:var(--r1); padding:8px 10px; }
+.week-stat-val { font-size:18px; font-weight:600; color:var(--tp); }
+.week-stat-lbl { font-size:11px; color:var(--ts); margin-top:2px; }
+
+.template-chip { font-size:13px; padding:6px 12px; border:0.5px solid var(--bo3); border-radius:20px; cursor:pointer; background:var(--bp); color:var(--tp); }
+.template-chip:active { opacity:.8; }
+.template-row { display:flex; align-items:center; padding:10px 0; border-bottom:0.5px solid var(--bo3); }
+.template-name { flex:1; font-size:14px; font-weight:500; color:var(--tp); }
+.template-meta { font-size:12px; color:var(--ts); }
+
+.hist-entry { position:relative; overflow:hidden; }
+.hist-swipe-bg { position:absolute; right:0; top:0; bottom:0; width:80px; background:#A32D2D; display:flex; align-items:center; justify-content:center; color:#fff; font-size:22px; pointer-events:none; opacity:0; transition:opacity .1s; }
+.hist-inner { background:var(--bp); border-radius:var(--r2); position:relative; transition:transform .15s; will-change:transform; }
+
+.drag-handle { cursor:grab; color:var(--ts); padding:0 8px 0 2px; font-size:18px; flex-shrink:0; touch-action:none; user-select:none; }
+.drag-handle:active { cursor:grabbing; }
+.block-dragging { opacity:.4; }
+.block-drag-over { outline:2px dashed var(--bo1); outline-offset:2px; }
 </style>
 </head>
 <body>
@@ -314,6 +336,8 @@ body.dark-mode .mode-btn.active, body.dark-mode .cat-tab.active, body.dark-mode 
         </div>
       </div>
     </div>
+    <div id="week-summary-slot"></div>
+    <div id="templates-bar"></div>
     <div class="save-area">
       <div class="save-sec">
         <div class="sec-lbl">Workout name <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:11px;color:#E24B4A;">(required)</span></div>
@@ -588,6 +612,7 @@ async function onAuthSuccess(user){
   currentProfile = profile;
   updateGreeting();
   await loadFromSupabase();
+  await loadTemplates();
   renderDayChips();
 }
 
@@ -1349,6 +1374,7 @@ function renderBlocks(){
       </div>`;
     }
   }).join('');
+  setTimeout(initDragReorder, 0);
 }
 
 function saveWorkout(){
@@ -1367,7 +1393,7 @@ function saveWorkout(){
   blocks=[]; renderBlocks(); renderExSelect(); closePicker();
   document.getElementById('day-inp').value = '';
   if(document.getElementById('day-desc')) document.getElementById('day-desc').value = '';
-  showMsg('Saving...'); saveToSupabase(history[0]); renderDayChips(); showMsg('Workout saved!');
+  showMsg('Saving...'); saveToSupabase(history[0]); renderDayChips(); renderWeeklySummary(); showMsg('Workout saved!');
 }
 
 function showMsg(m){
@@ -1582,6 +1608,7 @@ function renderLookup(){
         <div class="stat-pill"><div class="stat-lbl">Last weight</div><div class="stat-val">${sessions.length?Math.max(...sessions[0].sets.map(s=>parseFloat(s.weight)||0))+' lbs':'—'}</div></div>
       </div>
       ${pbBlock}
+      ${renderProgressChart(sessions)}
       ${sessions.map((sess,si) => `<div class="sess-row">
         <div class="sess-date">${sess.date}${si===pbIdx?' <span style="font-size:11px;color:#3B6D11;margin-left:6px;">🏆 PB</span>':''}</div>
         <div class="sess-grid">${sess.sets.map((s,j) =>
@@ -1634,7 +1661,8 @@ function renderHistory(){
     }).join('');
 
     return `<div class="hist-entry" id="hist-${idx}">
-      <div class="hist-hdr" onclick="toggleHistEntry(${idx})">
+      <div class="hist-swipe-bg"><i class="ti ti-trash"></i></div>
+      <div class="hist-inner"><div class="hist-hdr" onclick="toggleHistEntry(${idx})">
         <div class="hist-hdr-left">
           <div class="hist-date">${entry.date}</div>
           <div class="hist-label-row">
@@ -1651,9 +1679,10 @@ function renderHistory(){
       <div class="hist-body">
         ${entry.desc ? `<div style="font-size:13px;color:var(--ts);margin-bottom:10px;padding-bottom:10px;border-bottom:0.5px solid var(--bo3);">${entry.desc}</div>` : ''}
         ${bodyBlocks}
-      </div>
+      </div></div>
     </div>`;
   }).join('');
+  setTimeout(initSwipeToDelete, 0);
 }
 
 function repeatWorkout(idx){
@@ -2027,11 +2056,260 @@ window.addEventListener('online', async function(){
   }
 });
 
+var _templates = [];
+
+async function loadTemplates(){
+  if(!currentUser) return;
+  var res = await sb.from('workout_templates').select('*').eq('user_id', currentUser.id).order('created_at',{ascending:false});
+  _templates = res.data || [];
+  renderTemplatesBar();
+}
+
+function renderTemplatesBar(){
+  var bar = document.getElementById('templates-bar');
+  if(!bar) return;
+  if(!_templates.length){ bar.innerHTML=''; return; }
+  bar.innerHTML = '<div style="margin-bottom:10px;">' +
+    '<div class="sec-lbl" style="margin-bottom:6px;">Templates</div>' +
+    '<div style="display:flex;gap:6px;flex-wrap:wrap;">' +
+    _templates.map(function(t,i){
+      return '<button class="template-chip" onclick="loadTemplate('+i+')">'+t.name+'</button>';
+    }).join('') +
+    '<button class="template-chip" onclick="openTemplatesModal()" style="padding:6px 10px;"><i class="ti ti-settings"></i></button>' +
+    '</div></div>';
+}
+
+function openTemplatesModal(){ openModal('templates-modal'); renderTemplatesList(); }
+
+function renderTemplatesList(){
+  var list = document.getElementById('templates-list');
+  if(!_templates.length){
+    list.innerHTML = '<div style="font-size:13px;color:var(--ts);text-align:center;padding:1rem;">No templates yet.</div>';
+    return;
+  }
+  list.innerHTML = _templates.map(function(t,i){
+    var exNames = t.blocks.flatMap(function(b){return b.exercises.map(function(e){return e.name;});}).join(', ');
+    return '<div class="template-row">' +
+      '<div><div class="template-name">'+t.name+'</div><div class="template-meta">'+exNames+'</div></div>' +
+      '<button class="icon-btn" data-tid="'+t.id+'" onclick="deleteTemplate(this.dataset.tid)" style="color:#E24B4A;border-color:#E24B4A;"><i class="ti ti-trash"></i></button>' +
+    '</div>';
+  }).join('');
+}
+
+function loadTemplate(i){
+  var t = _templates[i];
+  if(!t) return;
+  blocks = t.blocks.map(function(b){
+    if(b.type==='dropset') return {type:'dropset',exercises:[{name:b.exercises[0].name,dropSets:b.exercises[0].dropSets.map(function(ds){return ds.map(function(){return {w:'',r:''};});})}]};
+    return {type:b.type,exercises:b.exercises.map(function(ex){return {name:ex.name,sets:(ex.sets||[]).map(function(){return {w:'',r:''};})};})};
+  });
+  document.getElementById('day-inp').value = t.name;
+  renderBlocks(); renderExSelect();
+}
+
+function saveCurrentAsTemplate(){
+  if(!blocks.length){ alert('Add exercises first.'); return; }
+  closeModal('templates-modal');
+  document.getElementById('template-name-inp').value = document.getElementById('day-inp').value || '';
+  openModal('template-name-modal');
+  setTimeout(function(){ document.getElementById('template-name-inp').focus(); }, 50);
+}
+
+async function confirmSaveTemplate(){
+  var name = document.getElementById('template-name-inp').value.trim();
+  if(!name){ alert('Please enter a name.'); return; }
+  var res = await sb.from('workout_templates').insert({
+    user_id: currentUser.id, name: name, blocks: JSON.parse(JSON.stringify(blocks))
+  }).select().single();
+  if(res.data) _templates.unshift(res.data);
+  closeModal('template-name-modal');
+  renderTemplatesBar();
+}
+
+async function deleteTemplate(id){
+  await sb.from('workout_templates').delete().eq('id', id);
+  _templates = _templates.filter(function(t){ return t.id !== id; });
+  renderTemplatesList();
+  renderTemplatesBar();
+}
+
+
+function renderProgressChart(sessions){
+  if(!sessions || sessions.length < 2) return '';
+  const pts = sessions.slice().reverse();
+  const weights = pts.map(function(s){ return Math.max.apply(null, s.sets.map(function(x){ return parseFloat(x.weight)||0; })); });
+  const max = Math.max.apply(null, weights);
+  const min = Math.min.apply(null, weights);
+  const range = max - min || 1;
+  const W = 300, H = 80, pad = 8;
+  const xs = weights.map(function(_,i){ return pad + (i/(weights.length-1))*(W-pad*2); });
+  const ys = weights.map(function(w){ return pad + (1-(w-min)/range)*(H-pad*2); });
+  const path = xs.map(function(x,i){ return (i===0?'M':'L')+x.toFixed(1)+','+ys[i].toFixed(1); }).join(' ');
+  const dots = xs.map(function(x,i){ return '<circle cx="'+x.toFixed(1)+'" cy="'+ys[i].toFixed(1)+'" r="3" fill="var(--tp)"/>'; }).join('');
+  return '<div style="margin-bottom:1.25rem;">' +
+    '<div style="font-size:11px;color:var(--ts);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">Progress</div>' +
+    '<svg width="100%" viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg" style="display:block;">' +
+      '<path d="'+path+'" fill="none" stroke="var(--tp)" stroke-width="2" stroke-linejoin="round"/>' +
+      dots +
+    '</svg>' +
+    '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--ts);margin-top:2px;">' +
+      '<span>'+pts[0].date+'</span>' +
+      '<span>'+max+' lbs peak</span>' +
+      '<span>'+pts[pts.length-1].date+'</span>' +
+    '</div>' +
+  '</div>';
+}
+
+
+var _dragSrcIdx = null;
+
+function initDragReorder(){
+  var list = document.getElementById('blocks-list');
+  if(!list) return;
+  // Touch-based drag for mobile
+  list.addEventListener('touchstart', function(e){
+    var handle = e.target.closest('.drag-handle');
+    if(!handle) return;
+    var card = handle.closest('[id^="block-"]');
+    if(!card) return;
+    _dragSrcIdx = parseInt(card.id.replace('block-',''));
+    card.classList.add('block-dragging');
+  }, {passive:true});
+  list.addEventListener('touchend', function(e){
+    var dragging = list.querySelector('.block-dragging');
+    if(dragging) dragging.classList.remove('block-dragging');
+    _dragSrcIdx = null;
+  }, {passive:true});
+  // Mouse drag for desktop
+  list.querySelectorAll('.drag-handle').forEach(function(handle){
+    var card = handle.closest('[id^="block-"]');
+    if(!card) return;
+    var idx = parseInt(card.id.replace('block-',''));
+    card.setAttribute('draggable','false');
+    handle.addEventListener('mousedown', function(){ card.setAttribute('draggable','true'); });
+    handle.addEventListener('touchstart', function(){ card.setAttribute('draggable','true'); }, {passive:true});
+    card.addEventListener('dragstart', function(e){
+      _dragSrcIdx = idx;
+      card.classList.add('block-dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    card.addEventListener('dragend', function(){
+      card.classList.remove('block-dragging');
+      card.setAttribute('draggable','false');
+      list.querySelectorAll('.block-drag-over').forEach(function(el){ el.classList.remove('block-drag-over'); });
+    });
+    card.addEventListener('dragover', function(e){
+      e.preventDefault();
+      card.classList.add('block-drag-over');
+    });
+    card.addEventListener('dragleave', function(){
+      card.classList.remove('block-drag-over');
+    });
+    card.addEventListener('drop', function(e){
+      e.preventDefault();
+      card.classList.remove('block-drag-over');
+      if(_dragSrcIdx === null || _dragSrcIdx === idx) return;
+      var moved = blocks.splice(_dragSrcIdx, 1)[0];
+      blocks.splice(idx, 0, moved);
+      _dragSrcIdx = null;
+      renderBlocks();
+    });
+  });
+}
+
+
+function initSwipeToDelete(){
+  var list = document.getElementById('hist-list');
+  if(!list || list._swipeInit) return;
+  list._swipeInit = true;
+  var startX = 0, startY = 0, moving = false, curEl = null, curIdx = -1;
+  list.addEventListener('touchstart', function(e){
+    var entry = e.target.closest('.hist-entry');
+    if(!entry) return;
+    curEl = entry;
+    curIdx = parseInt(entry.id.replace('hist-',''));
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+    moving = false;
+  }, {passive:true});
+  list.addEventListener('touchmove', function(e){
+    if(!curEl) return;
+    var dx = e.touches[0].clientX - startX;
+    var dy = Math.abs(e.touches[0].clientY - startY);
+    if(!moving && dy > Math.abs(dx)){ curEl=null; return; }
+    moving = true;
+    if(dx < 0){
+      var clamped = Math.max(dx, -80);
+      var inner = curEl.querySelector('.hist-inner');
+      var bg = curEl.querySelector('.hist-swipe-bg');
+      if(inner) inner.style.transform = 'translateX('+clamped+'px)';
+      if(bg) bg.style.opacity = Math.min(1, Math.abs(clamped)/80);
+    }
+  }, {passive:true});
+  list.addEventListener('touchend', function(e){
+    if(!curEl) return;
+    var dx = e.changedTouches[0].clientX - startX;
+    var inner = curEl.querySelector('.hist-inner');
+    var bg = curEl.querySelector('.hist-swipe-bg');
+    if(dx < -60){
+      openDeleteWorkout(curIdx);
+    }
+    if(inner){ inner.style.transition='transform .2s'; inner.style.transform=''; setTimeout(function(){ if(inner) inner.style.transition=''; },200); }
+    if(bg) bg.style.opacity = '0';
+    curEl = null;
+  }, {passive:true});
+}
+
+
+function renderWeeklySummary(){
+  const slot = document.getElementById('week-summary-slot');
+  if(!slot) return;
+  if(!history.length){ slot.innerHTML=''; return; }
+  const now = new Date();
+  const weekStart = new Date(now);
+  weekStart.setDate(now.getDate() - now.getDay());
+  weekStart.setHours(0,0,0,0);
+  const weekWorkouts = history.filter(e => new Date(e.ts) >= weekStart);
+  if(!weekWorkouts.length){ slot.innerHTML=''; return; }
+  let totalSets = 0;
+  weekWorkouts.forEach(e => e.blocks.forEach(b => b.exercises.forEach(ex => {
+    totalSets += ex.dropSets ? ex.dropSets.length : (ex.sets||[]).length;
+  })));
+  const dayCounts = {};
+  weekWorkouts.forEach(e => {
+    const d = new Date(e.ts).toLocaleDateString('en-US',{weekday:'short'});
+    dayCounts[d] = (dayCounts[d]||0) + 1;
+  });
+  const topDay = Object.entries(dayCounts).sort((a,b)=>b[1]-a[1])[0];
+  const prMap = {};
+  weekWorkouts.forEach(e => e.blocks.forEach(b => b.exercises.forEach(ex => {
+    const sets = ex.dropSets ? ex.dropSets.flat() : (ex.sets||[]);
+    sets.forEach(s => { const w=parseFloat(s.w)||0; if(w>(prMap[ex.name]||0)) prMap[ex.name]=w; });
+  })));
+  const prevBest = {};
+  history.filter(e => new Date(e.ts) < weekStart).forEach(e => e.blocks.forEach(b => b.exercises.forEach(ex => {
+    const sets = ex.dropSets ? ex.dropSets.flat() : (ex.sets||[]);
+    sets.forEach(s => { const w=parseFloat(s.w)||0; if(w>(prevBest[ex.name]||0)) prevBest[ex.name]=w; });
+  })));
+  const newPRs = Object.keys(prMap).filter(n => prMap[n] > (prevBest[n]||0));
+  slot.innerHTML = '<div class="week-summary">' +
+    '<div class="week-summary-title">This week</div>' +
+    '<div class="week-stats">' +
+      '<div class="week-stat"><div class="week-stat-val">'+weekWorkouts.length+'</div><div class="week-stat-lbl">Workouts</div></div>' +
+      '<div class="week-stat"><div class="week-stat-val">'+totalSets+'</div><div class="week-stat-lbl">Sets</div></div>' +
+      '<div class="week-stat"><div class="week-stat-val">'+(topDay?topDay[0]:'—')+'</div><div class="week-stat-lbl">Top day</div></div>' +
+      '<div class="week-stat"><div class="week-stat-val">'+newPRs.length+'</div><div class="week-stat-lbl">PRs</div></div>' +
+    '</div>' +
+    (newPRs.length ? '<div style="font-size:13px;color:var(--ts);">🏆 ' + newPRs.join(', ') + '</div>' : '') +
+  '</div>';
+}
+
+
 function switchTab(tab){
   ['log','lookup','history','friends'].forEach(t => document.getElementById('tab-'+t).style.display = t===tab?'':'none');
   document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', ['log','lookup','history','friends'][i]===tab));
   if(tab==='lookup') renderLookup();
-  if(tab==='history') renderHistory();
+  if(tab==='history'){ renderHistory(); renderWeeklySummary(); }
   if(tab==='friends') switchFriendsSub('feed');
 }
 
@@ -2086,6 +2364,25 @@ init();
     <button class="icon-btn" onclick="closeModal('likes-modal')"><i class="ti ti-x"></i></button>
   </div>
   <div id="likes-list" style="max-height:60vh;overflow-y:auto;"></div>
+</div></div>
+
+<div class="modal-bg" id="templates-modal"><div class="modal">
+  <div class="modal-title">Templates</div>
+  <div id="templates-list" style="margin-bottom:1rem;"></div>
+  <button class="save-btn" style="font-size:14px;padding:10px;" onclick="saveCurrentAsTemplate()">
+    <i class="ti ti-bookmark-plus"></i> Save current as template
+  </button>
+  <div class="modal-actions" style="margin-top:10px;">
+    <button class="modal-btn" onclick="closeModal('templates-modal')">Close</button>
+  </div>
+</div></div>
+<div class="modal-bg" id="template-name-modal"><div class="modal">
+  <div class="modal-title">Name this template</div>
+  <input type="text" class="modal-inp" id="template-name-inp" placeholder="e.g. Push Day, Chest/Tri...">
+  <div class="modal-actions">
+    <button class="modal-btn" onclick="closeModal('template-name-modal')">Cancel</button>
+    <button class="modal-btn primary" onclick="confirmSaveTemplate()">Save</button>
+  </div>
 </div></div>
 </body>
 </html>
