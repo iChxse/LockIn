@@ -3,10 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#8b5cf6">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Workout Log">
-<title>Workout Log</title>
+<meta name="apple-mobile-web-app-title" content="Lock In.">
+<title>Lock In.</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -398,14 +400,14 @@ body.dark-mode .mode-btn.active, body.dark-mode .cat-tab.active, body.dark-mode 
 <!-- Auth screen -->
 <div class="auth-screen" id="auth-screen">
   <div class="auth-box">
-    <div class="auth-logo">💪 Workout Log</div>
-    <div class="auth-sub">Track your gains, share your progress</div>
+    <div class="auth-logo">💪 Lock In.</div>
+    <div class="auth-sub">Track your gains, share your progress.</div>
     <div class="auth-tabs">
       <button class="auth-tab active" onclick="showAuthTab('login')">Sign in</button>
       <button class="auth-tab" onclick="showAuthTab('signup')">Create account</button>
     </div>
     <div id="auth-login">
-      <div class="auth-field"><label>Email or username</label><input type="text" id="login-email" placeholder="you@example.com or @username" autocomplete="email"></div>
+      <div class="auth-field"><label>Username/Email</label><input type="text" id="login-email" placeholder="username or you@example.com" autocomplete="email"></div>
       <div class="auth-field"><label>Password</label><input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password"></div>
       <button class="auth-btn" onclick="doLogin()">Sign in</button>
       <button class="auth-btn" onclick="doForgotPassword()" style="background:none;color:var(--ts);border:none;font-size:13px;margin-top:8px;">Forgot password?</button>
