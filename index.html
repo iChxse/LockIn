@@ -28,7 +28,7 @@ input,select,button { font-family: var(--font); }
 .app { max-width: 480px; margin: 0 auto; padding: 1rem 1rem 90px; min-height: 100vh; }
 .date { font-size: 13px; color: var(--ts); }
 .title { font-size: 22px; font-weight: 500; color: var(--tp); }
-.sync-bar { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ts); margin-top: 4px; margin-bottom: 1.25rem; }
+.sync-bar { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ts); margin-top: 4px; margin-bottom: 0; padding-bottom: 1.25rem; border-bottom: 0.5px solid var(--bo3); }
 .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: #97C459; flex-shrink: 0; }
 .sync-dot.saving { background: #EF9F27; }
 .sync-dot.error { background: #E24B4A; }
@@ -350,6 +350,11 @@ body.dark-mode .mode-btn.active, body.dark-mode .cat-tab.active, body.dark-mode 
   </div>
   <div id="tab-profile" style="display:none;"></div>
 </div>
+
+<!-- Add friends button — fixed top right, shown only on activity tab -->
+<button id="add-friends-btn" onclick="openManageFriendsModal()" style="display:none;position:fixed;top:1rem;right:1rem;z-index:50;background:var(--bp);border:0.5px solid var(--bo3);border-radius:var(--r1);cursor:pointer;color:var(--ts);font-size:13px;padding:5px 10px;display:flex;align-items:center;gap:5px;box-shadow:0 1px 4px rgba(0,0,0,.12);">
+  <i class="ti ti-user-plus"></i> Friends
+</button>
 
 <!-- iOS-style bottom tab bar -->
 <div class="bottom-bar">
@@ -744,9 +749,36 @@ async function loadProfileTabFriends(workouts, userId){
     .eq('status','accepted');
   const friendships = fRes.data||[];
   if(!friendships.length){body.innerHTML='<div class="empty" style="padding:2rem 0;"><i class="ti ti-users" style="font-size:28px;display:block;margin-bottom:8px;"></i>No friends yet</div>';return;}
-  const upmFriends = friendships.map(function(f){var p=f.requester_id===userId?f.addressee:f.requester;return {id:String(p.id),name:p.name,username:p.username,avatar_url:p.avatar_url};});
+
+  const upmFriends = friendships.map(function(f){
+    var p = f.requester_id===userId ? f.addressee : f.requester;
+    return {id:String(p.id), name:p.name, username:p.username, avatar_url:p.avatar_url};
+  });
+  const friendIdSet = new Set(upmFriends.map(function(f){return f.id;}));
+  const allIds = [userId].concat(upmFriends.map(function(f){return f.id;}));
+
+  // Fetch all workouts with tagged data involving userId or their friends
+  const tagRes = await sb.from('workouts').select('user_id,tagged').in('user_id', allIds).not('tagged','is',null);
+  const taggedWkts = tagRes.data || [];
+
   const togetherMap = {};
-  (workouts||[]).forEach(function(w){if(!w.tagged)return;w.tagged.forEach(function(t){if(String(t.id)!==userId)togetherMap[String(t.id)]=(togetherMap[String(t.id)]||0)+1;});});
+  taggedWkts.forEach(function(w){
+    if(!w.tagged || !Array.isArray(w.tagged)) return;
+    const ownerId = String(w.user_id);
+    w.tagged.forEach(function(t){
+      const taggedId = String(t.id);
+      if(ownerId === taggedId) return;
+      // Case 1: userId owns it and tagged a friend
+      if(ownerId === userId && friendIdSet.has(taggedId)){
+        togetherMap[taggedId] = (togetherMap[taggedId]||0) + 1;
+      }
+      // Case 2: a friend owns it and tagged userId
+      if(taggedId === userId && friendIdSet.has(ownerId)){
+        togetherMap[ownerId] = (togetherMap[ownerId]||0) + 1;
+      }
+    });
+  });
+
   body.innerHTML = upmFriends.map(function(friend){
     var together=togetherMap[friend.id]||0;
     var uname=friend.username?'<div style="font-size:12px;color:var(--ts);">@'+friend.username+'</div>':'';
@@ -900,7 +932,7 @@ function switchFriendsSub(sub){ renderFeed(); }
 async function renderFeed(){
   const el = document.getElementById('friends-feed-content');
   if(!currentUser){ el.innerHTML='<div class="empty">Sign in to see activity.</div>'; return; }
-  el.innerHTML = '<div style="display:flex;justify-content:flex-end;margin-bottom:1rem;"><button class="icon-btn" onclick="openManageFriendsModal()" style="font-size:13px;padding:5px 12px;"><i class="ti ti-user-plus"></i> Add friends</button></div><div style="color:var(--ts);font-size:13px;padding:.5rem 0;">Loading...</div>';
+  el.innerHTML = '<div style="color:var(--ts);font-size:13px;padding:1rem 0;">Loading...</div>';
 
   const { data: friendships } = await sb.from('friendships')
     .select('requester_id,addressee_id')
@@ -916,10 +948,8 @@ async function renderFeed(){
     .order('ts', {ascending:false})
     .limit(40);
 
-  const addFriendsBtn = '<div style="display:flex;justify-content:flex-end;margin-bottom:1rem;"><button class="icon-btn" onclick="openManageFriendsModal()" style="font-size:13px;padding:5px 12px;"><i class="ti ti-user-plus"></i> Add friends</button></div>';
-
   if(!workouts || !workouts.length){
-    el.innerHTML = addFriendsBtn + '<div class="empty"><i class="ti ti-activity" style="font-size:32px;display:block;margin-bottom:8px"></i>No activity yet — workouts from you and your friends will appear here</div>';
+    el.innerHTML = '<div class="empty"><i class="ti ti-activity" style="font-size:32px;display:block;margin-bottom:8px"></i>No activity yet — workouts from you and your friends will appear here</div>';
     return;
   }
 
@@ -933,7 +963,7 @@ async function renderFeed(){
     window._feedLikeCounts[w.id] = (allLikes||[]).filter(function(l){return l.workout_id===w.id;}).length;
   });
 
-  el.innerHTML = addFriendsBtn + workouts.map(function(w, i){
+  el.innerHTML = workouts.map(function(w, i){
     const isMe = w.user_id === currentUser.id;
     const pname = (w.profile && w.profile.name) ? w.profile.name : 'Unknown';
     const initial = pname.charAt(0).toUpperCase();
@@ -976,10 +1006,11 @@ async function renderFeed(){
     const byLine = isMe ? 'You completed a workout'+taggedStr : '<span class="feed-link" onclick="viewUserProfile(\''+w.user_id+'\')">'+pname+'</span> completed a workout'+taggedStr;
     const wlabel = w.label ? '<div class="activity-workout-name">'+w.label+'</div>' : '';
     const copyBtn = '<button class="icon-btn" style="font-size:12px;padding:4px 8px;" onclick="copyFeedWorkout('+i+')"><i class="ti ti-copy"></i> Copy Workout</button>';
-    const likedClass = (!isMe && iLiked) ? ' liked' : '';
+    const likedClass = iLiked ? ' liked' : '';
     const likeIcon = iLiked ? 'ti ti-thumb-up-filled' : 'ti ti-thumb-up';
-    const likeLabel = isMe ? (likeCount > 0 ? likeCount+' Like'+(likeCount===1?'':'s') : 'Likes') : ('Like'+(likeCount===1?'':'s'));
-    const likeNum = (!isMe && likeCount > 0) ? likeCount+' ' : '';
+    const likeLabel = isMe
+      ? (likeCount > 0 ? likeCount + ' Like' + (likeCount===1?'':'s') : 'Likes')
+      : (iLiked ? likeCount + ' Like' + (likeCount===1?'':'s') : 'Like Post');
     const commentLabel = 'Comment' + (commentCount===1?'':'s');
     const commentNum = commentCount > 0 ? commentCount+' ' : '';
 
@@ -1002,7 +1033,7 @@ async function renderFeed(){
       '<div class="activity-detail" id="adetail-'+i+'">'+detailBlocks+'</div>' +
       '<div class="activity-actions">' +
         '<button class="activity-action-btn'+likedClass+'" id="alike-btn-'+i+'" data-wid="'+w.id+'" data-idx="'+i+'" data-liked="'+(iLiked?1:0)+'" data-count="'+likeCount+'" data-own="'+(isMe?1:0)+'">' +
-          '<i class="'+likeIcon+'"></i> '+likeNum+likeLabel +
+          '<i class="'+likeIcon+'"></i> '+likeLabel +
         '</button>' +
         '<button class="activity-action-btn" onclick="toggleComments('+i+')">' +
           '<i class="ti ti-message"></i> '+commentNum+commentLabel +
@@ -1055,17 +1086,14 @@ document.addEventListener('click', function(e){
 });
 
 async function doLike(btn, workoutId, i){
-  const nowLiked = true;
   const currentCount = parseInt(btn.dataset.count) || 0;
   const newCount = currentCount + 1;
 
-  // Update button immediately
   btn.className = 'activity-action-btn liked';
   btn.innerHTML = '<i class="ti ti-thumb-up-filled"></i> ' + newCount + ' Like' + (newCount===1?'':'s');
   btn.dataset.liked = '1';
   btn.dataset.count = newCount;
 
-  // Save to DB
   await sb.from('workout_likes').insert({workout_id: workoutId, user_id: currentUser.id});
 }
 
@@ -1867,19 +1895,28 @@ async function openManageFriendsModal(){
 
   if(pending && pending.length){
     html += '<div class="friend-section-lbl">Pending ('+pending.length+')</div>';
-    html += pending.map(f => `<div class="friend-card">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">${getAvatarHtml(f.requester,36)}<div><div class="friend-name">${f.requester.name}${f.requester.username?' <span style="font-size:12px;color:var(--ts);">@'+f.requester.username+'</span>':''}</div></div></div>
-      <div class="friend-actions"><button class="friend-btn primary" onclick="acceptFriend('${f.id}');openManageFriendsModal()">Accept</button><button class="friend-btn danger" onclick="declineFriend('${f.id}');openManageFriendsModal()">Decline</button></div>
-    </div>`).join('');
+    html += pending.map(f => {
+      const uname = f.requester.username ? '<span style="font-size:12px;color:var(--ts);"> @'+f.requester.username+'</span>' : '';
+      return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:0.5px solid var(--bo3);">
+        ${getAvatarHtml(f.requester,36)}
+        <div style="flex:1;font-size:14px;font-weight:500;color:var(--tp);">${f.requester.name}${uname}</div>
+        <button class="icon-btn" style="background:var(--tp);color:var(--bp);border-color:var(--tp);padding:4px 8px;" onclick="acceptFriend('${f.id}');openManageFriendsModal()"><i class="ti ti-check"></i></button>
+        <button class="icon-btn" style="color:#E24B4A;border-color:#E24B4A;padding:4px 8px;" onclick="declineFriend('${f.id}');openManageFriendsModal()"><i class="ti ti-x"></i></button>
+      </div>`;
+    }).join('');
   }
 
   if(friendships && friendships.length){
     html += '<div class="friend-section-lbl">Friends ('+friendships.length+')</div>';
     html += friendships.map(f => {
       const friend = f.requester_id===currentUser.id ? f.addressee : f.requester;
-      return `<div class="friend-card">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">${getAvatarHtml(friend,36)}<div><div class="friend-name">${friend.name}${friend.username?' <span style="font-size:12px;color:var(--ts);">@'+friend.username+'</span>':''}</div></div></div>
-        <div class="friend-actions"><button class="friend-btn danger" onclick="removeFriend('${f.id}');openManageFriendsModal()">Remove</button></div>
+      const uname = friend.username ? '<span style="font-size:12px;color:var(--ts);"> @'+friend.username+'</span>' : '';
+      return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:0.5px solid var(--bo3);">
+        ${getAvatarHtml(friend,36)}
+        <div style="flex:1;cursor:pointer;" onclick="closeModal('manage-friends-modal');viewUserProfile('${friend.id}')">
+          <div style="font-size:14px;font-weight:500;color:var(--tp);">${friend.name}${uname}</div>
+        </div>
+        <button class="icon-btn" style="color:#E24B4A;border-color:#E24B4A;padding:4px 8px;" onclick="removeFriend('${f.id}');openManageFriendsModal()"><i class="ti ti-user-minus"></i></button>
       </div>`;
     }).join('');
   }
@@ -2492,6 +2529,9 @@ function switchTab(tab){
   const map = {friends:'btab-friends', lookup:'btab-lookup', history:'btab-history', profile:'btab-profile'};
   document.querySelectorAll('.btab').forEach(b => b.classList.remove('active'));
   if(map[tab]) document.getElementById(map[tab]).classList.add('active');
+  // Show add-friends button only on activity tab
+  const afb = document.getElementById('add-friends-btn');
+  if(afb) afb.style.display = tab==='friends' ? 'flex' : 'none';
   if(tab==='lookup') renderLookup();
   if(tab==='history'){ renderHistory(); renderWeeklySummary(); }
   if(tab==='friends') renderFeed();
@@ -2582,10 +2622,10 @@ init();
 </div></div>
 
 <!-- Manage friends modal -->
-<div class="modal-bg" id="manage-friends-modal"><div class="modal">
-  <div class="modal-title">Friends</div>
-  <div id="manage-friends-content"></div>
-  <div class="modal-actions" style="margin-top:1rem;">
+<div class="modal-bg" id="manage-friends-modal"><div class="modal modal-flex" style="max-height:85vh;">
+  <div class="modal-title" style="flex-shrink:0;">Friends</div>
+  <div id="manage-friends-content" style="flex:1;overflow-y:auto;min-height:0;"></div>
+  <div class="modal-actions" style="margin-top:1rem;flex-shrink:0;">
     <button class="modal-btn" onclick="closeModal('manage-friends-modal')">Close</button>
   </div>
 </div></div>
