@@ -25,7 +25,7 @@
 html,body { height: 100%; }
 body { font-family: var(--font); background: var(--bs); color: var(--tp); }
 input,select,button { font-family: var(--font); }
-.app { max-width: 480px; margin: 0 auto; padding: 1rem 1rem 90px; min-height: 100vh; }
+.app { max-width: 480px; margin: 0 auto; padding: 1rem 1rem 90px; min-height: 100vh; position: relative; }
 .date { font-size: 13px; color: var(--ts); }
 .title { font-size: 22px; font-weight: 500; color: var(--tp); }
 .sync-bar { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ts); margin-top: 4px; margin-bottom: 0; padding-bottom: 1.25rem; border-bottom: 0.5px solid var(--bo3); }
@@ -275,22 +275,59 @@ body.dark-mode .mode-btn.active, body.dark-mode .cat-tab.active, body.dark-mode 
 .tag-result-item:hover { border-color:var(--bo1); }
 .tag-result-name { font-size:14px; color:var(--tp); flex:1; }
 .tag-result-username { font-size:12px; color:var(--ts); }
+
+/* ── Workout timer ── */
+.workout-timer-bar { display:flex; align-items:center; gap:12px; background:var(--bs); border:0.5px solid var(--bo3); border-radius:var(--r2); padding:12px 1rem; margin-bottom:1rem; }
+.timer-display { font-size:28px; font-weight:600; color:var(--tp); font-variant-numeric:tabular-nums; letter-spacing:.02em; flex:1; }
+.timer-btn { background:var(--tp); color:var(--bp); border:none; border-radius:var(--r1); padding:7px 14px; font-size:13px; font-weight:500; cursor:pointer; }
+.timer-btn.running { background:#3B6D11; }
+.timer-btn.reset { background:none; color:var(--ts); border:0.5px solid var(--bo3); margin-left:4px; }
+/* ── Progress tab ── */
+.progress-subtabs { display:flex; border-bottom:0.5px solid var(--bo3); margin-bottom:1.25rem; }
+.progress-subtab { flex:1; font-size:14px; padding:9px 4px; cursor:pointer; color:var(--ts); border-bottom:2px solid transparent; margin-bottom:-1px; background:none; border-top:none; border-left:none; border-right:none; text-align:center; }
+.progress-subtab.active { color:var(--tp); border-bottom-color:var(--tp); font-weight:500; }
+.stat-card { background:var(--bs); border-radius:var(--r2); padding:1rem; margin-bottom:10px; }
+.stat-card-title { font-size:11px; color:var(--ts); text-transform:uppercase; letter-spacing:.05em; margin-bottom:12px; font-weight:500; }
+.stat-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.stat-item { background:var(--bp); border-radius:var(--r1); padding:10px; border:0.5px solid var(--bo3); }
+.stat-item-val { font-size:22px; font-weight:600; color:var(--tp); }
+.stat-item-lbl { font-size:11px; color:var(--ts); margin-top:2px; }
+.streak-bar { display:flex; align-items:center; gap:10px; }
+.streak-flame { font-size:28px; }
+.streak-num { font-size:32px; font-weight:700; color:var(--tp); }
+.streak-lbl { font-size:13px; color:var(--ts); }
+.bar-chart { display:flex; align-items:flex-end; gap:4px; height:60px; margin-top:8px; }
+.bar-col { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; }
+.bar-fill { width:100%; background:var(--tp); border-radius:3px 3px 0 0; opacity:.85; min-height:3px; }
+.bar-lbl { font-size:9px; color:var(--ts); }
 </style>
 </head>
 <body>
 <div class="app">
-  <div class="date" id="today-date"></div>
-  <div class="title" id="greeting"></div>
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;">
+    <div>
+      <div class="date" id="today-date"></div>
+      <div class="title" id="greeting"></div>
+    </div>
+    <button id="add-friends-btn" onclick="openManageFriendsModal()" style="display:none;margin-top:4px;background:var(--bp);border:0.5px solid var(--bo3);border-radius:var(--r1);cursor:pointer;color:var(--ts);font-size:13px;padding:5px 10px;align-items:center;gap:5px;flex-shrink:0;">
+      <i class="ti ti-user-plus"></i> Friends
+    </button>
+  </div>
   <div class="sync-bar" style="margin-bottom:1.25rem;"><div class="sync-dot" id="sync-dot"></div><span id="sync-status">Loading...</span></div>
   <button class="profile-btn" id="profile-btn" style="display:none;" onclick="openMyProfile()"><i class="ti ti-user-circle"></i> Profile</button>
   <div class="tabs">
     <button class="tab active" onclick="switchTab('friends')">Activity</button>
     <button class="tab" onclick="switchTab('log')">Today</button>
-    <button class="tab" onclick="switchTab('lookup')">Exercises</button>
+    <button class="tab" onclick="switchTab('lookup')">Progress</button>
     <button class="tab" onclick="switchTab('history')">History</button>
   </div>
 
   <div id="tab-log" style="display:none;">
+    <div class="workout-timer-bar" id="timer-bar">
+      <div class="timer-display" id="timer-display">0:00</div>
+      <button class="timer-btn" id="timer-btn" onclick="toggleTimer()">Start</button>
+      <button class="timer-btn reset" id="timer-reset-btn" onclick="resetTimer()" style="display:none;">Reset</button>
+    </div>
     <div id="blocks-list"></div>
     <div class="picker-area">
       <div class="add-trigger" id="add-trigger" onclick="openPicker()">
@@ -340,8 +377,15 @@ body.dark-mode .mode-btn.active, body.dark-mode .cat-tab.active, body.dark-mode 
   </div>
 
   <div id="tab-lookup" style="display:none;">
-    <div class="search-wrap"><i class="ti ti-search"></i><input type="text" class="search-inp" id="ex-search" placeholder="Search exercises..." oninput="renderLookup()"></div>
-    <div id="lookup-content"></div>
+    <div class="progress-subtabs">
+      <button class="progress-subtab active" id="psub-exercises" onclick="switchProgressSub('exercises')">Exercises</button>
+      <button class="progress-subtab" id="psub-stats" onclick="switchProgressSub('stats')">Stats</button>
+    </div>
+    <div id="progress-exercises-content">
+      <div class="search-wrap"><i class="ti ti-search"></i><input type="text" class="search-inp" id="ex-search" placeholder="Search exercises..." oninput="renderLookup()"></div>
+      <div id="lookup-content"></div>
+    </div>
+    <div id="progress-stats-content" style="display:none;"></div>
   </div>
 
   <div id="tab-history" style="display:none;"><div id="hist-list"></div></div>
@@ -352,10 +396,6 @@ body.dark-mode .mode-btn.active, body.dark-mode .cat-tab.active, body.dark-mode 
 </div>
 
 <!-- Add friends button — fixed top right, shown only on activity tab -->
-<button id="add-friends-btn" onclick="openManageFriendsModal()" style="display:none;position:fixed;top:1rem;right:1rem;z-index:50;background:var(--bp);border:0.5px solid var(--bo3);border-radius:var(--r1);cursor:pointer;color:var(--ts);font-size:13px;padding:5px 10px;display:flex;align-items:center;gap:5px;box-shadow:0 1px 4px rgba(0,0,0,.12);">
-  <i class="ti ti-user-plus"></i> Friends
-</button>
-
 <!-- iOS-style bottom tab bar -->
 <div class="bottom-bar">
   <button class="btab active" id="btab-friends" onclick="switchTab('friends')">
@@ -363,8 +403,8 @@ body.dark-mode .mode-btn.active, body.dark-mode .cat-tab.active, body.dark-mode 
     <span>Activity</span>
   </button>
   <button class="btab" id="btab-lookup" onclick="switchTab('lookup')">
-    <i class="ti ti-barbell"></i>
-    <span>Exercises</span>
+    <i class="ti ti-chart-line"></i>
+    <span>Progress</span>
   </button>
   <button class="btab-plus" onclick="switchTab('log')">
     <div class="btab-plus-circle"><i class="ti ti-plus"></i></div>
@@ -842,7 +882,7 @@ async function loadFromSupabase(){
       sb.from('workouts').select('*').eq('user_id', currentUser.id).order('ts', {ascending:false}).limit(100),
       sb.from('exercise_lists').select('*').eq('user_id', currentUser.id).single()
     ]);
-    if(wRes.data) history = wRes.data.map(r => ({ date:r.date, ts:r.ts, label:r.label, desc:r.desc||null, tagged:r.tagged||null, blocks:r.blocks, id:r.id }));
+    if(wRes.data) history = wRes.data.map(r => ({ date:r.date, ts:r.ts, label:r.label, desc:r.desc||null, tagged:r.tagged||null, duration_seconds:r.duration_seconds||null, blocks:r.blocks, id:r.id }));
     if(eRes.data?.exercises) EX = eRes.data.exercises;
     localStorage.setItem('wl_history', JSON.stringify(history.slice(0,100)));
     localStorage.setItem('wl_exercises', JSON.stringify(EX));
@@ -909,6 +949,7 @@ async function saveToSupabase(newEntry){
         label: newEntry.label,
         desc: newEntry.desc || null,
         tagged: newEntry.tagged || null,
+        duration_seconds: newEntry.duration_seconds || null,
         blocks: newEntry.blocks
       });
     }
@@ -926,13 +967,170 @@ async function saveToSupabase(newEntry){
 }
 
 // ── Friends ──
-function switchFriendsSub(sub){ renderFeed(); }
+// ═══════════════════════════════════════════
+// WORKOUT TIMER
+// ═══════════════════════════════════════════
+var _timerInterval = null;
+var _timerSeconds = 0;
+var _timerRunning = false;
+
+function toggleTimer(){
+  if(_timerRunning){
+    clearInterval(_timerInterval);
+    _timerRunning = false;
+    document.getElementById('timer-btn').textContent = 'Resume';
+    document.getElementById('timer-btn').classList.remove('running');
+    document.getElementById('timer-reset-btn').style.display = '';
+  } else {
+    _timerRunning = true;
+    document.getElementById('timer-btn').textContent = 'Pause';
+    document.getElementById('timer-btn').classList.add('running');
+    document.getElementById('timer-reset-btn').style.display = 'none';
+    _timerInterval = setInterval(function(){
+      _timerSeconds++;
+      updateTimerDisplay();
+    }, 1000);
+  }
+}
+
+function resetTimer(){
+  clearInterval(_timerInterval);
+  _timerRunning = false;
+  _timerSeconds = 0;
+  updateTimerDisplay();
+  document.getElementById('timer-btn').textContent = 'Start';
+  document.getElementById('timer-btn').classList.remove('running');
+  document.getElementById('timer-reset-btn').style.display = 'none';
+}
+
+function updateTimerDisplay(){
+  var h = Math.floor(_timerSeconds/3600);
+  var m = Math.floor((_timerSeconds%3600)/60);
+  var s = _timerSeconds%60;
+  var display = h > 0
+    ? h+':'+(m<10?'0':'')+m+':'+(s<10?'0':'')+s
+    : m+':'+(s<10?'0':'')+s;
+  var el = document.getElementById('timer-display');
+  if(el) el.textContent = display;
+}
+
+function getTimerDuration(){
+  if(_timerSeconds < 60) return null; // don't save if less than a minute
+  var h = Math.floor(_timerSeconds/3600);
+  var m = Math.floor((_timerSeconds%3600)/60);
+  if(h > 0) return h+'h '+m+'m';
+  return m+' min';
+}
+
+// ═══════════════════════════════════════════
+// PROGRESS SUB-TABS
+// ═══════════════════════════════════════════
+function switchProgressSub(sub){
+  document.getElementById('progress-exercises-content').style.display = sub==='exercises' ? '' : 'none';
+  document.getElementById('progress-stats-content').style.display = sub==='stats' ? '' : 'none';
+  document.getElementById('psub-exercises').classList.toggle('active', sub==='exercises');
+  document.getElementById('psub-stats').classList.toggle('active', sub==='stats');
+  if(sub==='stats') renderStats();
+  if(sub==='exercises') renderLookup();
+}
+
+// ═══════════════════════════════════════════
+// STATS
+// ═══════════════════════════════════════════
+function renderStats(){
+  var el = document.getElementById('progress-stats-content');
+  if(!el) return;
+  if(!history.length){ el.innerHTML='<div class="empty">Log some workouts to see your stats.</div>'; return; }
+
+  var now = new Date();
+
+  // ── Weekly stats ──
+  var weekStart = new Date(now); weekStart.setDate(now.getDate()-now.getDay()); weekStart.setHours(0,0,0,0);
+  var weekWorkouts = history.filter(function(e){ return new Date(e.ts) >= weekStart; });
+  var weekSets = 0;
+  weekWorkouts.forEach(function(e){ e.blocks.forEach(function(b){ b.exercises.forEach(function(ex){ weekSets += ex.dropSets ? ex.dropSets.length : (ex.sets||[]).length; }); }); });
+  var weekMins = weekWorkouts.reduce(function(acc,e){ return acc + (e.duration_seconds ? Math.round(e.duration_seconds/60) : 0); }, 0);
+
+  // ── All time ──
+  var totalSets = 0;
+  history.forEach(function(e){ e.blocks.forEach(function(b){ b.exercises.forEach(function(ex){ totalSets += ex.dropSets ? ex.dropSets.length : (ex.sets||[]).length; }); }); });
+  var timedWorkouts = history.filter(function(e){ return e.duration_seconds && e.duration_seconds >= 60; });
+  var totalMins = timedWorkouts.reduce(function(acc,e){ return acc + Math.round(e.duration_seconds/60); }, 0);
+  var avgMins = timedWorkouts.length ? Math.round(totalMins / timedWorkouts.length) : 0;
+  var longestMins = timedWorkouts.length ? Math.max.apply(null, timedWorkouts.map(function(e){ return Math.round(e.duration_seconds/60); })) : 0;
+
+  // ── Streak ──
+  var streak = 0;
+  var checkDate = new Date(now); checkDate.setHours(0,0,0,0);
+  var sorted = history.slice().sort(function(a,b){ return new Date(b.ts)-new Date(a.ts); });
+  var usedDates = new Set();
+  sorted.forEach(function(e){ usedDates.add(new Date(e.ts).toDateString()); });
+  while(usedDates.has(checkDate.toDateString())){
+    streak++;
+    checkDate.setDate(checkDate.getDate()-1);
+  }
+
+  // ── Last 8 weeks bar chart ──
+  var weeks = [];
+  for(var i=7; i>=0; i--){
+    var ws = new Date(now); ws.setDate(now.getDate() - now.getDay() - i*7); ws.setHours(0,0,0,0);
+    var we = new Date(ws); we.setDate(ws.getDate()+7);
+    var count = history.filter(function(e){ var d=new Date(e.ts); return d>=ws && d<we; }).length;
+    var lbl = (ws.getMonth()+1)+'/'+(ws.getDate());
+    weeks.push({count:count, lbl:lbl});
+  }
+  var maxCount = Math.max.apply(null, weeks.map(function(w){return w.count;})) || 1;
+
+  var barHTML = weeks.map(function(w){
+    var pct = Math.round((w.count/maxCount)*100);
+    return '<div class="bar-col">' +
+      '<div class="bar-fill" style="height:'+pct+'%;"></div>' +
+      '<div class="bar-lbl">'+w.lbl+'</div>' +
+    '</div>';
+  }).join('');
+
+  el.innerHTML =
+    '<div class="stat-card">' +
+      '<div class="stat-card-title">This week</div>' +
+      '<div class="stat-grid">' +
+        '<div class="stat-item"><div class="stat-item-val">'+weekWorkouts.length+'</div><div class="stat-item-lbl">Workouts</div></div>' +
+        '<div class="stat-item"><div class="stat-item-val">'+weekSets+'</div><div class="stat-item-lbl">Sets</div></div>' +
+        '<div class="stat-item"><div class="stat-item-val">'+(weekMins ? weekMins+' min' : '—')+'</div><div class="stat-item-lbl">Time</div></div>' +
+        '<div class="stat-item"><div class="stat-item-val">'+(weekWorkouts.length ? Math.round(weekSets/weekWorkouts.length) : '—')+'</div><div class="stat-item-lbl">Avg sets/day</div></div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="stat-card">' +
+      '<div class="stat-card-title">Streak</div>' +
+      '<div class="streak-bar">' +
+        '<div class="streak-flame">🔥</div>' +
+        '<div><div class="streak-num">'+streak+'</div><div class="streak-lbl">day'+(streak===1?'':'s')+' in a row</div></div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="stat-card">' +
+      '<div class="stat-card-title">All time</div>' +
+      '<div class="stat-grid">' +
+        '<div class="stat-item"><div class="stat-item-val">'+history.length+'</div><div class="stat-item-lbl">Workouts</div></div>' +
+        '<div class="stat-item"><div class="stat-item-val">'+totalSets+'</div><div class="stat-item-lbl">Total sets</div></div>' +
+        '<div class="stat-item"><div class="stat-item-val">'+(avgMins ? avgMins+' min' : '—')+'</div><div class="stat-item-lbl">Avg session</div></div>' +
+        '<div class="stat-item"><div class="stat-item-val">'+(longestMins ? longestMins+' min' : '—')+'</div><div class="stat-item-lbl">Longest session</div></div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="stat-card">' +
+      '<div class="stat-card-title">Workouts per week (last 8 weeks)</div>' +
+      '<div class="bar-chart">'+barHTML+'</div>' +
+    '</div>';
+}
+
+
 
 // ── Activity Feed ──
 async function renderFeed(){
   const el = document.getElementById('friends-feed-content');
   if(!currentUser){ el.innerHTML='<div class="empty">Sign in to see activity.</div>'; return; }
   el.innerHTML = '<div style="color:var(--ts);font-size:13px;padding:1rem 0;">Loading...</div>';
+  // Ensure the friends button is visible on the activity tab
+  const afb = document.getElementById('add-friends-btn');
+  if(afb) afb.style.display = 'flex';
 
   const { data: friendships } = await sb.from('friendships')
     .select('requester_id,addressee_id')
@@ -997,6 +1195,11 @@ async function renderFeed(){
     }).join('');
 
     const ago = timeAgo(w.ts);
+    const durStr = w.duration_seconds && w.duration_seconds >= 60
+      ? ' · ' + (w.duration_seconds >= 3600
+          ? Math.floor(w.duration_seconds/3600)+'h '+Math.floor((w.duration_seconds%3600)/60)+'m'
+          : Math.round(w.duration_seconds/60)+' min')
+      : '';
     var taggedStr = '';
     if(w.tagged && w.tagged.length){
       taggedStr = ' with ' + w.tagged.map(function(t){
@@ -1019,7 +1222,7 @@ async function renderFeed(){
         getAvatarHtml(w.profile, 36) +
         '<div class="activity-meta">' +
           '<div class="activity-name">'+byLine+'</div>' +
-          '<div class="activity-time">'+ago+'</div>' +
+          '<div class="activity-time">'+ago+durStr+'</div>' +
         '</div>' +
         copyBtn +
       '</div>' +
@@ -1559,6 +1762,14 @@ function saveWorkout(){
   const label = document.getElementById('day-inp').value.trim();
   if(!label){ showMsg('Please add a workout name first.'); document.getElementById('day-inp').focus(); return; }
   const desc = document.getElementById('day-desc') ? document.getElementById('day-desc').value.trim() : '';
+  const durationSeconds = _timerSeconds >= 60 ? _timerSeconds : null;
+  // Stop and reset timer
+  clearInterval(_timerInterval); _timerRunning = false; _timerSeconds = 0;
+  updateTimerDisplay();
+  document.getElementById('timer-btn').textContent = 'Start';
+  document.getElementById('timer-btn').classList.remove('running');
+  document.getElementById('timer-reset-btn').style.display = 'none';
+
   const d = new Date();
   history.unshift({
     date: d.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'}),
@@ -1566,6 +1777,7 @@ function saveWorkout(){
     label: label || null,
     desc: desc || null,
     tagged: _taggedFriends.length ? JSON.parse(JSON.stringify(_taggedFriends)) : null,
+    duration_seconds: durationSeconds,
     blocks: JSON.parse(JSON.stringify(blocks))
   });
   blocks=[]; renderBlocks(); renderExSelect(); closePicker();
@@ -2022,8 +2234,17 @@ function copyFriendWorkout(idx){
   renderExSelect();
 }
 
-function openModal(id){ document.getElementById(id).classList.add('open'); }
-function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+function openModal(id){
+  document.getElementById(id).classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeModal(id){
+  document.getElementById(id).classList.remove('open');
+  // Only restore scroll if no other modals are open
+  if(!document.querySelector('.modal-bg.open')){
+    document.body.style.overflow = '';
+  }
+}
 document.querySelectorAll('.modal-bg').forEach(el => {
   el.addEventListener('click', e => { if(e.target===el) el.classList.remove('open'); });
 });
