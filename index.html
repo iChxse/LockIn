@@ -25,16 +25,22 @@
 html,body { height: 100%; }
 body { font-family: var(--font); background: var(--bs); color: var(--tp); }
 input,select,button { font-family: var(--font); }
-.app { max-width: 480px; margin: 0 auto; padding: 1rem 1rem 5rem; min-height: 100vh; }
+.app { max-width: 480px; margin: 0 auto; padding: 1rem 1rem 90px; min-height: 100vh; }
 .date { font-size: 13px; color: var(--ts); }
 .title { font-size: 22px; font-weight: 500; color: var(--tp); }
 .sync-bar { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ts); margin-top: 4px; margin-bottom: 1.25rem; }
 .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: #97C459; flex-shrink: 0; }
 .sync-dot.saving { background: #EF9F27; }
 .sync-dot.error { background: #E24B4A; }
-.tabs { display: flex; border-bottom: 0.5px solid var(--bo3); margin-bottom: 1.25rem; }
-.tab { flex: 1; font-size: 14px; padding: 10px 4px; cursor: pointer; color: var(--ts); border-bottom: 2px solid transparent; margin-bottom: -1px; background: none; border-top: none; border-left: none; border-right: none; text-align: center; }
-.tab.active { color: var(--tp); border-bottom-color: var(--tp); font-weight: 500; }
+.tabs { display: none; } /* hidden — replaced by bottom bar */
+.bottom-bar { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; z-index: 90; background: var(--bp); border-top: 0.5px solid var(--bo3); display: flex; align-items: center; justify-content: space-around; padding: 6px 0 calc(6px + env(safe-area-inset-bottom)); }
+.btab { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer; background: none; border: none; padding: 6px 4px; color: var(--ts); font-size: 10px; font-family: var(--font); }
+.btab i { font-size: 22px; line-height: 1; }
+.btab.active { color: var(--tp); }
+.btab-plus { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer; background: none; border: none; padding: 0; }
+.btab-plus-circle { width: 52px; height: 52px; border-radius: 50%; background: var(--tp); display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 12px rgba(0,0,0,.25); margin-bottom: 2px; }
+.btab-plus-circle i { font-size: 26px; color: var(--bp); line-height: 1; }
+.btab-plus span { font-size: 10px; color: var(--ts); font-family: var(--font); }
 .exercise-card { background: var(--bp); border: 0.5px solid var(--bo3); border-radius: var(--r2); padding: 1rem; margin-bottom: 12px; }
 .superset-card { background: var(--bp); border: 2px solid #AFA9EC; border-radius: var(--r2); margin-bottom: 12px; overflow: hidden; }
 .dropset-card { background: var(--bp); border: 2px solid #F5A623; border-radius: var(--r2); padding: 1rem; margin-bottom: 12px; }
@@ -199,7 +205,7 @@ body.dark-mode .mode-btn.active, body.dark-mode .cat-tab.active, body.dark-mode 
 /* ── Profile bar ── */
 .profile-bar { display:flex; align-items:center; justify-content:space-between; margin-bottom:1.25rem; }
 .profile-bar-left { display:flex; flex-direction:column; gap:2px; }
-.profile-btn { background:none; border:0.5px solid var(--bo3); border-radius:var(--r1); cursor:pointer; color:var(--ts); font-size:13px; padding:5px 10px; display:flex; align-items:center; gap:5px; }
+.profile-btn { position:fixed; top:1rem; right:1rem; z-index:50; background:var(--bp); border:0.5px solid var(--bo3); border-radius:var(--r1); cursor:pointer; color:var(--ts); font-size:13px; padding:5px 10px; display:flex; align-items:center; gap:5px; box-shadow:0 1px 4px rgba(0,0,0,.12); }
 /* ── Friends tab ── */
 .friend-card { background:var(--bp); border:0.5px solid var(--bo3); border-radius:var(--r2); padding:1rem; margin-bottom:10px; }
 .friend-name { font-size:15px; font-weight:500; color:var(--tp); margin-bottom:2px; }
@@ -275,15 +281,16 @@ body.dark-mode .mode-btn.active, body.dark-mode .cat-tab.active, body.dark-mode 
 <div class="app">
   <div class="date" id="today-date"></div>
   <div class="title" id="greeting"></div>
-  <div class="profile-bar"><div class="profile-bar-left"><div class="sync-bar"><div class="sync-dot" id="sync-dot"></div><span id="sync-status">Loading...</span></div></div><button class="profile-btn" onclick="openProfileModal()"><i class="ti ti-user-circle"></i> Account</button></div>
+  <div class="sync-bar" style="margin-bottom:1.25rem;"><div class="sync-dot" id="sync-dot"></div><span id="sync-status">Loading...</span></div>
+  <button class="profile-btn" id="profile-btn" style="display:none;" onclick="openMyProfile()"><i class="ti ti-user-circle"></i> Profile</button>
   <div class="tabs">
-    <button class="tab active" onclick="switchTab('log')">Today</button>
+    <button class="tab active" onclick="switchTab('friends')">Activity</button>
+    <button class="tab" onclick="switchTab('log')">Today</button>
     <button class="tab" onclick="switchTab('lookup')">Exercises</button>
     <button class="tab" onclick="switchTab('history')">History</button>
-    <button class="tab" onclick="switchTab('friends')">Friends</button>
   </div>
 
-  <div id="tab-log">
+  <div id="tab-log" style="display:none;">
     <div id="blocks-list"></div>
     <div class="picker-area">
       <div class="add-trigger" id="add-trigger" onclick="openPicker()">
@@ -338,14 +345,34 @@ body.dark-mode .mode-btn.active, body.dark-mode .cat-tab.active, body.dark-mode 
   </div>
 
   <div id="tab-history" style="display:none;"><div id="hist-list"></div></div>
-  <div id="tab-friends" style="display:none;">
-    <div class="friends-subtabs">
-      <button class="friends-subtab active" id="fsub-feed" onclick="switchFriendsSub('feed')">Activity</button>
-      <button class="friends-subtab" id="fsub-friends" onclick="switchFriendsSub('friends')">Friends</button>
-    </div>
+  <div id="tab-friends">
     <div id="friends-feed-content"></div>
-    <div id="friends-content" style="display:none;"></div>
   </div>
+  <div id="tab-profile" style="display:none;"></div>
+</div>
+
+<!-- iOS-style bottom tab bar -->
+<div class="bottom-bar">
+  <button class="btab active" id="btab-friends" onclick="switchTab('friends')">
+    <i class="ti ti-activity"></i>
+    <span>Activity</span>
+  </button>
+  <button class="btab" id="btab-lookup" onclick="switchTab('lookup')">
+    <i class="ti ti-barbell"></i>
+    <span>Exercises</span>
+  </button>
+  <button class="btab-plus" onclick="switchTab('log')">
+    <div class="btab-plus-circle"><i class="ti ti-plus"></i></div>
+    <span>Workout</span>
+  </button>
+  <button class="btab" id="btab-history" onclick="switchTab('history')">
+    <i class="ti ti-history"></i>
+    <span>History</span>
+  </button>
+  <button class="btab" id="btab-profile" onclick="switchTab('profile')">
+    <i class="ti ti-user-circle"></i>
+    <span>Profile</span>
+  </button>
 </div>
 
 <!-- Modals -->
@@ -594,9 +621,142 @@ async function onAuthSuccess(user){
   updateGreeting();
   await loadFromSupabase();
   renderDayChips();
+  renderFeed();
 }
 
 // ── Profile modal ──
+async function renderProfileTab(){
+  if(!currentUser){ return; }
+  const el = document.getElementById('tab-profile');
+  el.innerHTML = '<div style="color:var(--ts);font-size:13px;padding:1rem 0;">Loading...</div>';
+
+  const { data: profile } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
+  if(profile) currentProfile = profile;
+
+  const { data: workouts } = await sb.from('workouts').select('*').eq('user_id', currentUser.id).order('ts',{ascending:false}).limit(50);
+
+  // Header
+  const avatarHtml = getAvatarHtml(currentProfile, 64);
+  const name = currentProfile?.name || '';
+  const username = currentProfile?.username ? '@'+currentProfile.username : '';
+
+  el.innerHTML =
+    '<div style="display:flex;align-items:center;gap:16px;margin-bottom:1.25rem;padding-bottom:1.25rem;border-bottom:0.5px solid var(--bo3);">' +
+      avatarHtml +
+      '<div style="flex:1;">' +
+        '<div style="font-size:20px;font-weight:600;color:var(--tp);">'+name+'</div>' +
+        '<div style="font-size:14px;color:var(--ts);">'+username+'</div>' +
+      '</div>' +
+      '<button class="icon-btn" onclick="openProfileModal()" style="align-self:flex-start;"><i class="ti ti-settings"></i> Settings</button>' +
+    '</div>' +
+    '<div id="profile-tab-inner"></div>';
+
+  // Render sub-tabs inline
+  renderProfileTabContent(workouts||[], currentUser.id);
+}
+
+var _profileTabSection = 'workouts';
+
+function renderProfileTabContent(workouts, userId){
+  const inner = document.getElementById('profile-tab-inner');
+  if(!inner) return;
+
+  inner.innerHTML =
+    '<div style="display:flex;border-bottom:0.5px solid var(--bo3);margin-bottom:1rem;">' +
+      '<button class="friends-subtab '+(_profileTabSection==='workouts'?'active':'')+'" onclick="setProfileTabSection(\'workouts\')">Workouts</button>' +
+      '<button class="friends-subtab '+(_profileTabSection==='pbs'?'active':'')+'" onclick="setProfileTabSection(\'pbs\')">Personal Bests</button>' +
+      '<button class="friends-subtab '+(_profileTabSection==='friends'?'active':'')+'" onclick="setProfileTabSection(\'friends\')">Friends</button>' +
+    '</div>' +
+    '<div id="profile-tab-body"></div>';
+
+  renderProfileTabBody(workouts, userId);
+}
+
+async function setProfileTabSection(section){
+  _profileTabSection = section;
+  const { data: workouts } = await sb.from('workouts').select('*').eq('user_id', currentUser.id).order('ts',{ascending:false}).limit(50);
+  renderProfileTabContent(workouts||[], currentUser.id);
+}
+
+function renderProfileTabBody(workouts, userId){
+  const body = document.getElementById('profile-tab-body');
+  if(!body) return;
+
+  if(_profileTabSection === 'workouts'){
+    if(!workouts.length){ body.innerHTML='<div class="empty">No workouts yet.</div>'; return; }
+    body.innerHTML = workouts.map(function(entry,idx){
+      const exNames = entry.blocks.flatMap(function(b){return b.exercises.map(function(e){return e.name;});});
+      const preview = exNames.slice(0,3).join(', ')+(exNames.length>3?' +'+(exNames.length-3)+' more':'');
+      const bodyBlocks = entry.blocks.map(function(b){
+        if(b.type==='single'){var ex=b.exercises[0];var lines=ex.sets.map(function(s,i){return 'Set '+(i+1)+': '+fw(s.w)+' x '+fr(s.r)+' reps';}).join('<br>');return '<div class="hist-block"><div class="hist-name">'+ex.name+'</div><div class="hist-sets">'+lines+'</div></div>';}
+        if(b.type==='superset'){var e1=b.exercises[0],e2=b.exercises[1],ms=Math.max(e1.sets.length,e2.sets.length);var lines=Array.from({length:ms},function(_,i){var s1=e1.sets[i],s2=e2.sets[i];return 'Set '+(i+1)+': '+(s1?fw(s1.w)+' x '+fr(s1.r)+' reps':'—')+' / '+(s2?fw(s2.w)+' x '+fr(s2.r)+' reps':'—');}).join('<br>');return '<div class="hist-block"><div class="hist-name">'+e1.name+' / '+e2.name+'</div><div class="hist-sets">'+lines+'</div></div>';}
+        if(b.type==='dropset'){var ex=b.exercises[0];var lines=ex.dropSets.map(function(drops,i){return 'Set '+(i+1)+': '+drops.map(function(d){return fw(d.w)+' x '+fr(d.r)+' reps';}).join(' > ');}).join('<br>');return '<div class="hist-block"><div class="hist-name">'+ex.name+'</div><div class="hist-sets">'+lines+'</div></div>';}
+        return '';
+      }).join('');
+      var wlabel = entry.label?'<div style="font-weight:500;color:var(--tp);font-size:13px;margin-bottom:2px;">'+entry.label+'</div>':'';
+      var wdesc = entry.desc?'<div style="font-size:12px;color:var(--ts);margin-bottom:4px;">'+entry.desc+'</div>':'';
+      var tagged = entry.tagged&&entry.tagged.length?'<span style="font-size:11px;color:var(--ts);">with '+entry.tagged.map(function(t){return t.username?'@'+t.username:t.name;}).join(', ')+'</span>':'';
+      return '<div class="hist-entry" id="ptab-w-'+idx+'">' +
+        '<div class="hist-hdr" onclick="this.closest(\'.hist-entry\').classList.toggle(\'open\')">' +
+          '<div class="hist-hdr-left"><div class="hist-date">'+entry.date+'</div><div class="hist-label-row">'+wlabel+tagged+'</div>'+wdesc+'</div>' +
+          '<div style="display:flex;align-items:center;gap:4px;">' +
+            '<button class="icon-btn" style="font-size:12px;padding:4px 8px;" onclick="event.stopPropagation();copyUPMWorkout('+idx+');window._upmWorkouts='+JSON.stringify(workouts).replace(/</g,'\\u003c')+'"><i class="ti ti-copy"></i> Copy</button>' +
+            '<i class="ti ti-chevron-down hist-chevron"></i>' +
+          '</div>' +
+        '</div>' +
+        '<div class="hist-body">'+bodyBlocks+'</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  if(_profileTabSection === 'pbs'){
+    const pbMap = {};
+    workouts.forEach(function(entry){
+      entry.blocks.forEach(function(b){
+        b.exercises.forEach(function(ex){
+          if(!pbMap[ex.name]) pbMap[ex.name]={maxW:0,maxR:0,bestSets:[],date:''};
+          var sets=ex.dropSets?[].concat.apply([],ex.dropSets):(ex.sets||[]);
+          sets.forEach(function(s){var w=parseFloat(s.w)||0,r=parseFloat(s.r)||0;if(w>pbMap[ex.name].maxW||(w===pbMap[ex.name].maxW&&r>pbMap[ex.name].maxR)){pbMap[ex.name].maxW=w;pbMap[ex.name].maxR=r;pbMap[ex.name].date=entry.date;pbMap[ex.name].bestSets=sets;}});
+        });
+      });
+    });
+    const names = Object.keys(pbMap);
+    if(!names.length){body.innerHTML='<div class="empty">No data yet.</div>';return;}
+    body.innerHTML = names.map(function(name,pi){
+      var pb=pbMap[name];
+      var lines=pb.bestSets.map(function(s,i){return 'Set '+(i+1)+': '+fw(s.w)+' x '+fr(s.r)+' reps';}).join('<br>');
+      return '<div class="hist-entry" id="ptab-pb-'+pi+'"><div class="hist-hdr" onclick="this.closest(\'.hist-entry\').classList.toggle(\'open\')"><div class="hist-hdr-left"><div class="hist-date" style="font-weight:500;color:var(--tp);">'+name+'</div><div style="font-size:12px;color:var(--ts);">Best: '+fw(String(pb.maxW))+' × '+fr(String(pb.maxR))+' reps</div></div><i class="ti ti-chevron-down hist-chevron"></i></div><div class="hist-body"><div style="font-size:12px;color:var(--ts);margin-bottom:8px;">PB on '+pb.date+'</div><div class="hist-sets">'+lines+'</div></div></div>';
+    }).join('');
+  }
+
+  if(_profileTabSection === 'friends'){
+    body.innerHTML = '<div style="color:var(--ts);font-size:13px;padding:8px 0;">Loading...</div>';
+    loadProfileTabFriends(workouts, userId);
+  }
+}
+
+async function loadProfileTabFriends(workouts, userId){
+  const body = document.getElementById('profile-tab-body');
+  if(!body) return;
+  const fRes = await sb.from('friendships')
+    .select('requester_id,addressee_id, requester:profiles!friendships_requester_id_fkey(id,name,username,avatar_url), addressee:profiles!friendships_addressee_id_fkey(id,name,username,avatar_url)')
+    .or('requester_id.eq.'+userId+',addressee_id.eq.'+userId)
+    .eq('status','accepted');
+  const friendships = fRes.data||[];
+  if(!friendships.length){body.innerHTML='<div class="empty" style="padding:2rem 0;"><i class="ti ti-users" style="font-size:28px;display:block;margin-bottom:8px;"></i>No friends yet</div>';return;}
+  const upmFriends = friendships.map(function(f){var p=f.requester_id===userId?f.addressee:f.requester;return {id:String(p.id),name:p.name,username:p.username,avatar_url:p.avatar_url};});
+  const togetherMap = {};
+  (workouts||[]).forEach(function(w){if(!w.tagged)return;w.tagged.forEach(function(t){if(String(t.id)!==userId)togetherMap[String(t.id)]=(togetherMap[String(t.id)]||0)+1;});});
+  body.innerHTML = upmFriends.map(function(friend){
+    var together=togetherMap[friend.id]||0;
+    var uname=friend.username?'<div style="font-size:12px;color:var(--ts);">@'+friend.username+'</div>':'';
+    var tog=together>0?'<div style="font-size:12px;color:var(--ts);margin-top:3px;"><i class="ti ti-barbell" style="font-size:11px;"></i> '+together+' workout'+(together===1?'':'s')+' together</div>':'<div style="font-size:12px;color:var(--ts);margin-top:3px;">No workouts together yet</div>';
+    return '<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:0.5px solid var(--bo3);cursor:pointer;" onclick="viewUserProfile(\''+friend.id+'\')">'+getAvatarHtml(friend,40)+'<div><div style="font-size:14px;font-weight:500;color:var(--tp);">'+friend.name+'</div>'+uname+tog+'</div></div>';
+  }).join('');
+}
+
+function openMyProfile(){ switchTab('profile'); }
+
 function openProfileModal(){
   if(!currentProfile) return;
   document.getElementById('profile-name-inp').value = currentProfile.name || '';
@@ -734,20 +894,13 @@ async function saveToSupabase(newEntry){
 }
 
 // ── Friends ──
-function switchFriendsSub(sub){
-  document.getElementById('friends-feed-content').style.display = sub==='feed' ? '' : 'none';
-  document.getElementById('friends-content').style.display = sub==='friends' ? '' : 'none';
-  document.getElementById('fsub-feed').classList.toggle('active', sub==='feed');
-  document.getElementById('fsub-friends').classList.toggle('active', sub==='friends');
-  if(sub==='feed') renderFeed();
-  if(sub==='friends') renderFriendsTab();
-}
+function switchFriendsSub(sub){ renderFeed(); }
 
 // ── Activity Feed ──
 async function renderFeed(){
   const el = document.getElementById('friends-feed-content');
   if(!currentUser){ el.innerHTML='<div class="empty">Sign in to see activity.</div>'; return; }
-  el.innerHTML = '<div style="color:var(--ts);font-size:13px;padding:1rem 0;">Loading...</div>';
+  el.innerHTML = '<div style="display:flex;justify-content:flex-end;margin-bottom:1rem;"><button class="icon-btn" onclick="openManageFriendsModal()" style="font-size:13px;padding:5px 12px;"><i class="ti ti-user-plus"></i> Add friends</button></div><div style="color:var(--ts);font-size:13px;padding:.5rem 0;">Loading...</div>';
 
   const { data: friendships } = await sb.from('friendships')
     .select('requester_id,addressee_id')
@@ -763,8 +916,10 @@ async function renderFeed(){
     .order('ts', {ascending:false})
     .limit(40);
 
+  const addFriendsBtn = '<div style="display:flex;justify-content:flex-end;margin-bottom:1rem;"><button class="icon-btn" onclick="openManageFriendsModal()" style="font-size:13px;padding:5px 12px;"><i class="ti ti-user-plus"></i> Add friends</button></div>';
+
   if(!workouts || !workouts.length){
-    el.innerHTML = '<div class="empty"><i class="ti ti-activity" style="font-size:32px;display:block;margin-bottom:8px"></i>No activity yet — workouts from you and your friends will appear here</div>';
+    el.innerHTML = addFriendsBtn + '<div class="empty"><i class="ti ti-activity" style="font-size:32px;display:block;margin-bottom:8px"></i>No activity yet — workouts from you and your friends will appear here</div>';
     return;
   }
 
@@ -778,7 +933,7 @@ async function renderFeed(){
     window._feedLikeCounts[w.id] = (allLikes||[]).filter(function(l){return l.workout_id===w.id;}).length;
   });
 
-  el.innerHTML = workouts.map(function(w, i){
+  el.innerHTML = addFriendsBtn + workouts.map(function(w, i){
     const isMe = w.user_id === currentUser.id;
     const pname = (w.profile && w.profile.name) ? w.profile.name : 'Unknown';
     const initial = pname.charAt(0).toUpperCase();
@@ -965,6 +1120,7 @@ function copyFeedWorkout(i){
 // ── Friends manage tab ──
 async function renderFriendsTab(){
   const el = document.getElementById('friends-content');
+  if(!el) return; // Friends tab removed from main nav, managed via profile
   if(!currentUser){ el.innerHTML='<div class="empty">Sign in to use Friends.</div>'; return; }
   el.innerHTML = '<div style="color:var(--ts);font-size:13px;padding:1rem 0;">Loading...</div>';
 
@@ -1692,6 +1848,64 @@ function repeatWorkout(idx){
   renderBlocks(); renderExSelect();
 }
 
+async function openManageFriendsModal(){
+  openModal('manage-friends-modal');
+  const el = document.getElementById('manage-friends-content');
+  el.innerHTML = '<div style="color:var(--ts);font-size:13px;padding:.5rem 0;">Loading...</div>';
+
+  const { data: friendships } = await sb.from('friendships')
+    .select('*, requester:profiles!friendships_requester_id_fkey(id,name,username,avatar_url), addressee:profiles!friendships_addressee_id_fkey(id,name,username,avatar_url)')
+    .or('requester_id.eq.'+currentUser.id+',addressee_id.eq.'+currentUser.id)
+    .eq('status','accepted');
+
+  const { data: pending } = await sb.from('friendships')
+    .select('*, requester:profiles!friendships_requester_id_fkey(id,name,username,avatar_url)')
+    .eq('addressee_id', currentUser.id)
+    .eq('status','pending');
+
+  let html = '<div class="search-friends-row"><input type="text" id="mfm-search-inp" placeholder="Search by @username or name..."><button class="icon-btn" onclick="searchMFM()">Search</button></div><div id="mfm-results"></div>';
+
+  if(pending && pending.length){
+    html += '<div class="friend-section-lbl">Pending ('+pending.length+')</div>';
+    html += pending.map(f => `<div class="friend-card">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">${getAvatarHtml(f.requester,36)}<div><div class="friend-name">${f.requester.name}${f.requester.username?' <span style="font-size:12px;color:var(--ts);">@'+f.requester.username+'</span>':''}</div></div></div>
+      <div class="friend-actions"><button class="friend-btn primary" onclick="acceptFriend('${f.id}');openManageFriendsModal()">Accept</button><button class="friend-btn danger" onclick="declineFriend('${f.id}');openManageFriendsModal()">Decline</button></div>
+    </div>`).join('');
+  }
+
+  if(friendships && friendships.length){
+    html += '<div class="friend-section-lbl">Friends ('+friendships.length+')</div>';
+    html += friendships.map(f => {
+      const friend = f.requester_id===currentUser.id ? f.addressee : f.requester;
+      return `<div class="friend-card">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">${getAvatarHtml(friend,36)}<div><div class="friend-name">${friend.name}${friend.username?' <span style="font-size:12px;color:var(--ts);">@'+friend.username+'</span>':''}</div></div></div>
+        <div class="friend-actions"><button class="friend-btn danger" onclick="removeFriend('${f.id}');openManageFriendsModal()">Remove</button></div>
+      </div>`;
+    }).join('');
+  }
+
+  if(!friendships?.length && !pending?.length){
+    html += '<div class="empty" style="padding:1.5rem 0;"><i class="ti ti-users" style="font-size:28px;display:block;margin-bottom:8px"></i>No friends yet — search above</div>';
+  }
+
+  el.innerHTML = html;
+}
+
+async function searchMFM(){
+  const q = document.getElementById('mfm-search-inp').value.trim();
+  const el = document.getElementById('mfm-results');
+  if(!q){ el.innerHTML=''; return; }
+  const uq = q.startsWith('@') ? q.slice(1) : q;
+  const { data } = await sb.from('profiles').select('id,name,username,avatar_url').or('username.ilike.'+uq+'%,name.ilike.%'+q+'%').neq('id',currentUser.id).limit(8);
+  if(!data||!data.length){ el.innerHTML='<div style="font-size:13px;color:var(--ts);padding:6px 0;">No users found.</div>'; return; }
+  window._searchResults = data;
+  el.innerHTML = data.map(function(u,i){
+    const uname = u.username ? ' <span style="font-size:12px;color:var(--ts);">@'+u.username+'</span>' : '';
+    return '<div class="friend-card" style="margin-bottom:8px;"><div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">'+getAvatarHtml(u,36)+'<div><div class="friend-name">'+u.name+uname+'</div></div></div><div class="friend-actions"><button class="friend-btn primary" onclick="sendFriendRequest(window._searchResults['+i+'].id);this.textContent=\'Sent!\'">Add friend</button><button class="friend-btn" onclick="closeModal(\'manage-friends-modal\');viewUserProfile(window._searchResults['+i+'].id)">View profile</button></div></div>';
+  }).join('');
+}
+
+
 async function sendFriendRequest(addresseeId){
   const { error } = await sb.from('friendships').insert({ requester_id: currentUser.id, addressee_id: addresseeId, status:'pending' });
   if(error) alert('Could not send request: ' + error.message);
@@ -1933,6 +2147,9 @@ function switchUPMTab(tab){
 
 async function viewUserProfile(userId){
   openModal('user-profile-modal');
+  const editBtn = document.getElementById('upm-edit-btn');
+  if(editBtn) editBtn.style.display = (currentUser && userId === currentUser.id) ? 'flex' : 'none';
+
   document.getElementById('upm-name').textContent = 'Loading...';
   document.getElementById('upm-username').textContent = '';
   document.getElementById('upm-avatar').innerHTML = '';
@@ -2271,11 +2488,14 @@ function renderProgressChart(sessions){
 
 
 function switchTab(tab){
-  ['log','lookup','history','friends'].forEach(t => document.getElementById('tab-'+t).style.display = t===tab?'':'none');
-  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', ['log','lookup','history','friends'][i]===tab));
+  ['friends','log','lookup','history','profile'].forEach(t => document.getElementById('tab-'+t).style.display = t===tab?'':'none');
+  const map = {friends:'btab-friends', lookup:'btab-lookup', history:'btab-history', profile:'btab-profile'};
+  document.querySelectorAll('.btab').forEach(b => b.classList.remove('active'));
+  if(map[tab]) document.getElementById(map[tab]).classList.add('active');
   if(tab==='lookup') renderLookup();
-  if(tab==='history') renderHistory();
-  if(tab==='friends') switchFriendsSub('feed');
+  if(tab==='history'){ renderHistory(); renderWeeklySummary(); }
+  if(tab==='friends') renderFeed();
+  if(tab==='profile') renderProfileTab();
 }
 
 init();
@@ -2315,10 +2535,11 @@ init();
 <div class="modal-bg" id="user-profile-modal"><div class="modal modal-flex" style="max-width:420px;max-height:90vh;">
   <div class="user-profile-hdr" style="flex-shrink:0;">
     <div class="user-profile-avatar" id="upm-avatar"></div>
-    <div>
+    <div style="flex:1;">
       <div class="user-profile-name" id="upm-name"></div>
       <div class="user-profile-username" id="upm-username"></div>
     </div>
+    <button class="icon-btn" id="upm-edit-btn" style="display:none;align-self:flex-start;" onclick="closeModal('user-profile-modal');openProfileModal()"><i class="ti ti-settings"></i> Settings</button>
   </div>
   <div style="display:flex;border-bottom:0.5px solid var(--bo3);margin-bottom:1rem;flex-shrink:0;">
     <button class="friends-subtab active" onclick="switchUPMTab('workouts')" id="upm-tab-workouts">Workouts</button>
@@ -2357,6 +2578,15 @@ init();
   <div class="modal-actions">
     <button class="modal-btn" onclick="closeModal('save-workout-modal')">Cancel</button>
     <button class="modal-btn primary" onclick="saveWorkout()"><i class="ti ti-device-floppy"></i> Save</button>
+  </div>
+</div></div>
+
+<!-- Manage friends modal -->
+<div class="modal-bg" id="manage-friends-modal"><div class="modal">
+  <div class="modal-title">Friends</div>
+  <div id="manage-friends-content"></div>
+  <div class="modal-actions" style="margin-top:1rem;">
+    <button class="modal-btn" onclick="closeModal('manage-friends-modal')">Close</button>
   </div>
 </div></div>
 
