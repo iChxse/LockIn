@@ -242,6 +242,16 @@ body.dark-mode .mode-btn.active, body.dark-mode .cat-tab.active, body.dark-mode 
 .comment-input-row input { flex:1; font-size:13px; padding:7px 10px; border:0.5px solid var(--bo3); border-radius:var(--r1); background:var(--bs); color:var(--tp); }
 .comment-input-row input:focus { outline:none; border-color:var(--bo1); }
 .friend-section-lbl { font-size:11px; font-weight:500; color:var(--ts); text-transform:uppercase; letter-spacing:.05em; margin-bottom:8px; margin-top:1rem; }
+
+.avatar-img { width:100%; height:100%; border-radius:50%; object-fit:cover; }
+.profile-pic-wrap { width:64px; height:64px; position:relative; margin-bottom:1rem; cursor:pointer; }
+.profile-pic-circle { width:64px; height:64px; border-radius:50%; background:var(--bs); border:0.5px solid var(--bo3); display:flex; align-items:center; justify-content:center; font-size:24px; font-weight:600; color:var(--tp); overflow:hidden; }
+.profile-pic-edit { position:absolute; bottom:0; right:0; background:var(--tp); color:var(--bp); border-radius:50%; width:20px; height:20px; display:flex; align-items:center; justify-content:center; font-size:11px; border:2px solid var(--bp); }
+.user-profile-hdr { display:flex; align-items:center; gap:14px; margin-bottom:1.25rem; padding-bottom:1.25rem; border-bottom:0.5px solid var(--bo3); }
+.user-profile-avatar { width:56px; height:56px; border-radius:50%; background:var(--bs); border:0.5px solid var(--bo3); display:flex; align-items:center; justify-content:center; font-size:22px; font-weight:600; color:var(--tp); overflow:hidden; flex-shrink:0; }
+.user-profile-name { font-size:18px; font-weight:500; color:var(--tp); }
+.user-profile-username { font-size:13px; color:var(--ts); }
+.feed-link { text-decoration:underline; text-underline-offset:2px; text-decoration-color:var(--bo2); cursor:pointer; }
 </style>
 </head>
 <body>
@@ -302,9 +312,10 @@ body.dark-mode .mode-btn.active, body.dark-mode .cat-tab.active, body.dark-mode 
     </div>
     <div class="save-area">
       <div class="save-sec">
-        <div class="sec-lbl">Workout name <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:11px;">(optional)</span></div>
+        <div class="sec-lbl">Workout name <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:11px;color:#E24B4A;">(required)</span></div>
         <input type="text" class="day-inp" id="day-inp" placeholder="e.g. Chest/Tri, Push day, Legs...">
         <div class="day-chips" id="day-chips"></div>
+        <div style="margin-top:10px;"><div class="sec-lbl" style="margin-bottom:6px;">Description <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:11px;">(optional)</span></div><input type="text" class="day-inp" id="day-desc" placeholder="e.g. Felt strong today, PR on bench..."></div>
       </div>
       <div class="save-sec">
         <button class="save-btn" onclick="saveWorkout()"><i class="ti ti-device-floppy"></i> Save workout</button>
@@ -412,6 +423,11 @@ body.dark-mode .mode-btn.active, body.dark-mode .cat-tab.active, body.dark-mode 
 <!-- Profile modal -->
 <div class="modal-bg" id="profile-modal"><div class="modal">
   <div class="modal-title">Profile</div>
+  <div class="profile-pic-wrap" onclick="document.getElementById('avatar-file-inp').click()">
+    <div class="profile-pic-circle" id="profile-pic-preview"></div>
+    <div class="profile-pic-edit"><i class="ti ti-pencil"></i></div>
+  </div>
+  <input type="file" id="avatar-file-inp" accept="image/*" style="display:none;" onchange="handleAvatarUpload(event)">
   <div class="modal-lbl">Your name</div>
   <input type="text" class="modal-inp" id="profile-name-inp" placeholder="Your name">
   <div class="modal-lbl">Username</div>
@@ -547,6 +563,8 @@ function openProfileModal(){
   document.getElementById('profile-username-inp').value = currentProfile.username || '';
   document.getElementById('profile-email-display').textContent = currentProfile.email || currentUser?.email || '';
   syncThemeToggle();
+  const ppEl = document.getElementById('profile-pic-preview');
+  if(ppEl){ if(currentProfile.avatar_url){ ppEl.innerHTML='<img class="avatar-img" src="'+currentProfile.avatar_url+'" alt="avatar">'; } else { ppEl.innerHTML='<span>'+((currentProfile.name||'?').charAt(0).toUpperCase())+'</span>'; } }
   openModal('profile-modal');
 }
 
@@ -561,8 +579,9 @@ async function saveProfile(){
     if(existing && existing.id !== currentUser.id){ alert('That username is already taken.'); return; }
   }
   await sb.from('profiles').update({ name, username: username || null }).eq('id', currentUser.id);
-  currentProfile.name = name;
-  currentProfile.username = username;
+  const { data: freshProfile } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
+  if(freshProfile) currentProfile = freshProfile;
+  else { currentProfile.name = name; currentProfile.username = username; }
   updateGreeting();
   closeModal('profile-modal');
 }
@@ -576,7 +595,7 @@ async function loadFromSupabase(){
       sb.from('workouts').select('*').eq('user_id', currentUser.id).order('ts', {ascending:false}).limit(100),
       sb.from('exercise_lists').select('*').eq('user_id', currentUser.id).single()
     ]);
-    if(wRes.data) history = wRes.data.map(r => ({ date:r.date, ts:r.ts, label:r.label, blocks:r.blocks, id:r.id }));
+    if(wRes.data) history = wRes.data.map(r => ({ date:r.date, ts:r.ts, label:r.label, desc:r.desc||null, blocks:r.blocks, id:r.id }));
     if(eRes.data?.exercises) EX = eRes.data.exercises;
     setSS('ok','Synced');
   } catch(e){ load(); setSS('ok','Loaded locally'); }
@@ -594,6 +613,7 @@ async function saveToSupabase(newEntry){
         date: newEntry.date,
         ts: newEntry.ts,
         label: newEntry.label,
+        desc: newEntry.desc || null,
         blocks: newEntry.blocks
       });
     }
@@ -634,7 +654,7 @@ async function renderFeed(){
   const allIds = [currentUser.id, ...friendIds];
 
   const { data: workouts } = await sb.from('workouts')
-    .select('*, profile:profiles(id,name,username)')
+    .select('*, profile:profiles(id,name,username,avatar_url)')
     .in('user_id', allIds)
     .order('ts', {ascending:false})
     .limit(40);
@@ -646,7 +666,7 @@ async function renderFeed(){
 
   const wIds = workouts.map(w=>w.id);
   const { data: allLikes } = await sb.from('workout_likes').select('workout_id,user_id').in('workout_id', wIds);
-  const { data: allComments } = await sb.from('workout_comments').select('*,profile:profiles(id,name,username)').in('workout_id', wIds).order('created_at',{ascending:true});
+  const { data: allComments } = await sb.from('workout_comments').select('*,profile:profiles(id,name,username,avatar_url)').in('workout_id', wIds).order('created_at',{ascending:true});
 
   window._feedWorkouts = workouts;
 
@@ -677,16 +697,16 @@ async function renderFeed(){
       return '<div class="comment-row">' +
         '<div class="comment-avatar">'+cinit+'</div>' +
         '<div class="comment-body">' +
-          '<div class="comment-author">'+cname+cusername+'</div>' +
+          '<div class="comment-author"><span class="feed-link" onclick="viewUserProfile(\''+c.user_id+'\')" >'+cname+'</span></div>' +
           '<div class="comment-text">'+c.body+'</div>' +
           '<div class="comment-time">'+timeAgo(c.created_at)+'</div>' +
         '</div></div>';
     }).join('');
 
     const ago = timeAgo(w.ts);
-    const byLine = isMe ? 'You completed a workout' : pname + ' completed a workout';
+    const byLine = isMe ? 'You completed a workout' : '<span class="feed-link" onclick="viewUserProfile(\''+w.user_id+'\')">'+pname+'</span> completed a workout';
     const wlabel = w.label ? '<div class="activity-workout-name">'+w.label+'</div>' : '';
-    const copyBtn = isMe ? '<button class="icon-btn" style="font-size:12px;padding:4px 8px;" onclick="copyFeedWorkout('+i+')"><i class="ti ti-copy"></i></button>' : '';
+    const copyBtn = '<button class="icon-btn" style="font-size:12px;padding:4px 8px;" onclick="copyFeedWorkout('+i+')"><i class="ti ti-copy"></i> Copy</button>';
     const likedClass = iLiked ? ' liked' : '';
     const likeIcon = iLiked ? 'ti ti-thumb-up-filled' : 'ti ti-thumb-up';
     const likeLabel = 'Like' + (likeCount===1?'':'s');
@@ -705,7 +725,7 @@ async function renderFeed(){
       '</div>' +
       '<div class="activity-preview">' +
         wlabel +
-        '<div class="activity-sets-preview">'+preview+'</div>' +
+        (w.desc ? '<div class="activity-sets-preview">'+w.desc+'</div>' : '') +
       '</div>' +
       '<button class="activity-expand" onclick="toggleFeedDetail('+i+')">' +
         '<span id="aexpand-lbl-'+i+'">Show sets <i class="ti ti-chevron-down"></i></span>' +
@@ -785,12 +805,12 @@ async function renderFriendsTab(){
   el.innerHTML = '<div style="color:var(--ts);font-size:13px;padding:1rem 0;">Loading...</div>';
 
   const { data: friendships } = await sb.from('friendships')
-    .select('*, requester:profiles!friendships_requester_id_fkey(id,name,username), addressee:profiles!friendships_addressee_id_fkey(id,name,username)')
+    .select('*, requester:profiles!friendships_requester_id_fkey(id,name,username,avatar_url), addressee:profiles!friendships_addressee_id_fkey(id,name,username,avatar_url)')
     .or(`requester_id.eq.${currentUser.id},addressee_id.eq.${currentUser.id}`)
     .eq('status','accepted');
 
   const { data: pending } = await sb.from('friendships')
-    .select('*, requester:profiles!friendships_requester_id_fkey(id,name,username)')
+    .select('*, requester:profiles!friendships_requester_id_fkey(id,name,username,avatar_url)')
     .eq('addressee_id', currentUser.id)
     .eq('status','pending');
 
@@ -814,8 +834,9 @@ async function renderFriendsTab(){
     html += friendships.map(f => {
       const friend = f.requester_id===currentUser.id ? f.addressee : f.requester;
       return `<div class="friend-card">
-        <div class="friend-name">${friend.name}${friend.username?` <span style="font-size:12px;color:var(--ts);">@${friend.username}</span>`:''}</div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">${getAvatarHtml(friend,36)}<div><div class="friend-name">${friend.name}${friend.username?` <span style="font-size:12px;color:var(--ts);">@${friend.username}</span>`:''}</div></div></div>
         <div class="friend-actions">
+          <button class="friend-btn" onclick="viewUserProfile('${friend.id}')"><i class="ti ti-user"></i> Profile</button>
           <button class="friend-btn danger" onclick="removeFriend('${f.id}')">Remove</button>
         </div></div>`;
     }).join('');
@@ -1182,15 +1203,20 @@ function renderBlocks(){
 
 function saveWorkout(){
   if(!blocks.length){ showMsg('Add at least one exercise first.'); return; }
-  const d = new Date(), label = document.getElementById('day-inp').value.trim();
+  const label = document.getElementById('day-inp').value.trim();
+  if(!label){ showMsg('Please add a workout name first.'); document.getElementById('day-inp').focus(); return; }
+  const desc = document.getElementById('day-desc') ? document.getElementById('day-desc').value.trim() : '';
+  const d = new Date();
   history.unshift({
     date: d.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'}),
     ts: d.toISOString(),
     label: label || null,
+    desc: desc || null,
     blocks: JSON.parse(JSON.stringify(blocks))
   });
   blocks=[]; renderBlocks(); renderExSelect(); closePicker();
   document.getElementById('day-inp').value = '';
+  if(document.getElementById('day-desc')) document.getElementById('day-desc').value = '';
   showMsg('Saving...'); saveToSupabase(history[0]); renderDayChips(); showMsg('Workout saved!');
 }
 
@@ -1639,6 +1665,145 @@ async function confirmEditWorkout(){
   renderHistory();
 }
 
+function getAvatarHtml(profile, size){
+  var s = size || 36;
+  var name = (profile && profile.name) ? profile.name : '?';
+  var initial = name.charAt(0).toUpperCase();
+  if(profile && profile.avatar_url){
+    return '<div style="width:'+s+'px;height:'+s+'px;border-radius:50%;overflow:hidden;flex-shrink:0;border:0.5px solid var(--bo3);background:var(--bs);display:flex;align-items:center;justify-content:center;font-size:'+Math.floor(s*0.4)+'px;font-weight:600;color:var(--tp);"><img class="avatar-img" src="'+profile.avatar_url+'" alt="'+initial+'" onerror="this.style.display=\'none\';this.parentElement.innerHTML=\''+initial+'\'"></div>';
+  }
+  return '<div style="width:'+s+'px;height:'+s+'px;border-radius:50%;background:var(--bs);border:0.5px solid var(--bo3);display:flex;align-items:center;justify-content:center;font-size:'+Math.floor(s*0.4)+'px;font-weight:600;color:var(--tp);flex-shrink:0;">'+initial+'</div>';
+}
+
+async function handleAvatarUpload(event){
+  var file = event.target.files[0];
+  if(!file || !currentUser) return;
+  // Resize to max 400px to keep it small before uploading
+  var img = new Image();
+  var url = URL.createObjectURL(file);
+  img.onload = async function(){
+    var MAX = 400;
+    var canvas = document.createElement('canvas');
+    var scale = Math.min(1, MAX/img.width, MAX/img.height);
+    canvas.width = Math.round(img.width*scale);
+    canvas.height = Math.round(img.height*scale);
+    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+    URL.revokeObjectURL(url);
+    canvas.toBlob(async function(blob){
+      var path = currentUser.id+'/avatar.jpg';
+      var { error } = await sb.storage.from('avatars').upload(path, blob, {upsert:true, contentType:'image/jpeg'});
+      if(error){ alert('Upload failed: '+error.message); return; }
+      var { data } = sb.storage.from('avatars').getPublicUrl(path);
+      var avatar_url = data.publicUrl + '?t=' + Date.now();
+      await sb.from('profiles').update({ avatar_url }).eq('id', currentUser.id);
+      currentProfile.avatar_url = avatar_url;
+      var ppEl = document.getElementById('profile-pic-preview');
+      if(ppEl) ppEl.innerHTML = '<img class="avatar-img" src="'+avatar_url+'" alt="avatar">';
+    }, 'image/jpeg', 0.85);
+  };
+  img.src = url;
+}
+
+// ── User profile view ──
+function switchUPMTab(tab){
+  document.getElementById('upm-workouts').style.display = tab==='workouts' ? '' : 'none';
+  document.getElementById('upm-pbs').style.display = tab==='pbs' ? '' : 'none';
+  document.getElementById('upm-tab-workouts').classList.toggle('active', tab==='workouts');
+  document.getElementById('upm-tab-pbs').classList.toggle('active', tab==='pbs');
+}
+
+async function viewUserProfile(userId){
+  openModal('user-profile-modal');
+  document.getElementById('upm-name').textContent = 'Loading...';
+  document.getElementById('upm-username').textContent = '';
+  document.getElementById('upm-avatar').innerHTML = '';
+  document.getElementById('upm-workouts').innerHTML = '<div style="color:var(--ts);font-size:13px;padding:1rem 0;">Loading...</div>';
+  document.getElementById('upm-pbs').innerHTML = '';
+  switchUPMTab('workouts');
+
+  var profile_res = await sb.from('profiles').select('*').eq('id', userId).single();
+  var profile = profile_res.data;
+  if(profile){
+    document.getElementById('upm-name').textContent = profile.name || 'Unknown';
+    document.getElementById('upm-username').textContent = profile.username ? '@'+profile.username : '';
+    document.getElementById('upm-avatar').innerHTML = getAvatarHtml(profile, 56);
+  }
+
+  var wres = await sb.from('workouts').select('*').eq('user_id', userId).order('ts',{ascending:false}).limit(50);
+  var workouts = wres.data;
+  if(!workouts || !workouts.length){
+    document.getElementById('upm-workouts').innerHTML = '<div style="font-size:13px;color:var(--ts);text-align:center;padding:1rem;">No workouts yet.</div>';
+    document.getElementById('upm-pbs').innerHTML = '<div style="font-size:13px;color:var(--ts);text-align:center;padding:1rem;">No data yet.</div>';
+    return;
+  }
+  window._upmWorkouts = workouts;
+
+  document.getElementById('upm-workouts').innerHTML = workouts.map(function(entry,idx){
+    var bodyBlocks = entry.blocks.map(function(b){
+      if(b.type==='single'){var ex=b.exercises[0];var lines=ex.sets.map(function(s,i){return 'Set '+(i+1)+': '+fw(s.w)+' x '+fr(s.r)+' reps';}).join('<br>');return '<div class="hist-block"><div class="hist-name">'+ex.name+'</div><div class="hist-sets">'+lines+'</div></div>';}
+      if(b.type==='superset'){var e1=b.exercises[0],e2=b.exercises[1],ms=Math.max(e1.sets.length,e2.sets.length);var lines=Array.from({length:ms},function(_,i){var s1=e1.sets[i],s2=e2.sets[i];return 'Set '+(i+1)+': '+(s1?fw(s1.w)+' x '+fr(s1.r)+' reps':'--')+' / '+(s2?fw(s2.w)+' x '+fr(s2.r)+' reps':'--');}).join('<br>');return '<div class="hist-block"><div class="hist-name">'+e1.name+' / '+e2.name+'</div><div class="hist-sets">'+lines+'</div></div>';}
+      if(b.type==='dropset'){var ex=b.exercises[0];var lines=ex.dropSets.map(function(drops,i){return 'Set '+(i+1)+': '+drops.map(function(d){return fw(d.w)+' x '+fr(d.r)+' reps';}).join(' > ');}).join('<br>');return '<div class="hist-block"><div class="hist-name">'+ex.name+'</div><div class="hist-sets">'+lines+'</div></div>';}
+      return '';
+    }).join('');
+    var wlabel = entry.label ? '<div style="font-weight:500;color:var(--tp);font-size:13px;margin-bottom:2px;">'+entry.label+'</div>' : '';
+    var wdesc = entry.desc ? '<div style="font-size:12px;color:var(--ts);margin-bottom:4px;">'+entry.desc+'</div>' : '';
+    return '<div class="hist-entry" id="upm-w-'+idx+'">' +
+      '<div class="hist-hdr" onclick="this.closest(\'.hist-entry\').classList.toggle(\'open\')">' +
+        '<div class="hist-hdr-left"><div class="hist-date">'+entry.date+'</div>'+wlabel+wdesc+'</div>' +
+        '<div style="display:flex;align-items:center;gap:6px;">' +
+          '<button class="icon-btn" style="font-size:12px;padding:4px 8px;" onclick="event.stopPropagation();copyUPMWorkout('+idx+')"><i class="ti ti-copy"></i> Copy</button>' +
+          '<i class="ti ti-chevron-down hist-chevron"></i>' +
+        '</div>' +
+      '</div>' +
+      '<div class="hist-body">'+bodyBlocks+'</div>' +
+    '</div>';
+  }).join('');
+
+  // PBs
+  var pbMap = {};
+  workouts.forEach(function(entry){
+    entry.blocks.forEach(function(b){
+      b.exercises.forEach(function(ex){
+        if(!pbMap[ex.name]) pbMap[ex.name] = {maxW:0,maxR:0,bestSets:[],date:''};
+        var sets = ex.dropSets ? [].concat.apply([],ex.dropSets) : (ex.sets||[]);
+        sets.forEach(function(s){
+          var w=parseFloat(s.w)||0,r=parseFloat(s.r)||0;
+          if(w>pbMap[ex.name].maxW||(w===pbMap[ex.name].maxW&&r>pbMap[ex.name].maxR)){
+            pbMap[ex.name].maxW=w; pbMap[ex.name].maxR=r; pbMap[ex.name].date=entry.date;
+            pbMap[ex.name].bestSets=ex.dropSets?[].concat.apply([],ex.dropSets):(ex.sets||[]);
+          }
+        });
+      });
+    });
+  });
+  var pbNames = Object.keys(pbMap);
+  document.getElementById('upm-pbs').innerHTML = pbNames.length ? pbNames.map(function(name, pi){
+    var pb = pbMap[name];
+    var lines = pb.bestSets.map(function(s,i){return 'Set '+(i+1)+': '+fw(s.w)+' x '+fr(s.r)+' reps';}).join('<br>');
+    return '<div class="hist-entry" id="upm-pb-'+pi+'">' +
+      '<div class="hist-hdr" onclick="this.closest(\'.hist-entry\').classList.toggle(\'open\')">' +
+        '<div class="hist-hdr-left">' +
+          '<div class="hist-date" style="font-weight:500;color:var(--tp);">'+name+'</div>' +
+          '<div style="font-size:12px;color:var(--ts);">Best: '+fw(String(pb.maxW))+' &times; '+fr(String(pb.maxR))+' reps</div>' +
+        '</div>' +
+        '<i class="ti ti-chevron-down hist-chevron"></i>' +
+      '</div>' +
+      '<div class="hist-body"><div style="font-size:12px;color:var(--ts);margin-bottom:8px;">PB on '+pb.date+'</div><div class="hist-sets">'+lines+'</div></div>' +
+    '</div>';
+  }).join('') : '<div style="font-size:13px;color:var(--ts);text-align:center;padding:1rem;">No data yet.</div>';
+}
+
+function copyUPMWorkout(idx){
+  var entry = window._upmWorkouts[idx];
+  if(!entry) return;
+  blocks = entry.blocks.map(function(b){
+    if(b.type==='dropset') return {type:'dropset',exercises:[{name:b.exercises[0].name,dropSets:b.exercises[0].dropSets.map(function(ds){return ds.map(function(){return {w:'',r:''};});})}]};
+    return {type:b.type,exercises:b.exercises.map(function(ex){return {name:ex.name,sets:(ex.sets||[]).map(function(){return {w:'',r:''};})};})};
+  });
+  if(entry.label) document.getElementById('day-inp').value = entry.label;
+  closeModal('user-profile-modal'); switchTab('log'); renderBlocks(); renderExSelect();
+}
+
 function switchTab(tab){
   ['log','lookup','history','friends'].forEach(t => document.getElementById('tab-'+t).style.display = t===tab?'':'none');
   document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', ['log','lookup','history','friends'][i]===tab));
@@ -1671,5 +1836,24 @@ init();
   </div>
 </div></div>
 
+
+<div class="modal-bg" id="user-profile-modal"><div class="modal" style="max-width:420px;">
+  <div class="user-profile-hdr">
+    <div class="user-profile-avatar" id="upm-avatar"></div>
+    <div>
+      <div class="user-profile-name" id="upm-name"></div>
+      <div class="user-profile-username" id="upm-username"></div>
+    </div>
+  </div>
+  <div style="display:flex;border-bottom:0.5px solid var(--bo3);margin-bottom:1rem;">
+    <button class="friends-subtab active" onclick="switchUPMTab('workouts')" id="upm-tab-workouts">Workouts</button>
+    <button class="friends-subtab" onclick="switchUPMTab('pbs')" id="upm-tab-pbs">Personal Bests</button>
+  </div>
+  <div id="upm-workouts" style="max-height:55vh;overflow-y:auto;"></div>
+  <div id="upm-pbs" style="display:none;max-height:55vh;overflow-y:auto;"></div>
+  <div class="modal-actions" style="margin-top:1rem;">
+    <button class="modal-btn" onclick="closeModal('user-profile-modal')">Close</button>
+  </div>
+</div></div>
 </body>
 </html>
