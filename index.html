@@ -669,6 +669,10 @@ async function renderFeed(){
   const { data: allComments } = await sb.from('workout_comments').select('*,profile:profiles(id,name,username,avatar_url)').in('workout_id', wIds).order('created_at',{ascending:true});
 
   window._feedWorkouts = workouts;
+  window._feedLikeCounts = {};
+  workouts.forEach(function(w){
+    window._feedLikeCounts[w.id] = (allLikes||[]).filter(function(l){return l.workout_id===w.id;}).length;
+  });
 
   el.innerHTML = workouts.map(function(w, i){
     const isMe = w.user_id === currentUser.id;
@@ -707,10 +711,10 @@ async function renderFeed(){
     const byLine = isMe ? 'You completed a workout' : '<span class="feed-link" onclick="viewUserProfile(\''+w.user_id+'\')">'+pname+'</span> completed a workout';
     const wlabel = w.label ? '<div class="activity-workout-name">'+w.label+'</div>' : '';
     const copyBtn = '<button class="icon-btn" style="font-size:12px;padding:4px 8px;" onclick="copyFeedWorkout('+i+')"><i class="ti ti-copy"></i> Copy</button>';
-    const likedClass = iLiked ? ' liked' : '';
+    const likedClass = (!isMe && iLiked) ? ' liked' : '';
     const likeIcon = iLiked ? 'ti ti-thumb-up-filled' : 'ti ti-thumb-up';
-    const likeLabel = 'Like' + (likeCount===1?'':'s');
-    const likeNum = likeCount > 0 ? likeCount+' ' : '';
+    const likeLabel = isMe ? (likeCount > 0 ? likeCount+' Like'+(likeCount===1?'':'s') : 'Likes') : ('Like'+(likeCount===1?'':'s'));
+    const likeNum = (!isMe && likeCount > 0) ? likeCount+' ' : '';
     const commentLabel = 'Comment' + (commentCount===1?'':'s');
     const commentNum = commentCount > 0 ? commentCount+' ' : '';
 
@@ -732,7 +736,7 @@ async function renderFeed(){
       '</button>' +
       '<div class="activity-detail" id="adetail-'+i+'">'+detailBlocks+'</div>' +
       '<div class="activity-actions">' +
-        '<button class="activity-action-btn'+likedClass+'" id="alike-btn-'+i+'" onclick="toggleLike(\''+w.id+'\','+i+','+iLiked+')">' +
+        '<button class="activity-action-btn'+likedClass+'" id="alike-btn-'+i+'" data-wid="'+w.id+'" data-idx="'+i+'" data-liked="'+(iLiked?1:0)+'" data-count="'+likeCount+'" data-own="'+(isMe?1:0)+'">' +
           '<i class="'+likeIcon+'"></i> '+likeNum+likeLabel +
         '</button>' +
         '<button class="activity-action-btn" onclick="toggleComments('+i+')">' +
@@ -769,13 +773,35 @@ function toggleComments(i){
   document.getElementById('acomments-'+i).classList.toggle('open');
 }
 
-async function toggleLike(workoutId, i, iLiked){
-  if(iLiked){
-    await sb.from('workout_likes').delete().eq('workout_id',workoutId).eq('user_id',currentUser.id);
+// Like button event delegation — one listener handles all cards
+document.addEventListener('click', function(e){
+  const btn = e.target.closest('#friends-feed-content .activity-action-btn[data-wid]');
+  if(!btn) return;
+  const workoutId = btn.dataset.wid;
+  const i = parseInt(btn.dataset.idx);
+  const iLiked = btn.dataset.liked === '1';
+  const likeCount = parseInt(btn.dataset.count) || 0;
+  const isOwn = btn.dataset.own === '1';
+  if(isOwn || iLiked){
+    if(likeCount > 0) showLikes(workoutId);
   } else {
-    await sb.from('workout_likes').insert({workout_id:workoutId, user_id:currentUser.id});
+    doLike(btn, workoutId, i);
   }
-  renderFeed();
+});
+
+async function doLike(btn, workoutId, i){
+  const nowLiked = true;
+  const currentCount = parseInt(btn.dataset.count) || 0;
+  const newCount = currentCount + 1;
+
+  // Update button immediately
+  btn.className = 'activity-action-btn liked';
+  btn.innerHTML = '<i class="ti ti-thumb-up-filled"></i> ' + newCount + ' Like' + (newCount===1?'':'s');
+  btn.dataset.liked = '1';
+  btn.dataset.count = newCount;
+
+  // Save to DB
+  await sb.from('workout_likes').insert({workout_id: workoutId, user_id: currentUser.id});
 }
 
 async function postComment(workoutId, i){
@@ -783,8 +809,34 @@ async function postComment(workoutId, i){
   const body = inp.value.trim();
   if(!body) return;
   inp.value = '';
-  await sb.from('workout_comments').insert({workout_id:workoutId, user_id:currentUser.id, body});
-  renderFeed();
+
+  // Save to DB
+  await sb.from('workout_comments').insert({workout_id: workoutId, user_id: currentUser.id, body});
+
+  // Append comment to DOM immediately — no re-render
+  const section = document.getElementById('acomments-'+i);
+  const inputRow = section.querySelector('.comment-input-row');
+  const name = currentProfile.name || 'You';
+  const newComment = document.createElement('div');
+  newComment.className = 'comment-row';
+  newComment.innerHTML =
+    getAvatarHtml(currentProfile, 26) +
+    '<div class="comment-body">' +
+      '<div class="comment-author"><span class="feed-link" onclick="viewUserProfile(\''+currentUser.id+'\')">' + name + '</span></div>' +
+      '<div class="comment-text">' + body + '</div>' +
+      '<div class="comment-time">just now</div>' +
+    '</div>';
+  section.insertBefore(newComment, inputRow);
+
+  // Update comment count button
+  const commentBtn = section.closest('.activity-card').querySelector('.activity-action-btn:not([data-wid])');
+  if(commentBtn){
+    const txt = commentBtn.textContent.trim();
+    const match = txt.match(/^(\d+)/);
+    const current = match ? parseInt(match[1]) : 0;
+    const newCount = current + 1;
+    commentBtn.innerHTML = '<i class="ti ti-message"></i> ' + newCount + ' Comment' + (newCount===1?'':'s');
+  }
 }
 
 function copyFeedWorkout(i){
@@ -1805,6 +1857,36 @@ function copyUPMWorkout(idx){
   closeModal('user-profile-modal'); switchTab('log'); renderBlocks(); renderExSelect();
 }
 
+async function showLikes(workoutId){
+  openModal('likes-modal');
+  const listEl = document.getElementById('likes-list');
+  listEl.innerHTML = '<div style="font-size:13px;color:var(--ts);padding:8px 0;">Loading...</div>';
+  const { data: likes } = await sb.from('workout_likes')
+    .select('*, profile:profiles(id,name,username,avatar_url)')
+    .eq('workout_id', workoutId)
+    .order('created_at', {ascending:false});
+  if(!likes || !likes.length){
+    listEl.innerHTML = '<div style="font-size:13px;color:var(--ts);text-align:center;padding:2rem 0;">No likes yet.</div>';
+    document.getElementById('likes-modal-title').textContent = 'Liked by';
+    return;
+  }
+  document.getElementById('likes-modal-title').textContent = likes.length + ' Like' + (likes.length===1?'':'s');
+  listEl.innerHTML = likes.map(function(l){
+    var p = l.profile || {};
+    var name = p.name || 'Unknown';
+    var username = p.username ? '<div style="font-size:12px;color:var(--ts);">@'+p.username+'</div>' : '';
+    return '<div class="friend-card" style="cursor:pointer;margin-bottom:8px;" onclick="closeModal(\'likes-modal\');viewUserProfile(\''+l.user_id+'\')">' +
+      '<div style="display:flex;align-items:center;gap:12px;">' +
+        getAvatarHtml(p, 44) +
+        '<div>' +
+          '<div style="font-size:15px;font-weight:500;color:var(--tp);">'+name+'</div>' +
+          username +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
 function switchTab(tab){
   ['log','lookup','history','friends'].forEach(t => document.getElementById('tab-'+t).style.display = t===tab?'':'none');
   document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', ['log','lookup','history','friends'][i]===tab));
@@ -1855,6 +1937,13 @@ init();
   <div class="modal-actions" style="margin-top:1rem;">
     <button class="modal-btn" onclick="closeModal('user-profile-modal')">Close</button>
   </div>
+</div></div>
+<div class="modal-bg" id="likes-modal"><div class="modal" style="max-width:360px;">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">
+    <div class="modal-title" style="margin:0;" id="likes-modal-title">Liked by</div>
+    <button class="icon-btn" onclick="closeModal('likes-modal')"><i class="ti ti-x"></i></button>
+  </div>
+  <div id="likes-list" style="max-height:60vh;overflow-y:auto;"></div>
 </div></div>
 </body>
 </html>
