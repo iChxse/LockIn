@@ -623,7 +623,7 @@ async function saveProfile(){
 
 // ── Cloud save/load ──
 async function loadFromSupabase(){
-  if(!currentUser){ load(); return; }
+  if(!currentUser){ load(); setSS('ok','Ready'); return; }
   setSS('saving','Loading...');
   try {
     // First flush any pending offline saves
@@ -1049,13 +1049,11 @@ function fw(w){ return w ? w+' lbs' : '—'; }
 function fr(r){ return r || '—'; }
 
 function load(){
-  setSS('saving','Loading...');
   try {
     const h = localStorage.getItem('wl_history');
     const e = localStorage.getItem('wl_exercises');
     if(h) history = JSON.parse(h);
     if(e) EX = JSON.parse(e);
-    setSS('ok','Ready');
   } catch(err){ setSS('error','Load error'); }
   if(!EX[activeCat]) activeCat = Object.keys(EX)[0];
 }
