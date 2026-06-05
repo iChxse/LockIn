@@ -1947,8 +1947,8 @@ async function viewUserProfile(userId){
   if(!workouts || !workouts.length){
     document.getElementById('upm-workouts').innerHTML = '<div style="font-size:13px;color:var(--ts);text-align:center;padding:1rem;">No workouts yet.</div>';
     document.getElementById('upm-pbs').innerHTML = '<div style="font-size:13px;color:var(--ts);text-align:center;padding:1rem;">No data yet.</div>';
-    return;
-  }
+    // Don't return — still need to load friends tab
+  } else {
   window._upmWorkouts = workouts;
 
   document.getElementById('upm-workouts').innerHTML = workouts.map(function(entry,idx){
@@ -2004,8 +2004,10 @@ async function viewUserProfile(userId){
       '<div class="hist-body"><div style="font-size:12px;color:var(--ts);margin-bottom:8px;">PB on '+pb.date+'</div><div class="hist-sets">'+lines+'</div></div>' +
     '</div>';
   }).join('') : '<div style="font-size:13px;color:var(--ts);text-align:center;padding:1rem;">No data yet.</div>';
+  } // end else (has workouts)
 
   // ── Friends tab ──────────────────────────────────────────────────────────
+  console.log('Friends section reached, userId:', userId);
   var friendsEl = document.getElementById('upm-friends');
   friendsEl.innerHTML = '<div style="font-size:13px;color:var(--ts);padding:8px 0;">Loading...</div>';
 
