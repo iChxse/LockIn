@@ -743,7 +743,7 @@ function renderProfileTabBody(workouts, userId){
       var tagged = entry.tagged&&entry.tagged.length?'<span style="font-size:11px;color:var(--ts);">with '+entry.tagged.map(function(t){return t.username?'@'+t.username:t.name;}).join(', ')+'</span>':'';
       return '<div class="hist-entry" id="ptab-w-'+idx+'">' +
         '<div class="hist-hdr" onclick="this.closest(\'.hist-entry\').classList.toggle(\'open\')">' +
-          '<div class="hist-hdr-left"><div class="hist-date">'+entry.date+'</div><div class="hist-label-row">'+wlabel+tagged+'</div>'+wdesc+'</div>' +
+          '<div class="hist-hdr-left"><div class="hist-date">'+entry.date+(entry.duration_seconds && entry.duration_seconds >= 10 ? ' <span style="font-size:11px;color:var(--ts);font-weight:400;">· '+(entry.duration_seconds >= 3600 ? Math.floor(entry.duration_seconds/3600)+'h '+Math.floor((entry.duration_seconds%3600)/60)+'m' : Math.round(entry.duration_seconds/60)+' min')+'</span>' : '')+'</div><div class="hist-label-row">'+wlabel+tagged+'</div>'+wdesc+'</div>' +
           '<div style="display:flex;align-items:center;gap:4px;">' +
             '<button class="icon-btn" style="font-size:12px;padding:4px 8px;" onclick="event.stopPropagation();copyUPMWorkout('+idx+');window._upmWorkouts='+JSON.stringify(workouts).replace(/</g,'\\u003c')+'"><i class="ti ti-copy"></i> Copy</button>' +
             '<i class="ti ti-chevron-down hist-chevron"></i>' +
@@ -1054,7 +1054,7 @@ function renderStats(){
   // ── All time ──
   var totalSets = 0;
   history.forEach(function(e){ e.blocks.forEach(function(b){ b.exercises.forEach(function(ex){ totalSets += ex.dropSets ? ex.dropSets.length : (ex.sets||[]).length; }); }); });
-  var timedWorkouts = history.filter(function(e){ return e.duration_seconds && e.duration_seconds >= 60; });
+  var timedWorkouts = history.filter(function(e){ return e.duration_seconds && e.duration_seconds >= 10; });
   var totalMins = timedWorkouts.reduce(function(acc,e){ return acc + Math.round(e.duration_seconds/60); }, 0);
   var avgMins = timedWorkouts.length ? Math.round(totalMins / timedWorkouts.length) : 0;
   var longestMins = timedWorkouts.length ? Math.max.apply(null, timedWorkouts.map(function(e){ return Math.round(e.duration_seconds/60); })) : 0;
@@ -1195,18 +1195,28 @@ async function renderFeed(){
     }).join('');
 
     const ago = timeAgo(w.ts);
-    const durStr = w.duration_seconds && w.duration_seconds >= 60
-      ? ' · ' + (w.duration_seconds >= 3600
-          ? Math.floor(w.duration_seconds/3600)+'h '+Math.floor((w.duration_seconds%3600)/60)+'m'
-          : Math.round(w.duration_seconds/60)+' min')
-      : '';
     var taggedStr = '';
     if(w.tagged && w.tagged.length){
       taggedStr = ' with ' + w.tagged.map(function(t){
         return '<span class="feed-link" onclick="viewUserProfile(\''+t.id+'\')">'+(t.username?'@'+t.username:t.name)+'</span>';
       }).join(', ');
     }
-    const byLine = isMe ? 'You completed a workout'+taggedStr : '<span class="feed-link" onclick="viewUserProfile(\''+w.user_id+'\')">'+pname+'</span> completed a workout'+taggedStr;
+    var durPhrase = '';
+    if(w.duration_seconds && w.duration_seconds >= 10){
+      var secs = w.duration_seconds;
+      if(secs >= 3600){
+        var hrs = Math.floor(secs/3600);
+        var mins = Math.floor((secs%3600)/60);
+        durPhrase = mins > 0 ? ' a '+hrs+' hour '+mins+' minute' : ' a '+hrs+' hour';
+      } else {
+        var mins = Math.round(secs/60);
+        durPhrase = ' a '+(mins||1)+' minute';
+      }
+    }
+    var workoutPhrase = durPhrase ? durPhrase+' workout' : ' a workout';
+    const byLine = isMe
+      ? 'You completed'+workoutPhrase+taggedStr
+      : '<span class="feed-link" onclick="viewUserProfile(\''+w.user_id+'\')">'+pname+'</span> completed'+workoutPhrase+taggedStr;
     const wlabel = w.label ? '<div class="activity-workout-name">'+w.label+'</div>' : '';
     const copyBtn = '<button class="icon-btn" style="font-size:12px;padding:4px 8px;" onclick="copyFeedWorkout('+i+')"><i class="ti ti-copy"></i> Copy Workout</button>';
     const likedClass = iLiked ? ' liked' : '';
@@ -1222,7 +1232,7 @@ async function renderFeed(){
         getAvatarHtml(w.profile, 36) +
         '<div class="activity-meta">' +
           '<div class="activity-name">'+byLine+'</div>' +
-          '<div class="activity-time">'+ago+durStr+'</div>' +
+          '<div class="activity-time">'+ago+'</div>' +
         '</div>' +
         copyBtn +
       '</div>' +
@@ -1762,7 +1772,7 @@ function saveWorkout(){
   const label = document.getElementById('day-inp').value.trim();
   if(!label){ showMsg('Please add a workout name first.'); document.getElementById('day-inp').focus(); return; }
   const desc = document.getElementById('day-desc') ? document.getElementById('day-desc').value.trim() : '';
-  const durationSeconds = _timerSeconds >= 60 ? _timerSeconds : null;
+  const durationSeconds = _timerSeconds >= 10 ? _timerSeconds : null;
   // Stop and reset timer
   clearInterval(_timerInterval); _timerRunning = false; _timerSeconds = 0;
   updateTimerDisplay();
@@ -2055,7 +2065,7 @@ function renderHistory(){
     return `<div class="hist-entry" id="hist-${idx}">
       <div class="hist-hdr" onclick="toggleHistEntry(${idx})">
         <div class="hist-hdr-left">
-          <div class="hist-date">${entry.date}</div>
+          <div class="hist-date">${entry.date}${entry.duration_seconds && entry.duration_seconds >= 10 ? ' <span style="font-size:11px;color:var(--ts);font-weight:400;">· ' + (entry.duration_seconds >= 3600 ? Math.floor(entry.duration_seconds/3600)+'h '+Math.floor((entry.duration_seconds%3600)/60)+'m' : Math.round(entry.duration_seconds/60)+' min') + '</span>' : ''}</div>
           <div class="hist-label-row">
             ${entry.label ? `<span class="hist-tag">${entry.label}</span>` : `<span class="hist-preview" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;">${preview}</span>`}
             ${entry.tagged && entry.tagged.length ? `<span style="font-size:11px;color:var(--ts);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px;">with ${entry.tagged.map(t=>t.username?'@'+t.username:t.name).join(', ')}</span>` : ''}
@@ -2202,7 +2212,7 @@ async function viewFriendWorkouts(userId, name){
     return '<div class="hist-entry" id="fhist-'+idx+'">' +
       '<div class="hist-hdr" onclick="document.getElementById(\'fhist-'+idx+'\').classList.toggle(\'open\')">' +
         '<div class="hist-hdr-left">' +
-          '<div class="hist-date">'+entry.date+'</div>' +
+          '<div class="hist-date">'+entry.date+(entry.duration_seconds && entry.duration_seconds >= 10 ? ' <span style="font-size:11px;color:var(--ts);font-weight:400;">· '+(entry.duration_seconds >= 3600 ? Math.floor(entry.duration_seconds/3600)+'h '+Math.floor((entry.duration_seconds%3600)/60)+'m' : Math.round(entry.duration_seconds/60)+' min')+'</span>' : '')+'</div>' +
           '<div class="hist-label-row">' +
             (entry.label ? '<span class="hist-tag">'+entry.label+'</span>' : '<span class="hist-preview" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px;">'+preview+'</span>') +
             (entry.tagged && entry.tagged.length ? '<span style="font-size:11px;color:var(--ts);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100px;">with '+entry.tagged.map(function(t){return t.username?'@'+t.username:t.name;}).join(', ')+'</span>' : '') +
@@ -2443,7 +2453,7 @@ async function viewUserProfile(userId){
     var wdesc = entry.desc ? '<div style="font-size:12px;color:var(--ts);margin-bottom:4px;">'+entry.desc+'</div>' : '';
     return '<div class="hist-entry" id="upm-w-'+idx+'">' +
       '<div class="hist-hdr" onclick="this.closest(\'.hist-entry\').classList.toggle(\'open\')">' +
-        '<div class="hist-hdr-left"><div class="hist-date">'+entry.date+'</div>'+wlabel+wdesc+'</div>' +
+        '<div class="hist-hdr-left"><div class="hist-date">'+entry.date+(entry.duration_seconds && entry.duration_seconds >= 10 ? ' <span style="font-size:11px;color:var(--ts);font-weight:400;">· '+(entry.duration_seconds >= 3600 ? Math.floor(entry.duration_seconds/3600)+'h '+Math.floor((entry.duration_seconds%3600)/60)+'m' : Math.round(entry.duration_seconds/60)+' min')+'</span>' : '')+'</div>'+wlabel+wdesc+'</div>' +
         '<div style="display:flex;align-items:center;gap:6px;">' +
           '<button class="icon-btn" style="font-size:12px;padding:4px 8px;" onclick="event.stopPropagation();copyUPMWorkout('+idx+')"><i class="ti ti-copy"></i> Copy</button>' +
           '<i class="ti ti-chevron-down hist-chevron"></i>' +
