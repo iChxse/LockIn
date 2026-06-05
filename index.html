@@ -327,22 +327,8 @@ body.dark-mode .mode-btn.active, body.dark-mode .cat-tab.active, body.dark-mode 
         </div>
       </div>
     </div>
-    <div class="save-area">
-      <div class="save-sec">
-        <div class="sec-lbl">Workout name <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:11px;color:#E24B4A;">(required)</span></div>
-        <input type="text" class="day-inp" id="day-inp" placeholder="e.g. Chest/Tri, Push day, Legs...">
-        <div class="day-chips" id="day-chips"></div>
-        <div style="margin-top:10px;"><div class="sec-lbl" style="margin-bottom:6px;">Description <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:11px;">(optional)</span></div><input type="text" class="day-inp" id="day-desc" placeholder="e.g. Felt strong today, PR on bench..."></div>
-        <div class="tag-friends-wrap">
-          <div class="sec-lbl" style="margin-bottom:6px;">Tag friends <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:11px;">(optional)</span></div>
-          <div class="tag-search-row"><input type="text" id="tag-search-inp" placeholder="Search by @username or name..." oninput="searchTagFriends()"><button class="icon-btn" onclick="searchTagFriends()"><i class="ti ti-search"></i></button></div>
-          <div class="tag-results" id="tag-results"></div>
-          <div class="tag-friends-selected" id="tag-selected"></div>
-        </div>
-      </div>
-      <div class="save-sec">
-        <button class="save-btn" id="save-btn" onclick="saveWorkout()"><i class="ti ti-device-floppy"></i> Save workout</button>
-      </div>
+    <div style="margin-bottom:14px;">
+      <button class="save-btn" id="save-btn" onclick="openSaveModal()"><i class="ti ti-device-floppy"></i> Save workout</button>
     </div>
   </div>
 
@@ -1377,6 +1363,13 @@ function renderBlocks(){
   }).join('');
 }
 
+function openSaveModal(){
+  if(!blocks.length){ showMsg('Add at least one exercise first.'); return; }
+  renderDayChips();
+  openModal('save-workout-modal');
+  setTimeout(function(){ document.getElementById('day-inp').focus(); }, 100);
+}
+
 function saveWorkout(){
   if(!blocks.length){ showMsg('Add at least one exercise first.'); return; }
   const label = document.getElementById('day-inp').value.trim();
@@ -1392,6 +1385,7 @@ function saveWorkout(){
     blocks: JSON.parse(JSON.stringify(blocks))
   });
   blocks=[]; renderBlocks(); renderExSelect(); closePicker();
+  closeModal('save-workout-modal');
   document.getElementById('day-inp').value = '';
   if(document.getElementById('day-desc')) document.getElementById('day-desc').value = '';
   resetTaggedFriends();
@@ -1668,6 +1662,7 @@ function renderHistory(){
           <div class="hist-date">${entry.date}</div>
           <div class="hist-label-row">
             ${entry.label ? `<span class="hist-tag">${entry.label}</span>` : `<span class="hist-preview" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;">${preview}</span>`}
+            ${entry.tagged && entry.tagged.length ? `<span style="font-size:11px;color:var(--ts);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px;">with ${entry.tagged.map(t=>t.username?'@'+t.username:t.name).join(', ')}</span>` : ''}
           </div>
         </div>
         <div style="display:flex;align-items:center;gap:4px;flex-shrink:0;">
@@ -1747,6 +1742,7 @@ async function viewFriendWorkouts(userId, name){
           '<div class="hist-date">'+entry.date+'</div>' +
           '<div class="hist-label-row">' +
             (entry.label ? '<span class="hist-tag">'+entry.label+'</span>' : '<span class="hist-preview" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px;">'+preview+'</span>') +
+            (entry.tagged && entry.tagged.length ? '<span style="font-size:11px;color:var(--ts);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100px;">with '+entry.tagged.map(function(t){return t.username?'@'+t.username:t.name;}).join(', ')+'</span>' : '') +
           '</div>' +
         '</div>' +
         '<div style="display:flex;align-items:center;gap:8px;">' +
@@ -1808,6 +1804,11 @@ function openEditWorkout(idx){
   const entry = history[idx];
   document.getElementById('edit-workout-label').value = entry.label || '';
   document.getElementById('edit-workout-desc').value = entry.desc || '';
+  // Pre-populate tagged friends
+  _editTaggedFriends = entry.tagged ? JSON.parse(JSON.stringify(entry.tagged)) : [];
+  renderEditTagSelected();
+  document.getElementById('edit-tag-results').innerHTML = '';
+  document.getElementById('edit-tag-search-inp').value = '';
   // Build editable set inputs for each block
   const container = document.getElementById('edit-workout-blocks');
   container.innerHTML = entry.blocks.map((b, bi) => {
@@ -1866,13 +1867,18 @@ async function confirmEditWorkout(){
   const entry = history[pendingEditWorkoutIdx];
   entry.label = document.getElementById('edit-workout-label').value.trim() || null;
   entry.desc = document.getElementById('edit-workout-desc').value.trim() || null;
+  entry.tagged = _editTaggedFriends.length ? JSON.parse(JSON.stringify(_editTaggedFriends)) : null;
   if(currentUser && entry.id){
-    await sb.from('workouts').update({ label: entry.label, desc: entry.desc, blocks: entry.blocks }).eq('id', entry.id);
+    await sb.from('workouts').update({ label: entry.label, desc: entry.desc, tagged: entry.tagged, blocks: entry.blocks }).eq('id', entry.id);
   }
   localStorage.setItem('wl_history', JSON.stringify(history.slice(0,100)));
   pendingEditWorkoutIdx = null;
   closeModal('edit-workout-modal');
   renderHistory();
+  // Refresh feed if visible so tags update live
+  if(document.getElementById('tab-friends') && document.getElementById('tab-friends').style.display !== 'none'){
+    renderFeed();
+  }
 }
 
 function getAvatarHtml(profile, size){
@@ -2128,6 +2134,55 @@ window.addEventListener('online', async function(){
 // ── Tag friends in workout ──
 var _taggedFriends = []; // [{id, name, username}]
 
+var _editTaggedFriends = [];
+
+function renderEditTagSelected(){
+  var el = document.getElementById('edit-tag-selected');
+  if(!el) return;
+  el.innerHTML = _editTaggedFriends.map(function(f){
+    var label = f.username ? '@'+f.username : f.name;
+    return '<div class="tag-chip">'+label+'<button data-uid="'+f.id+'" onclick="untagEditFriend(this.dataset.uid)"><i class="ti ti-x"></i></button></div>';
+  }).join('');
+}
+
+async function searchEditTagFriends(){
+  var q = document.getElementById('edit-tag-search-inp').value.trim();
+  var el = document.getElementById('edit-tag-results');
+  if(!q || !currentUser){ el.innerHTML=''; return; }
+  var uq = q.startsWith('@') ? q.slice(1) : q;
+  var { data } = await sb.from('profiles')
+    .select('id,name,username,avatar_url')
+    .or('username.ilike.'+uq+'%,name.ilike.%'+q+'%')
+    .neq('id', currentUser.id)
+    .limit(5);
+  if(!data || !data.length){ el.innerHTML='<div style="font-size:13px;color:var(--ts);padding:4px 0;">No users found.</div>'; return; }
+  el.innerHTML = data.map(function(u){
+    if(_editTaggedFriends.some(function(f){ return f.id===u.id; })) return '';
+    var uname = u.username ? ' <span style="font-size:12px;color:var(--ts);">@'+u.username+'</span>' : '';
+    return '<div class="tag-result-item" data-id="'+u.id+'" data-name="'+encodeURIComponent(u.name)+'" data-username="'+encodeURIComponent(u.username||'')+'" onclick="tagEditFriendFromEl(this)">' +
+      getAvatarHtml(u, 28) +
+      '<span class="tag-result-name">'+u.name+uname+'</span>' +
+      '<i class="ti ti-plus" style="color:var(--ts);font-size:16px;"></i>' +
+    '</div>';
+  }).join('');
+}
+
+function tagEditFriendFromEl(el){
+  var id = el.dataset.id;
+  var name = decodeURIComponent(el.dataset.name);
+  var username = decodeURIComponent(el.dataset.username);
+  if(_editTaggedFriends.some(function(f){ return f.id===id; })) return;
+  _editTaggedFriends.push({id:id, name:name, username:username});
+  renderEditTagSelected();
+  document.getElementById('edit-tag-results').innerHTML = '';
+  document.getElementById('edit-tag-search-inp').value = '';
+}
+
+function untagEditFriend(id){
+  _editTaggedFriends = _editTaggedFriends.filter(function(f){ return f.id !== id; });
+  renderEditTagSelected();
+}
+
 function resetTaggedFriends(){
   _taggedFriends = [];
   var sel = document.getElementById('tag-selected');
@@ -2242,6 +2297,13 @@ init();
   <input type="text" class="modal-inp" id="edit-workout-label" placeholder="e.g. Push day">
   <div class="modal-lbl">Description</div>
   <input type="text" class="modal-inp" id="edit-workout-desc" placeholder="e.g. Felt strong today... (optional)">
+  <div class="modal-lbl">Tag friends <span style="font-weight:400;font-size:11px;color:var(--ts);">(optional)</span></div>
+  <div class="tag-search-row" style="margin-bottom:6px;">
+    <input type="text" id="edit-tag-search-inp" placeholder="Search by @username or name..." oninput="searchEditTagFriends()">
+    <button class="icon-btn" onclick="searchEditTagFriends()"><i class="ti ti-search"></i></button>
+  </div>
+  <div class="tag-results" id="edit-tag-results"></div>
+  <div class="tag-friends-selected" id="edit-tag-selected" style="margin-bottom:1rem;"></div>
   <div id="edit-workout-blocks"></div>
   <div class="modal-actions" style="margin-top:1rem;">
     <button class="modal-btn" onclick="closeModal('edit-workout-modal')">Cancel</button>
@@ -2277,5 +2339,26 @@ init();
   </div>
   <div id="likes-list" style="max-height:60vh;overflow-y:auto;"></div>
 </div></div>
+<!-- Save workout modal -->
+<div class="modal-bg" id="save-workout-modal"><div class="modal">
+  <div class="modal-title">Save workout</div>
+  <div class="modal-lbl">Workout name <span style="color:#E24B4A;font-size:11px;">(required)</span></div>
+  <input type="text" class="modal-inp" id="day-inp" placeholder="e.g. Chest/Tri, Push day, Legs...">
+  <div class="day-chips" id="day-chips" style="margin-top:-16px;margin-bottom:1.25rem;display:flex;gap:6px;flex-wrap:wrap;"></div>
+  <div class="modal-lbl">Description <span style="font-weight:400;font-size:11px;color:var(--ts);">(optional)</span></div>
+  <input type="text" class="modal-inp" id="day-desc" placeholder="e.g. Felt strong today, PR on bench...">
+  <div class="modal-lbl">Tag friends <span style="font-weight:400;font-size:11px;color:var(--ts);">(optional)</span></div>
+  <div class="tag-search-row" style="margin-bottom:6px;">
+    <input type="text" id="tag-search-inp" placeholder="Search by @username or name..." oninput="searchTagFriends()">
+    <button class="icon-btn" onclick="searchTagFriends()"><i class="ti ti-search"></i></button>
+  </div>
+  <div class="tag-results" id="tag-results"></div>
+  <div class="tag-friends-selected" id="tag-selected" style="margin-bottom:1rem;"></div>
+  <div class="modal-actions">
+    <button class="modal-btn" onclick="closeModal('save-workout-modal')">Cancel</button>
+    <button class="modal-btn primary" onclick="saveWorkout()"><i class="ti ti-device-floppy"></i> Save</button>
+  </div>
+</div></div>
+
 </body>
 </html>
