@@ -796,10 +796,22 @@ function renderProfileTabBody(workouts, userId){
     const pbMap = {};
     workouts.forEach(function(entry){
       entry.blocks.forEach(function(b){
+        const assisted = b.assisted || false;
         b.exercises.forEach(function(ex){
-          if(!pbMap[ex.name]) pbMap[ex.name]={maxW:0,maxR:0,bestSets:[],date:''};
+          if(!pbMap[ex.name]) pbMap[ex.name]={bestW:assisted?Infinity:0,bestR:0,bestSets:[],date:'',assisted:assisted};
           var sets=ex.dropSets?[].concat.apply([],ex.dropSets):(ex.sets||[]);
-          sets.forEach(function(s){var w=parseFloat(s.w)||0,r=parseFloat(s.r)||0;if(w>pbMap[ex.name].maxW||(w===pbMap[ex.name].maxW&&r>pbMap[ex.name].maxR)){pbMap[ex.name].maxW=w;pbMap[ex.name].maxR=r;pbMap[ex.name].date=entry.date;pbMap[ex.name].bestSets=sets;}});
+          var ws = sets.map(function(s){return parseFloat(s.w)||0;}).filter(function(w){return w>0;});
+          if(!ws.length) return;
+          var compW = assisted ? Math.min.apply(null,ws) : Math.max.apply(null,ws);
+          var bestR = sets.reduce(function(a,s){return a+(parseFloat(s.r)||0);},0);
+          var isBetter = assisted
+            ? (compW < pbMap[ex.name].bestW || (compW===pbMap[ex.name].bestW && bestR>pbMap[ex.name].bestR))
+            : (compW > pbMap[ex.name].bestW || (compW===pbMap[ex.name].bestW && bestR>pbMap[ex.name].bestR));
+          if(isBetter){
+            pbMap[ex.name].bestW=compW; pbMap[ex.name].bestR=bestR;
+            pbMap[ex.name].date=entry.date; pbMap[ex.name].bestSets=sets;
+            pbMap[ex.name].assisted=assisted;
+          }
         });
       });
     });
@@ -807,8 +819,10 @@ function renderProfileTabBody(workouts, userId){
     if(!names.length){body.innerHTML='<div class="empty">No data yet.</div>';return;}
     body.innerHTML = names.map(function(name,pi){
       var pb=pbMap[name];
+      var assistedBadge = pb.assisted ? ' <span class="ex-assisted-badge"><i class="ti ti-arrow-down-right"></i> Assisted</span>' : '';
+      var bestLabel = pb.assisted ? 'Best (lowest assist): '+fw(String(pb.bestW))+' × '+fr(String(pb.bestR))+' reps' : 'Best: '+fw(String(pb.bestW))+' × '+fr(String(pb.bestR))+' reps';
       var lines=pb.bestSets.map(function(s,i){return 'Set '+(i+1)+': '+fw(s.w)+' x '+fr(s.r)+' reps';}).join('<br>');
-      return '<div class="hist-entry" id="ptab-pb-'+pi+'"><div class="hist-hdr" onclick="this.closest(\'.hist-entry\').classList.toggle(\'open\')"><div class="hist-hdr-left"><div class="hist-date" style="font-weight:500;color:var(--tp);">'+name+'</div><div style="font-size:12px;color:var(--ts);">Best: '+fw(String(pb.maxW))+' × '+fr(String(pb.maxR))+' reps</div></div><i class="ti ti-chevron-down hist-chevron"></i></div><div class="hist-body"><div style="font-size:12px;color:var(--ts);margin-bottom:8px;">PB on '+pb.date+'</div><div class="hist-sets">'+lines+'</div></div></div>';
+      return '<div class="hist-entry" id="ptab-pb-'+pi+'"><div class="hist-hdr" onclick="this.closest(\'.hist-entry\').classList.toggle(\'open\')"><div class="hist-hdr-left"><div class="hist-date" style="font-weight:500;color:var(--tp);">'+name+assistedBadge+'</div><div style="font-size:12px;color:var(--ts);">'+bestLabel+'</div></div><i class="ti ti-chevron-down hist-chevron"></i></div><div class="hist-body"><div style="font-size:12px;color:var(--ts);margin-bottom:8px;">PB on '+pb.date+'</div><div class="hist-sets">'+lines+'</div></div></div>';
     }).join('');
   }
 
@@ -2384,10 +2398,12 @@ function renderHistory(){
     const preview = exNames.slice(0,3).join(', ') + (exNames.length>3 ? ` +${exNames.length-3} more` : '');
 
     const bodyBlocks = entry.blocks.map(b => {
+      const ab = b.assisted ? '<span class="ex-assisted-badge"><i class="ti ti-arrow-down-right"></i> Assisted</span>' : '';
+      const nb = b.note ? `<div class="ex-note">"${b.note}"</div>` : '';
       if(b.type==='single'){
         const ex=b.exercises[0];
         const lines = ex.sets.map((s,i) => `Set ${i+1}: ${fw(s.w)} × ${fr(s.r)} reps`).join('<br>');
-        return `<div class="hist-block"><div class="hist-name">${ex.name}</div><div class="hist-sets">${lines}</div></div>`;
+        return `<div class="hist-block"><div class="hist-name">${ex.name}${ab}</div>${nb}<div class="hist-sets">${lines}</div></div>`;
       }
       if(b.type==='superset'){
         const [e1,e2]=b.exercises, ms=Math.max(e1.sets.length,e2.sets.length);
@@ -2395,14 +2411,14 @@ function renderHistory(){
           const s1=e1.sets[i],s2=e2.sets[i];
           return `Set ${i+1}: ${s1?`${fw(s1.w)} × ${fr(s1.r)} reps`:'—'} / ${s2?`${fw(s2.w)} × ${fr(s2.r)} reps`:'—'}`;
         }).join('<br>');
-        return `<div class="hist-block"><div class="hist-name">${e1.name} / ${e2.name}</div><div class="hist-sets">${lines}</div></div>`;
+        return `<div class="hist-block"><div class="hist-name">${e1.name} / ${e2.name} <span style="font-size:11px;background:#1a1a5c;color:#7a7ae0;padding:2px 7px;border-radius:20px;font-weight:500;"><i class="ti ti-arrows-exchange"></i> Superset</span>${ab}</div>${nb}<div class="hist-sets">${lines}</div></div>`;
       }
       if(b.type==='dropset'){
         const ex=b.exercises[0];
         const lines = ex.dropSets.map((drops,i) =>
           `Set ${i+1}: `+drops.map(d=>`${fw(d.w)} × ${fr(d.r)} reps`).join(' → ')
         ).join('<br>');
-        return `<div class="hist-block"><div class="hist-name">${ex.name} <span style="font-size:11px;background:#FEF3E2;color:#A05C00;padding:2px 7px;border-radius:20px;font-weight:500;">↓ Dropset</span></div><div class="hist-sets">${lines}</div></div>`;
+        return `<div class="hist-block"><div class="hist-name">${ex.name} <span style="font-size:11px;background:#FEF3E2;color:#A05C00;padding:2px 7px;border-radius:20px;font-weight:500;">↓ Dropset</span>${ab}</div>${nb}<div class="hist-sets">${lines}</div></div>`;
       }
     }).join('');
 
@@ -2875,28 +2891,36 @@ async function viewUserProfile(userId){
   var pbMap = {};
   workouts.forEach(function(entry){
     entry.blocks.forEach(function(b){
+      var assisted = b.assisted || false;
       b.exercises.forEach(function(ex){
-        if(!pbMap[ex.name]) pbMap[ex.name] = {maxW:0,maxR:0,bestSets:[],date:''};
+        if(!pbMap[ex.name]) pbMap[ex.name] = {bestW:assisted?Infinity:0,bestR:0,bestSets:[],date:'',assisted:assisted};
         var sets = ex.dropSets ? [].concat.apply([],ex.dropSets) : (ex.sets||[]);
-        sets.forEach(function(s){
-          var w=parseFloat(s.w)||0,r=parseFloat(s.r)||0;
-          if(w>pbMap[ex.name].maxW||(w===pbMap[ex.name].maxW&&r>pbMap[ex.name].maxR)){
-            pbMap[ex.name].maxW=w; pbMap[ex.name].maxR=r; pbMap[ex.name].date=entry.date;
-            pbMap[ex.name].bestSets=ex.dropSets?[].concat.apply([],ex.dropSets):(ex.sets||[]);
-          }
-        });
+        var ws = sets.map(function(s){return parseFloat(s.w)||0;}).filter(function(w){return w>0;});
+        if(!ws.length) return;
+        var compW = assisted ? Math.min.apply(null,ws) : Math.max.apply(null,ws);
+        var bestR = sets.reduce(function(a,s){return a+(parseFloat(s.r)||0);},0);
+        var isBetter = assisted
+          ? (compW < pbMap[ex.name].bestW || (compW===pbMap[ex.name].bestW && bestR>pbMap[ex.name].bestR))
+          : (compW > pbMap[ex.name].bestW || (compW===pbMap[ex.name].bestW && bestR>pbMap[ex.name].bestR));
+        if(isBetter){
+          pbMap[ex.name].bestW=compW; pbMap[ex.name].bestR=bestR;
+          pbMap[ex.name].date=entry.date; pbMap[ex.name].bestSets=sets;
+          pbMap[ex.name].assisted=assisted;
+        }
       });
     });
   });
   var pbNames = Object.keys(pbMap);
   document.getElementById('upm-pbs').innerHTML = pbNames.length ? pbNames.map(function(name, pi){
     var pb = pbMap[name];
+    var assistedBadge = pb.assisted ? ' <span class="ex-assisted-badge"><i class="ti ti-arrow-down-right"></i> Assisted</span>' : '';
+    var bestLabel = pb.assisted ? 'Best (lowest assist): '+fw(String(pb.bestW))+' &times; '+fr(String(pb.bestR))+' reps' : 'Best: '+fw(String(pb.bestW))+' &times; '+fr(String(pb.bestR))+' reps';
     var lines = pb.bestSets.map(function(s,i){return 'Set '+(i+1)+': '+fw(s.w)+' x '+fr(s.r)+' reps';}).join('<br>');
     return '<div class="hist-entry" id="upm-pb-'+pi+'">' +
       '<div class="hist-hdr" onclick="this.closest(\'.hist-entry\').classList.toggle(\'open\')">' +
         '<div class="hist-hdr-left">' +
-          '<div class="hist-date" style="font-weight:500;color:var(--tp);">'+name+'</div>' +
-          '<div style="font-size:12px;color:var(--ts);">Best: '+fw(String(pb.maxW))+' &times; '+fr(String(pb.maxR))+' reps</div>' +
+          '<div class="hist-date" style="font-weight:500;color:var(--tp);">'+name+assistedBadge+'</div>' +
+          '<div style="font-size:12px;color:var(--ts);">'+bestLabel+'</div>' +
         '</div>' +
         '<i class="ti ti-chevron-down hist-chevron"></i>' +
       '</div>' +
