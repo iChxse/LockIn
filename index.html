@@ -386,6 +386,19 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 .picker-select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.add-btn {
+  font-size: 13px;
+  font-weight: 700;
+  padding: 11px 16px;
+  border-radius: var(--r1);
+  cursor: pointer;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  flex-shrink: 0;
+  white-space: nowrap;
+  transition: background 0.15s, transform 0.1s;
+}
 .picker-select.add-btn {
   font-size: 13px;
   font-weight: 700;
@@ -883,126 +896,12 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
 </div>
 
 <!-- Modals -->
-<div class="modal-bg" id="cat-modal"><div class="modal">
-  <div class="modal-title">Manage categories</div>
-  <div class="cat-list" id="cat-list"></div>
-  <button class="modal-btn" style="width:100%;text-align:center;" onclick="closeModal('cat-modal')">Done</button>
-</div></div>
 
-<div class="modal-bg" id="del-cat-modal"><div class="modal">
-  <div class="modal-title">Delete category?</div>
-  <div id="del-cat-body" class="modal-body"></div>
-  <div id="del-cat-warn" class="modal-warn" style="display:none;"></div>
-  <div class="modal-actions">
-    <button class="modal-btn" onclick="closeModal('del-cat-modal');openCatModal()">Cancel</button>
-    <button class="modal-btn danger" onclick="confirmDelCat()">Delete</button>
-  </div>
-</div></div>
-
-<div class="modal-bg" id="edit-ex-modal"><div class="modal">
-  <div class="modal-title">Edit exercise</div>
-  <div class="modal-lbl">Name</div>
-  <input type="text" class="modal-inp" id="edit-ex-name" placeholder="Exercise name">
-  <div class="modal-lbl">Category</div>
-  <select class="modal-sel" id="edit-ex-cat"></select>
-  <div class="modal-hint">More options coming soon — photo, notes.</div>
-  <div class="modal-actions">
-    <button class="modal-btn" onclick="closeModal('edit-ex-modal')">Cancel</button>
-    <button class="modal-btn primary" onclick="confirmEditEx()">Save</button>
-  </div>
-</div></div>
-
-<div class="modal-bg" id="del-ex-modal"><div class="modal">
-  <div class="modal-title">Delete exercise?</div>
-  <div id="del-ex-body" class="modal-body"></div>
-  <div id="del-ex-warn" class="modal-warn" style="display:none;"></div>
-  <div class="modal-actions">
-    <button class="modal-btn" onclick="closeModal('del-ex-modal')">Cancel</button>
-    <button class="modal-btn danger" onclick="confirmDelEx()">Delete</button>
-  </div>
-</div></div>
-
-<div class="modal-bg" id="mgex-modal"><div class="modal">
-  <div class="modal-title">Manage exercises</div>
-  <div class="exm-list" id="exm-list"></div>
-  <button class="modal-btn" style="width:100%;text-align:center;" onclick="closeModal('mgex-modal')">Done</button>
-</div></div>
-
-<div class="modal-bg" id="ex-settings-modal"><div class="modal">
-  <div class="modal-title">Manage exercises</div>
-  <div class="modal-body" style="margin-bottom:.75rem;">Showing exercises in <strong id="ex-settings-cat-name"></strong></div>
-  <div class="exm-list" id="ex-settings-list"></div>
-  <button class="modal-btn" style="width:100%;text-align:center;" onclick="closeModal('ex-settings-modal')">Done</button>
-</div></div>
-
-
-<!-- Auth screen -->
-<div class="auth-screen" id="auth-screen">
-  <div class="auth-box">
-    <div class="auth-logo">💪 Lock In.</div>
-    <div class="auth-sub">Track your gains, share your progress.</div>
-    <div class="auth-tabs">
-      <button class="auth-tab active" onclick="showAuthTab('login')">Sign in</button>
-      <button class="auth-tab" onclick="showAuthTab('signup')">Create account</button>
-    </div>
-    <div id="auth-login">
-      <div class="auth-field"><label>Username/Email</label><input type="text" id="login-email" placeholder="username or you@example.com" autocomplete="email"></div>
-      <div class="auth-field"><label>Password</label><input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password"></div>
-      <button class="auth-btn" onclick="doLogin()">Sign in</button>
-      <button class="auth-btn" onclick="doForgotPassword()" style="background:none;color:var(--ts);border:none;font-size:13px;margin-top:8px;">Forgot password?</button>
-    </div>
-    <div id="auth-signup" style="display:none;">
-      <div class="auth-field"><label>Your name</label><input type="text" id="signup-name" placeholder="e.g. Alex" autocomplete="name"></div>
-      <div class="auth-field"><label>Username</label><input type="text" id="signup-username" placeholder="e.g. alexlifts" autocomplete="off" oninput="this.value=this.value.toLowerCase().replace(/[^a-z0-9_]/g,'')"><div style="font-size:11px;color:var(--ts);margin-top:4px;">Lowercase letters, numbers, underscores only</div></div>
-      <div class="auth-field"><label>Email</label><input type="email" id="signup-email" placeholder="you@example.com" autocomplete="email"></div>
-      <div class="auth-field"><label>Password</label><input type="password" id="signup-password" placeholder="At least 6 characters" autocomplete="new-password"></div>
-      <button class="auth-btn" onclick="doSignup()">Create account</button>
-    </div>
-    <div class="auth-msg" id="auth-msg"></div>
-  </div>
-</div>
-
-<!-- Profile modal -->
-<div class="modal-bg" id="profile-modal"><div class="modal">
-  <div class="modal-title">Profile</div>
-  <div class="profile-pic-wrap" onclick="document.getElementById('avatar-file-inp').click()">
-    <div class="profile-pic-circle" id="profile-pic-preview"></div>
-    <div class="profile-pic-edit"><i class="ti ti-pencil"></i></div>
-  </div>
-  <input type="file" id="avatar-file-inp" accept="image/*" style="display:none;" onchange="handleAvatarUpload(event)">
-  <div class="modal-lbl">Your name</div>
-  <input type="text" class="modal-inp" id="profile-name-inp" placeholder="Your name">
-  <div class="modal-lbl">Username</div>
-  <input type="text" class="modal-inp" id="profile-username-inp" placeholder="e.g. alexlifts" oninput="this.value=this.value.toLowerCase().replace(/[^a-z0-9_]/g,'')">
-  <div style="font-size:11px;color:var(--ts);margin-top:-16px;margin-bottom:1.25rem;">Your unique @username for finding friends</div>
-  <div class="modal-lbl">Email</div>
-  <div style="font-size:14px;color:var(--ts);margin-bottom:1.25rem;" id="profile-email-display"></div>
-  <div class="toggle-row">
-    <span class="toggle-lbl">Dark mode</span>
-    <label class="toggle-switch">
-      <input type="checkbox" id="dark-mode-toggle" onchange="toggleTheme()">
-      <div class="toggle-track"></div>
-    </label>
-  </div>
-  <div class="modal-actions" style="justify-content:space-between;margin-top:1.25rem;">
-    <button class="modal-btn danger" onclick="doSignOut()">Sign out</button>
-    <div style="display:flex;gap:8px;">
-      <button class="modal-btn" onclick="closeModal('profile-modal')">Cancel</button>
-      <button class="modal-btn primary" onclick="saveProfile()">Save</button>
-    </div>
-  </div>
-</div></div>
-
-<!-- Friend workout viewer modal -->
-<div class="modal-bg" id="friend-history-modal"><div class="modal">
-  <div class="modal-title" id="friend-history-title">Workouts</div>
-  <div id="friend-history-list" style="max-height:60vh;overflow-y:auto;"></div>
-  <div class="modal-actions" style="margin-top:1rem;">
-    <button class="modal-btn" onclick="closeModal('friend-history-modal')">Close</button>
-  </div>
-</div></div>
 
 <script>
+
+
+
 
 // ═══════════════════════════════════════════
 // SUPABASE CONFIG — replace with your values
@@ -1119,10 +1018,11 @@ async function doSignOut(){
 }
 
 async function onAuthSuccess(user){
+  try {
   currentUser = user;
   document.getElementById('auth-screen').classList.remove('show');
   // Load or create profile
-  let { data: profile } = await sb.from('profiles').select('*').eq('id', user.id).single();
+  let { data: profile } = await sb.from('profiles').select('*').eq('id', user.id).maybeSingle();
   if(!profile){
     const name = user.user_metadata?.name || user.email.split('@')[0];
     await sb.from('profiles').upsert({ id: user.id, name, email: user.email });
@@ -1133,13 +1033,19 @@ async function onAuthSuccess(user){
   await loadFromSupabase();
   await restoreExercisesFromHistory();
   renderDayChips();
-  renderFeed();
+  switchTab('friends');
   setTimeout(restoreTimer, 100);
   // Compute and show streak in header
   var _ud = new Set(); history.forEach(function(e){ _ud.add(new Date(e.ts).toDateString()); });
   var _sc = new Date(); _sc.setHours(0,0,0,0); var _s = 0;
   while(_ud.has(_sc.toDateString())){ _s++; _sc.setDate(_sc.getDate()-1); }
   renderHeaderStreak(_s);
+  } catch(err) {
+    console.error('onAuthSuccess error:', err);
+    setSS('error', 'Load error — ' + (err.message||'unknown'));
+    // Still try to show the feed with local data
+    switchTab('friends');
+  }
 }
 
 // ── Profile modal ──
@@ -2097,6 +2003,7 @@ function init(){
       onAuthSuccess(session.user);
     } else {
       document.getElementById('auth-screen').classList.add('show');
+      document.getElementById('sync-status').textContent = '';
       load(); // load local data as fallback
     }
   });
@@ -3651,8 +3558,127 @@ function switchTab(tab){
   if(tab==='profile') renderProfileTab();
 }
 
-init();
+document.addEventListener('DOMContentLoaded', function(){ init(); });
 </script>
+<div class="modal-bg" id="cat-modal"><div class="modal">
+  <div class="modal-title">Manage categories</div>
+  <div class="cat-list" id="cat-list"></div>
+  <button class="modal-btn" style="width:100%;text-align:center;" onclick="closeModal('cat-modal')">Done</button>
+</div></div>
+
+<div class="modal-bg" id="del-cat-modal"><div class="modal">
+  <div class="modal-title">Delete category?</div>
+  <div id="del-cat-body" class="modal-body"></div>
+  <div id="del-cat-warn" class="modal-warn" style="display:none;"></div>
+  <div class="modal-actions">
+    <button class="modal-btn" onclick="closeModal('del-cat-modal');openCatModal()">Cancel</button>
+    <button class="modal-btn danger" onclick="confirmDelCat()">Delete</button>
+  </div>
+</div></div>
+
+<div class="modal-bg" id="edit-ex-modal"><div class="modal">
+  <div class="modal-title">Edit exercise</div>
+  <div class="modal-lbl">Name</div>
+  <input type="text" class="modal-inp" id="edit-ex-name" placeholder="Exercise name">
+  <div class="modal-lbl">Category</div>
+  <select class="modal-sel" id="edit-ex-cat"></select>
+  <div class="modal-hint">More options coming soon — photo, notes.</div>
+  <div class="modal-actions">
+    <button class="modal-btn" onclick="closeModal('edit-ex-modal')">Cancel</button>
+    <button class="modal-btn primary" onclick="confirmEditEx()">Save</button>
+  </div>
+</div></div>
+
+<div class="modal-bg" id="del-ex-modal"><div class="modal">
+  <div class="modal-title">Delete exercise?</div>
+  <div id="del-ex-body" class="modal-body"></div>
+  <div id="del-ex-warn" class="modal-warn" style="display:none;"></div>
+  <div class="modal-actions">
+    <button class="modal-btn" onclick="closeModal('del-ex-modal')">Cancel</button>
+    <button class="modal-btn danger" onclick="confirmDelEx()">Delete</button>
+  </div>
+</div></div>
+
+<div class="modal-bg" id="mgex-modal"><div class="modal">
+  <div class="modal-title">Manage exercises</div>
+  <div class="exm-list" id="exm-list"></div>
+  <button class="modal-btn" style="width:100%;text-align:center;" onclick="closeModal('mgex-modal')">Done</button>
+</div></div>
+
+<div class="modal-bg" id="ex-settings-modal"><div class="modal">
+  <div class="modal-title">Manage exercises</div>
+  <div class="modal-body" style="margin-bottom:.75rem;">Showing exercises in <strong id="ex-settings-cat-name"></strong></div>
+  <div class="exm-list" id="ex-settings-list"></div>
+  <button class="modal-btn" style="width:100%;text-align:center;" onclick="closeModal('ex-settings-modal')">Done</button>
+</div></div>
+
+
+<!-- Auth screen -->
+<div class="auth-screen" id="auth-screen">
+  <div class="auth-box">
+    <div class="auth-logo">💪 Lock In.</div>
+    <div class="auth-sub">Track your gains, share your progress.</div>
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="showAuthTab('login')">Sign in</button>
+      <button class="auth-tab" onclick="showAuthTab('signup')">Create account</button>
+    </div>
+    <div id="auth-login">
+      <div class="auth-field"><label>Username/Email</label><input type="text" id="login-email" placeholder="username or you@example.com" autocomplete="email"></div>
+      <div class="auth-field"><label>Password</label><input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password"></div>
+      <button class="auth-btn" onclick="doLogin()">Sign in</button>
+      <button class="auth-btn" onclick="doForgotPassword()" style="background:none;color:var(--ts);border:none;font-size:13px;margin-top:8px;">Forgot password?</button>
+    </div>
+    <div id="auth-signup" style="display:none;">
+      <div class="auth-field"><label>Your name</label><input type="text" id="signup-name" placeholder="e.g. Alex" autocomplete="name"></div>
+      <div class="auth-field"><label>Username</label><input type="text" id="signup-username" placeholder="e.g. alexlifts" autocomplete="off" oninput="this.value=this.value.toLowerCase().replace(/[^a-z0-9_]/g,'')"><div style="font-size:11px;color:var(--ts);margin-top:4px;">Lowercase letters, numbers, underscores only</div></div>
+      <div class="auth-field"><label>Email</label><input type="email" id="signup-email" placeholder="you@example.com" autocomplete="email"></div>
+      <div class="auth-field"><label>Password</label><input type="password" id="signup-password" placeholder="At least 6 characters" autocomplete="new-password"></div>
+      <button class="auth-btn" onclick="doSignup()">Create account</button>
+    </div>
+    <div class="auth-msg" id="auth-msg"></div>
+  </div>
+</div>
+
+<!-- Profile modal -->
+<div class="modal-bg" id="profile-modal"><div class="modal">
+  <div class="modal-title">Profile</div>
+  <div class="profile-pic-wrap" onclick="document.getElementById('avatar-file-inp').click()">
+    <div class="profile-pic-circle" id="profile-pic-preview"></div>
+    <div class="profile-pic-edit"><i class="ti ti-pencil"></i></div>
+  </div>
+  <input type="file" id="avatar-file-inp" accept="image/*" style="display:none;" onchange="handleAvatarUpload(event)">
+  <div class="modal-lbl">Your name</div>
+  <input type="text" class="modal-inp" id="profile-name-inp" placeholder="Your name">
+  <div class="modal-lbl">Username</div>
+  <input type="text" class="modal-inp" id="profile-username-inp" placeholder="e.g. alexlifts" oninput="this.value=this.value.toLowerCase().replace(/[^a-z0-9_]/g,'')">
+  <div style="font-size:11px;color:var(--ts);margin-top:-16px;margin-bottom:1.25rem;">Your unique @username for finding friends</div>
+  <div class="modal-lbl">Email</div>
+  <div style="font-size:14px;color:var(--ts);margin-bottom:1.25rem;" id="profile-email-display"></div>
+  <div class="toggle-row">
+    <span class="toggle-lbl">Dark mode</span>
+    <label class="toggle-switch">
+      <input type="checkbox" id="dark-mode-toggle" onchange="toggleTheme()">
+      <div class="toggle-track"></div>
+    </label>
+  </div>
+  <div class="modal-actions" style="justify-content:space-between;margin-top:1.25rem;">
+    <button class="modal-btn danger" onclick="doSignOut()">Sign out</button>
+    <div style="display:flex;gap:8px;">
+      <button class="modal-btn" onclick="closeModal('profile-modal')">Cancel</button>
+      <button class="modal-btn primary" onclick="saveProfile()">Save</button>
+    </div>
+  </div>
+</div></div>
+
+<!-- Friend workout viewer modal -->
+<div class="modal-bg" id="friend-history-modal"><div class="modal">
+  <div class="modal-title" id="friend-history-title">Workouts</div>
+  <div id="friend-history-list" style="max-height:60vh;overflow-y:auto;"></div>
+  <div class="modal-actions" style="margin-top:1rem;">
+    <button class="modal-btn" onclick="closeModal('friend-history-modal')">Close</button>
+  </div>
+</div></div>
+
 <!-- Delete workout confirm -->
 <div class="modal-bg" id="del-workout-modal"><div class="modal">
   <div class="modal-title">Delete workout?</div>
