@@ -314,7 +314,10 @@ body.dark-mode .mode-btn.active, body.dark-mode .cat-tab.active, body.dark-mode 
 .ex-menu-item { display:flex; align-items:center; gap:8px; padding:10px 14px; font-size:13px; color:var(--tp); cursor:pointer; white-space:nowrap; }
 .ex-menu-item:hover { background:var(--bs); }
 .ex-menu-item.active { color:#3B6D11; }
-.ex-note { font-size:12px; color:var(--ts); font-style:italic; margin-bottom:8px; margin-top:-6px; }
+.ex-note { font-size:12px; color:var(--ts); font-style:italic; margin-bottom:8px; margin-top:-4px; }
+.ex-note-input-row { display:flex; gap:6px; align-items:center; margin-bottom:8px; margin-top:-4px; }
+.ex-note-input-row input { flex:1; font-size:13px; padding:5px 8px; border:0.5px solid var(--bo3); border-radius:var(--r1); background:var(--bs); color:var(--tp); min-width:0; }
+.ex-note-input-row input:focus { outline:none; border-color:var(--bo1); }
 .ex-assisted-badge { font-size:11px; background:#1a3a5c; color:#7ab3e0; padding:2px 7px; border-radius:20px; font-weight:500; margin-left:6px; }
 </style>
 </head>
@@ -1833,13 +1836,39 @@ function toggleAssisted(bi){
 
 function addExNote(bi){
   document.querySelectorAll('.ex-menu-dropdown').forEach(function(m){ m.style.display='none'; });
-  var current = blocks[bi].note || '';
-  var note = prompt('Add a note for this exercise:', current);
-  if(note === null) return; // cancelled
-  blocks[bi].note = note.trim() || null;
+  blocks[bi]._editingNote = true;
+  renderBlocks();
+  // Focus the note input
+  setTimeout(function(){ var inp = document.getElementById('note-inp-'+bi); if(inp) inp.focus(); }, 50);
+}
+
+function saveExNote(bi){
+  var inp = document.getElementById('note-inp-'+bi);
+  if(inp) blocks[bi].note = inp.value.trim() || null;
+  blocks[bi]._editingNote = false;
   renderBlocks();
 }
 
+function removeExNote(bi){
+  if(blocks[bi].note){
+    if(!confirm('Remove this note?')) return;
+  }
+  blocks[bi].note = null;
+  blocks[bi]._editingNote = false;
+  renderBlocks();
+}
+
+
+function confirmRemoveBlock(bi){
+  var b = blocks[bi];
+  var hasData = false;
+  b.exercises.forEach(function(ex){
+    if(ex.dropSets){ ex.dropSets.forEach(function(ds){ ds.forEach(function(d){ if(d.w||d.r) hasData=true; }); }); }
+    else { (ex.sets||[]).forEach(function(s){ if(s.w||s.r) hasData=true; }); }
+  });
+  if(hasData && !confirm('Remove this exercise? You have data logged.')) return;
+  blocks.splice(bi,1); renderBlocks(); renderExSelect();
+}
 
 function addSet(bi,ei){ blocks[bi].exercises[ei].sets.push({w:'',r:''}); renderBlocks(); }
 function remSet(bi,ei,si){ if(blocks[bi].exercises[ei].sets.length===1)return; blocks[bi].exercises[ei].sets.splice(si,1); renderBlocks(); }
@@ -1891,7 +1920,11 @@ function renderBlocks(){
     if(b.type === 'single'){
       const ex = b.exercises[0];
       const assistedBadge = b.assisted ? '<span class="ex-assisted-badge"><i class="ti ti-arrow-down-right"></i> Assisted</span>' : '';
-      const noteHtml = b.note ? `<div class="ex-note">"${b.note}"</div>` : '';
+      const noteHtml = b._editingNote
+        ? `<div class="ex-note-input-row"><input type="text" id="note-inp-${bi}" value="${(b.note||'').replace(/"/g,'&quot;')}" placeholder="e.g. Shoulder hurting today..." onkeydown="if(event.key==='Enter')saveExNote(${bi})"><button class="icon-btn" onclick="saveExNote(${bi})" style="color:#3B6D11;border-color:#3B6D11;padding:4px 7px;"><i class="ti ti-check"></i></button><button class="icon-btn" onclick="removeExNote(${bi})" style="color:#E24B4A;border-color:#E24B4A;padding:4px 7px;"><i class="ti ti-x"></i></button></div>`
+        : b.note
+          ? `<div class="ex-note">"${b.note}" <button onclick="addExNote(${bi})" style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--ts);padding:0 2px;"><i class="ti ti-pencil"></i></button><button onclick="removeExNote(${bi})" style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--ts);padding:0 2px;"><i class="ti ti-x"></i></button></div>`
+          : '';
       return `<div class="exercise-card">
         <div class="ex-header">
           <span class="ex-name">${ex.name}${assistedBadge}</span>
@@ -1903,11 +1936,11 @@ function renderBlocks(){
                   <i class="ti ti-arrow-down-right"></i> ${b.assisted?'Remove assisted':'Mark as assisted'}
                 </div>
                 <div class="ex-menu-item" onclick="addExNote(${bi})">
-                  <i class="ti ti-note"></i> ${b.note?'Edit note':'Add note'}
+                  <i class="ti ti-note"></i> Add note
                 </div>
               </div>
             </div>
-            <button class="remove-btn" onclick="removeBlock(${bi})"><i class="ti ti-x"></i></button>
+            <button class="remove-btn" onclick="confirmRemoveBlock(${bi})"><i class="ti ti-x"></i></button>
           </div>
         </div>
         ${noteHtml}
@@ -1918,7 +1951,7 @@ function renderBlocks(){
       const [e1,e2] = b.exercises;
       return `<div class="superset-card">
         <div class="superset-label"><span><i class="ti ti-arrows-exchange"></i> Superset</span>
-        <button class="remove-btn" onclick="removeBlock(${bi})"><i class="ti ti-x"></i></button></div>
+        <button class="remove-btn" onclick="confirmRemoveBlock(${bi})"><i class="ti ti-x"></i></button></div>
         <div class="superset-ex"><div class="ex-header"><span class="ex-name">${e1.name}</span></div>${renderSetTable(e1,bi,0)}</div>
         <div class="superset-divider">↕ paired with</div>
         <div class="superset-ex"><div class="ex-header"><span class="ex-name">${e2.name}</span></div>${renderSetTable(e2,bi,1)}</div>
@@ -1927,7 +1960,11 @@ function renderBlocks(){
     if(b.type === 'dropset'){
       const ex = b.exercises[0];
       const assistedBadge = b.assisted ? '<span class="ex-assisted-badge"><i class="ti ti-arrow-down-right"></i> Assisted</span>' : '';
-      const noteHtml = b.note ? `<div class="ex-note">"${b.note}"</div>` : '';
+      const noteHtml = b._editingNote
+        ? `<div class="ex-note-input-row"><input type="text" id="note-inp-${bi}" value="${(b.note||'').replace(/"/g,'&quot;')}" placeholder="e.g. Shoulder hurting today..." onkeydown="if(event.key==='Enter')saveExNote(${bi})"><button class="icon-btn" onclick="saveExNote(${bi})" style="color:#3B6D11;border-color:#3B6D11;padding:4px 7px;"><i class="ti ti-check"></i></button><button class="icon-btn" onclick="removeExNote(${bi})" style="color:#E24B4A;border-color:#E24B4A;padding:4px 7px;"><i class="ti ti-x"></i></button></div>`
+        : b.note
+          ? `<div class="ex-note">"${b.note}" <button onclick="addExNote(${bi})" style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--ts);padding:0 2px;"><i class="ti ti-pencil"></i></button><button onclick="removeExNote(${bi})" style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--ts);padding:0 2px;"><i class="ti ti-x"></i></button></div>`
+          : '';
       return `<div class="dropset-card">
         <div class="ex-header">
           <span class="ex-name">${ex.name} <span class="ex-badge"><i class="ti ti-arrow-down"></i> Dropset</span>${assistedBadge}</span>
@@ -1939,11 +1976,11 @@ function renderBlocks(){
                   <i class="ti ti-arrow-down-right"></i> ${b.assisted?'Remove assisted':'Mark as assisted'}
                 </div>
                 <div class="ex-menu-item" onclick="addExNote(${bi})">
-                  <i class="ti ti-note"></i> ${b.note?'Edit note':'Add note'}
+                  <i class="ti ti-note"></i> Add note
                 </div>
               </div>
             </div>
-            <button class="remove-btn" onclick="removeBlock(${bi})"><i class="ti ti-x"></i></button>
+            <button class="remove-btn" onclick="confirmRemoveBlock(${bi})"><i class="ti ti-x"></i></button>
           </div>
         </div>
         ${noteHtml}
@@ -2640,11 +2677,13 @@ function openEditWorkout(idx){
 function editSetVal(bi, ei, si, f, v){
   if(pendingEditWorkoutIdx === null) return;
   history[pendingEditWorkoutIdx].blocks[bi].exercises[ei].sets[si][f] = v;
+  localStorage.setItem('wl_history', JSON.stringify(history.slice(0,100)));
 }
 
 function editDropVal(bi, di, dri, f, v){
   if(pendingEditWorkoutIdx === null) return;
   history[pendingEditWorkoutIdx].blocks[bi].exercises[0].dropSets[di][dri][f] = v;
+  localStorage.setItem('wl_history', JSON.stringify(history.slice(0,100)));
 }
 
 async function confirmEditWorkout(){
@@ -2660,7 +2699,8 @@ async function confirmEditWorkout(){
   pendingEditWorkoutIdx = null;
   closeModal('edit-workout-modal');
   renderHistory();
-  // Refresh feed if visible so tags update live
+  // Reset progress tab so PBs recalculate with new data
+  selEx = null;
   if(document.getElementById('tab-friends') && document.getElementById('tab-friends').style.display !== 'none'){
     renderFeed();
   }
