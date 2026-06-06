@@ -99,8 +99,8 @@ body.dark-mode .mode-btn.active, body.dark-mode .cat-tab.active, body.dark-mode 
 @media (prefers-color-scheme: dark) { .mode-btn.active, .cat-tab.active, .ex-item.active { outline-color: #f0f0f0; } }
 .icon-btn { background: none; border: 0.5px solid var(--bo3); border-radius: var(--r1); cursor: pointer; color: var(--ts); font-size: 16px; padding: 5px 7px; line-height: 1; flex-shrink: 0; }
 /* Dropdown rows — category and exercise */
-.drop-select-row { display: flex; align-items: center; gap: 6px; }
-.picker-select { flex: 1; font-size: 14px; padding: 8px 12px; border: 1.5px solid var(--bo3); border-radius: var(--r1); background: var(--bp); color: var(--tp); cursor: pointer; appearance: auto; }
+.drop-select-row { display: flex; align-items: center; gap: 6px; overflow: hidden; }
+.picker-select { flex: 1; min-width: 0; font-size: 14px; padding: 8px 12px; border: 1.5px solid var(--bo3); border-radius: var(--r1); background: var(--bp); color: var(--tp); cursor: pointer; appearance: auto; overflow: hidden; text-overflow: ellipsis; }
 .picker-select:focus { outline: none; border-color: var(--bo1); }
 .picker-select.active-sel { outline: 3px solid #1a1a1a; outline-offset: -1px; border-color: transparent; }
 .add-btn { font-size: 14px; font-weight: 500; padding: 8px 14px; border-radius: var(--r1); cursor: pointer; background: var(--tp); color: var(--bp); border: none; flex-shrink: 0; }
@@ -1695,6 +1695,7 @@ function addCustomEx(){
   pickEx(name);
   inp.value = '';
   document.getElementById('add-ex-row').classList.remove('open');
+  localStorage.setItem('wl_exercises', JSON.stringify(EX));
   saveToSupabase(null);
 }
 
@@ -1704,6 +1705,7 @@ function addCategory(){
   EX[name] = []; inp.value = '';
   document.getElementById('add-cat-row').classList.remove('open');
   activeCat = name;
+  localStorage.setItem('wl_exercises', JSON.stringify(EX));
   renderCatSelect(); saveToSupabase(null);
 }
 
