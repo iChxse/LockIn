@@ -1836,7 +1836,8 @@ function toggleAssisted(bi){
 
 function addExNote(bi){
   document.querySelectorAll('.ex-menu-dropdown').forEach(function(m){ m.style.display='none'; });
-  // Just focus the always-visible input
+  blocks[bi]._editingNote = true;
+  renderBlocks();
   setTimeout(function(){ var inp = document.getElementById('note-inp-'+bi); if(inp) inp.focus(); }, 50);
 }
 
@@ -1845,9 +1846,10 @@ function autoSaveExNote(bi){
   if(!inp) return;
   var val = inp.value.trim();
   blocks[bi].note = val || null;
-  // Show/hide trash icon without re-rendering
+  blocks[bi]._editingNote = !!val; // keep open only if has text
   var del = document.getElementById('note-del-'+bi);
   if(del) del.style.display = val ? '' : 'none';
+  if(!val) renderBlocks(); // hide the input row if empty
 }
 
 function showConfirm(title, body, okLabel, onOk){
@@ -1936,7 +1938,9 @@ function renderBlocks(){
     if(b.type === 'single'){
       const ex = b.exercises[0];
       const assistedBadge = b.assisted ? '<span class="ex-assisted-badge"><i class="ti ti-arrow-down-right"></i> Assisted</span>' : '';
-      const noteHtml = `<div class="ex-note-input-row"><input type="text" id="note-inp-${bi}" value="${(b.note||'').replace(/"/g,'&quot;')}" placeholder="e.g. Shoulder hurting today..." onblur="autoSaveExNote(${bi})"><button class="icon-btn" onclick="removeExNote(${bi})" style="color:var(--ts);padding:4px 7px;display:${b.note?'':'none'};" id="note-del-${bi}"><i class="ti ti-trash"></i></button></div>`;
+      const noteHtml = (b.note || b._editingNote)
+        ? `<div class="ex-note-input-row"><input type="text" id="note-inp-${bi}" value="${(b.note||'').replace(/"/g,'&quot;')}" placeholder="e.g. Shoulder hurting today..." onblur="autoSaveExNote(${bi})"><button class="icon-btn" onclick="removeExNote(${bi})" style="color:var(--ts);padding:4px 7px;display:${b.note?'':'none'};" id="note-del-${bi}"><i class="ti ti-trash"></i></button></div>`
+        : '';
       return `<div class="exercise-card">
         <div class="ex-header">
           <span class="ex-name">${ex.name}${assistedBadge}</span>
@@ -1947,9 +1951,9 @@ function renderBlocks(){
                 <div class="ex-menu-item ${b.assisted?'active':''}" onclick="toggleAssisted(${bi})">
                   <i class="ti ti-arrow-down-right"></i> ${b.assisted?'Remove assisted':'Mark as assisted'}
                 </div>
-                <div class="ex-menu-item" onclick="addExNote(${bi})">
-                  <i class="ti ti-note"></i> Note
-                </div>
+                ${!b.note ? `<div class="ex-menu-item" onclick="addExNote(${bi})">
+                  <i class="ti ti-note"></i> Add note
+                </div>` : ''}
               </div>
             </div>
             <button class="remove-btn" onclick="confirmRemoveBlock(${bi})"><i class="ti ti-x"></i></button>
@@ -1972,7 +1976,9 @@ function renderBlocks(){
     if(b.type === 'dropset'){
       const ex = b.exercises[0];
       const assistedBadge = b.assisted ? '<span class="ex-assisted-badge"><i class="ti ti-arrow-down-right"></i> Assisted</span>' : '';
-      const noteHtml = `<div class="ex-note-input-row"><input type="text" id="note-inp-${bi}" value="${(b.note||'').replace(/"/g,'&quot;')}" placeholder="e.g. Shoulder hurting today..." onblur="autoSaveExNote(${bi})"><button class="icon-btn" onclick="removeExNote(${bi})" style="color:var(--ts);padding:4px 7px;display:${b.note?'':'none'};" id="note-del-${bi}"><i class="ti ti-trash"></i></button></div>`;
+      const noteHtml = (b.note || b._editingNote)
+        ? `<div class="ex-note-input-row"><input type="text" id="note-inp-${bi}" value="${(b.note||'').replace(/"/g,'&quot;')}" placeholder="e.g. Shoulder hurting today..." onblur="autoSaveExNote(${bi})"><button class="icon-btn" onclick="removeExNote(${bi})" style="color:var(--ts);padding:4px 7px;display:${b.note?'':'none'};" id="note-del-${bi}"><i class="ti ti-trash"></i></button></div>`
+        : '';
       return `<div class="dropset-card">
         <div class="ex-header">
           <span class="ex-name">${ex.name} <span class="ex-badge"><i class="ti ti-arrow-down"></i> Dropset</span>${assistedBadge}</span>
@@ -1983,9 +1989,9 @@ function renderBlocks(){
                 <div class="ex-menu-item ${b.assisted?'active':''}" onclick="toggleAssisted(${bi})">
                   <i class="ti ti-arrow-down-right"></i> ${b.assisted?'Remove assisted':'Mark as assisted'}
                 </div>
-                <div class="ex-menu-item" onclick="addExNote(${bi})">
-                  <i class="ti ti-note"></i> Note
-                </div>
+                ${!b.note ? `<div class="ex-menu-item" onclick="addExNote(${bi})">
+                  <i class="ti ti-note"></i> Add note
+                </div>` : ''}
               </div>
             </div>
             <button class="remove-btn" onclick="confirmRemoveBlock(${bi})"><i class="ti ti-x"></i></button>
@@ -2321,13 +2327,17 @@ function renderLookupDetail(el, data, names){
   let pbIdx=-1, pbMaxW=0, pbTotalR=0;
   const isAssisted = sessions.length > 0 && sessions.some(function(s){ return s.assisted; });
   sessions.forEach(function(sess,si){
-    const maxW = Math.max.apply(null, sess.sets.map(function(s){return parseFloat(s.weight)||0;}));
+    // For assisted: best set = lowest weight used (least assistance = strongest)
+    // For regular: best set = highest weight
+    var compW = isAssisted
+      ? Math.min.apply(null, sess.sets.filter(function(s){return parseFloat(s.weight)>0;}).map(function(s){return parseFloat(s.weight)||0;}))
+      : Math.max.apply(null, sess.sets.map(function(s){return parseFloat(s.weight)||0;}));
+    if(!isFinite(compW)) compW = 0;
     const totalR = sess.sets.reduce(function(a,s){return a+(parseFloat(s.reps)||0);},0);
     if(isAssisted){
-      // Assisted: lower weight = better PB (less assistance = stronger)
-      if(pbIdx===-1 || maxW<pbMaxW||(maxW===pbMaxW&&totalR>pbTotalR)){ pbMaxW=maxW; pbTotalR=totalR; pbIdx=si; }
+      if(pbIdx===-1 || compW<pbMaxW||(compW===pbMaxW&&totalR>pbTotalR)){ pbMaxW=compW; pbTotalR=totalR; pbIdx=si; }
     } else {
-      if(maxW>pbMaxW||(maxW===pbMaxW&&totalR>pbTotalR)){ pbMaxW=maxW; pbTotalR=totalR; pbIdx=si; }
+      if(compW>pbMaxW||(compW===pbMaxW&&totalR>pbTotalR)){ pbMaxW=compW; pbTotalR=totalR; pbIdx=si; }
     }
   });
   const pbSess = pbIdx>=0 ? sessions[pbIdx] : null;
@@ -2604,18 +2614,37 @@ function openDeleteWorkout(idx){
 async function confirmDeleteWorkout(){
   if(pendingDeleteWorkoutIdx === null) return;
   const entry = history[pendingDeleteWorkoutIdx];
+
+  // Remove from local state and localStorage immediately
+  history.splice(pendingDeleteWorkoutIdx, 1);
+  localStorage.setItem('wl_history', JSON.stringify(history.slice(0,100)));
+
+  // Also remove from pending upload queue in case it hadn't synced yet
+  const pending = JSON.parse(localStorage.getItem('wl_pending') || '[]');
+  const filteredPending = pending.filter(function(p){ return p.id !== entry.id && p.ts !== entry.ts; });
+  localStorage.setItem('wl_pending', JSON.stringify(filteredPending));
+
   if(currentUser && entry.id){
     const { error } = await sb.from('workouts').delete().eq('id', entry.id);
     if(error){
+      // Re-add to history if delete failed
+      history.splice(pendingDeleteWorkoutIdx, 0, entry);
+      localStorage.setItem('wl_history', JSON.stringify(history.slice(0,100)));
+      pendingDeleteWorkoutIdx = null;
+      closeModal('del-workout-modal');
       alert('Delete failed: ' + error.message + '\nPlease try again.');
       return;
     }
+    // Verify it's actually gone
+    const { data: check } = await sb.from('workouts').select('id').eq('id', entry.id).maybeSingle();
+    if(check){
+      // Still exists — try once more
+      await sb.from('workouts').delete().eq('id', entry.id);
+    }
   }
-  history.splice(pendingDeleteWorkoutIdx, 1);
-  localStorage.setItem('wl_history', JSON.stringify(history.slice(0,100)));
+
   pendingDeleteWorkoutIdx = null;
   closeModal('del-workout-modal');
-  // Clean up "Other" category — remove exercises no longer in any workout
   if(EX['Other'] && EX['Other'].length){
     const usedInHistory = new Set();
     history.forEach(function(e){ e.blocks.forEach(function(b){ b.exercises.forEach(function(ex){ usedInHistory.add(ex.name); }); }); });
@@ -2628,6 +2657,7 @@ async function confirmDeleteWorkout(){
   }
   renderHistory();
 }
+
 
 function openEditWorkout(idx){
   pendingEditWorkoutIdx = idx;
@@ -2642,6 +2672,9 @@ function openEditWorkout(idx){
   // Build editable set inputs for each block
   const container = document.getElementById('edit-workout-blocks');
   container.innerHTML = entry.blocks.map((b, bi) => {
+    const noteRow = `<div style="display:flex;gap:6px;align-items:center;margin-bottom:10px;">
+      <input type="text" class="modal-inp" style="margin:0;flex:1;font-size:13px;" id="edit-note-inp-${bi}" value="${(b.note||'').replace(/"/g,'&quot;')}" placeholder="Note for this exercise (optional)..." oninput="editNoteVal(${bi},this.value)">
+    </div>`;
     if(b.type === 'single'){
       const ex = b.exercises[0];
       return `<div style="margin-bottom:1rem;">
@@ -2649,6 +2682,7 @@ function openEditWorkout(idx){
           <span>${ex.name}${b.assisted?'<span class=\"ex-assisted-badge\" style=\"margin-left:6px;\"><i class=\"ti ti-arrow-down-right\"></i> Assisted</span>':''}</span>
           <button class="icon-btn" style="font-size:12px;padding:3px 8px;${b.assisted?'color:#3B6D11;border-color:#3B6D11;':''}" onclick="toggleEditAssisted(${bi})">${b.assisted?'Remove assisted':'Mark assisted'}</button>
         </div>
+        ${noteRow}
         ${ex.sets.map((s,si) => `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
           <span style="font-size:12px;color:var(--ts);width:40px;">Set ${si+1}</span>
           <input class="modal-inp" style="margin:0;flex:1;" type="number" inputmode="decimal" placeholder="lbs" value="${s.w}" oninput="editSetVal(${bi},0,${si},'w',this.value)">
@@ -2658,7 +2692,9 @@ function openEditWorkout(idx){
       </div>`;
     }
     if(b.type === 'superset'){
-      return (ei===0?`<div style="margin-bottom:4px;display:flex;align-items:center;justify-content:space-between;"><span style="font-size:11px;color:#7a7ae0;font-weight:500;"><i class="ti ti-arrows-exchange"></i> Superset</span><button class="icon-btn" style="font-size:12px;padding:3px 8px;${b.assisted?'color:#3B6D11;border-color:#3B6D11;':''}" onclick="toggleEditAssisted(${bi})">${b.assisted?'Remove assisted':'Mark assisted'}</button></div>`:'') + b.exercises.map((ex, ei) => `<div style="margin-bottom:1rem;">
+      return (true?`<div style="margin-bottom:4px;display:flex;align-items:center;justify-content:space-between;"><span style="font-size:11px;color:#7a7ae0;font-weight:500;"><i class="ti ti-arrows-exchange"></i> Superset</span><button class="icon-btn" style="font-size:12px;padding:3px 8px;${b.assisted?'color:#3B6D11;border-color:#3B6D11;':''}" onclick="toggleEditAssisted(${bi})">${b.assisted?'Remove assisted':'Mark assisted'}</button></div>`:'') +
+        noteRow +
+        b.exercises.map((ex, ei) => `<div style="margin-bottom:1rem;">
         <div class="modal-lbl" style="margin-bottom:6px;">${ex.name} <span style="font-weight:400;color:var(--ts);">(Superset)</span></div>
         ${ex.sets.map((s,si) => `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
           <span style="font-size:12px;color:var(--ts);width:40px;">Set ${si+1}</span>
@@ -2671,7 +2707,11 @@ function openEditWorkout(idx){
     if(b.type === 'dropset'){
       const ex = b.exercises[0];
       return `<div style="margin-bottom:1rem;">
-        <div class="modal-lbl" style="margin-bottom:6px;">${ex.name} <span style="font-weight:400;color:var(--ts);">(Dropset)</span></div>
+        <div class="modal-lbl" style="margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;">
+          <span>${ex.name} <span style="font-weight:400;color:var(--ts);">(Dropset)</span>${b.assisted?'<span class=\"ex-assisted-badge\" style=\"margin-left:6px;\"><i class=\"ti ti-arrow-down-right\"></i> Assisted</span>':''}</span>
+          <button class="icon-btn" style="font-size:12px;padding:3px 8px;${b.assisted?'color:#3B6D11;border-color:#3B6D11;':''}" onclick="toggleEditAssisted(${bi})">${b.assisted?'Remove assisted':'Mark assisted'}</button>
+        </div>
+        ${noteRow}
         ${ex.dropSets.map((drops, di) => drops.map((d, dri) => `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
           <span style="font-size:12px;color:var(--ts);width:56px;">S${di+1} D${dri+1}</span>
           <input class="modal-inp" style="margin:0;flex:1;" type="number" inputmode="decimal" placeholder="lbs" value="${d.w}" oninput="editDropVal(${bi},${di},${dri},'w',this.value)">
@@ -2691,6 +2731,12 @@ function toggleEditAssisted(bi){
   entry.blocks[bi].assisted = !entry.blocks[bi].assisted;
   // Re-render the edit blocks section
   openEditWorkout(pendingEditWorkoutIdx);
+}
+
+function editNoteVal(bi, v){
+  if(pendingEditWorkoutIdx === null) return;
+  history[pendingEditWorkoutIdx].blocks[bi].note = v.trim() || null;
+  localStorage.setItem('wl_history', JSON.stringify(history.slice(0,100)));
 }
 
 function editSetVal(bi, ei, si, f, v){
