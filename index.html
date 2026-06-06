@@ -315,8 +315,8 @@ body.dark-mode .mode-btn.active, body.dark-mode .cat-tab.active, body.dark-mode 
 .ex-menu-item:hover { background:var(--bs); }
 .ex-menu-item.active { color:#3B6D11; }
 .ex-note { font-size:12px; color:var(--ts); font-style:italic; margin-bottom:8px; margin-top:-4px; }
-.ex-note-input-row { display:flex; gap:6px; align-items:center; margin-bottom:8px; margin-top:-4px; }
-.ex-note-input-row input { flex:1; font-size:13px; padding:5px 8px; border:0.5px solid var(--bo3); border-radius:var(--r1); background:var(--bs); color:var(--tp); min-width:0; }
+.ex-note-input-row { display:flex; gap:6px; align-items:center; margin-bottom:8px; margin-top:0; }
+.ex-note-input-row input { flex:1; font-size:13px; padding:6px 10px; border:0.5px solid var(--bo3); border-radius:var(--r1); background:var(--bs); color:var(--tp); min-width:0; }
 .ex-note-input-row input:focus { outline:none; border-color:var(--bo1); }
 .ex-assisted-badge { font-size:11px; background:#1a3a5c; color:#7ab3e0; padding:2px 7px; border-radius:20px; font-weight:500; margin-left:6px; }
 </style>
@@ -772,7 +772,7 @@ function renderProfileTabBody(workouts, userId){
         var assistedBadge = b.assisted ? ' <span class="ex-assisted-badge"><i class="ti ti-arrow-down-right"></i> Assisted</span>' : '';
         var noteHtml = b.note ? '<div class="ex-note">"'+b.note+'"</div>' : '';
         if(b.type==='single'){var ex=b.exercises[0];var lines=ex.sets.map(function(s,i){return 'Set '+(i+1)+': '+fw(s.w)+' x '+fr(s.r)+' reps';}).join('<br>');return '<div class="hist-block"><div class="hist-name">'+ex.name+assistedBadge+'</div>'+noteHtml+'<div class="hist-sets">'+lines+'</div></div>';}
-        if(b.type==='superset'){var e1=b.exercises[0],e2=b.exercises[1],ms=Math.max(e1.sets.length,e2.sets.length);var lines=Array.from({length:ms},function(_,i){var s1=e1.sets[i],s2=e2.sets[i];return 'Set '+(i+1)+': '+(s1?fw(s1.w)+' x '+fr(s1.r)+' reps':'—')+' / '+(s2?fw(s2.w)+' x '+fr(s2.r)+' reps':'—');}).join('<br>');return '<div class="hist-block"><div class="hist-name">'+e1.name+' / '+e2.name+'</div>'+noteHtml+'<div class="hist-sets">'+lines+'</div></div>';}
+        if(b.type==='superset'){var e1=b.exercises[0],e2=b.exercises[1],ms=Math.max(e1.sets.length,e2.sets.length);var lines=Array.from({length:ms},function(_,i){var s1=e1.sets[i],s2=e2.sets[i];return 'Set '+(i+1)+': '+(s1?fw(s1.w)+' x '+fr(s1.r)+' reps':'—')+' / '+(s2?fw(s2.w)+' x '+fr(s2.r)+' reps':'—');}).join('<br>');return '<div class="hist-block"><div class="hist-name">'+e1.name+' / '+e2.name+' <span style="font-size:11px;background:#1a1a5c;color:#7a7ae0;padding:2px 7px;border-radius:20px;font-weight:500;"><i class="ti ti-arrows-exchange"></i> Superset</span>'+assistedBadge+'</div>'+noteHtml+'<div class="hist-sets">'+lines+'</div></div>';}
         if(b.type==='dropset'){var ex=b.exercises[0];var lines=ex.dropSets.map(function(drops,i){return 'Set '+(i+1)+': '+drops.map(function(d){return fw(d.w)+' x '+fr(d.r)+' reps';}).join(' > ');}).join('<br>');return '<div class="hist-block"><div class="hist-name">'+ex.name+assistedBadge+'</div>'+noteHtml+'<div class="hist-sets">'+lines+'</div></div>';}
         return '';
       }).join('');
@@ -1291,9 +1291,9 @@ async function renderFeed(){
     const preview = exNames.slice(0,3).join(', ') + (exNames.length>3 ? ' +' + (exNames.length-3) + ' more' : '');
 
     const detailBlocks = w.blocks.map(function(b){
-      if(b.type==='single'){const ex=b.exercises[0];const lines=ex.sets.map(function(s,j){return 'Set '+(j+1)+': '+fw(s.w)+' \xd7 '+fr(s.r)+' reps';}).join('<br>');return '<div class="hist-block"><div class="hist-name">'+ex.name+'</div><div class="hist-sets">'+lines+'</div></div>';}
-      if(b.type==='superset'){const e1=b.exercises[0],e2=b.exercises[1],ms=Math.max(e1.sets.length,e2.sets.length);const lines=Array.from({length:ms},function(_,j){const s1=e1.sets[j],s2=e2.sets[j];return 'Set '+(j+1)+': '+(s1?fw(s1.w)+' \xd7 '+fr(s1.r)+' reps':'—')+' / '+(s2?fw(s2.w)+' \xd7 '+fr(s2.r)+' reps':'—');}).join('<br>');return '<div class="hist-block"><div class="hist-name">'+e1.name+' / '+e2.name+'</div><div class="hist-sets">'+lines+'</div></div>';}
-      if(b.type==='dropset'){const ex=b.exercises[0];const lines=ex.dropSets.map(function(drops,j){return 'Set '+(j+1)+': '+drops.map(function(d){return fw(d.w)+' \xd7 '+fr(d.r)+' reps';}).join(' \u2192 ');}).join('<br>');return '<div class="hist-block"><div class="hist-name">'+ex.name+' <span style="font-size:11px;background:#FEF3E2;color:#A05C00;padding:2px 7px;border-radius:20px;font-weight:500;">\u2193 Dropset</span></div><div class="hist-sets">'+lines+'</div></div>';}
+      if(b.type==='single'){const ex=b.exercises[0];const lines=ex.sets.map(function(s,j){return 'Set '+(j+1)+': '+fw(s.w)+' \xd7 '+fr(s.r)+' reps';}).join('<br>');var ab=b.assisted?'<span class="ex-assisted-badge"><i class="ti ti-arrow-down-right"></i> Assisted</span>':'';var nb=b.note?'<div class="ex-note">"'+b.note+'"</div>':'';return '<div class="hist-block"><div class="hist-name">'+ex.name+ab+'</div>'+nb+'<div class="hist-sets">'+lines+'</div></div>';}
+      if(b.type==='superset'){const e1=b.exercises[0],e2=b.exercises[1],ms=Math.max(e1.sets.length,e2.sets.length);const lines=Array.from({length:ms},function(_,j){const s1=e1.sets[j],s2=e2.sets[j];return 'Set '+(j+1)+': '+(s1?fw(s1.w)+' \xd7 '+fr(s1.r)+' reps':'—')+' / '+(s2?fw(s2.w)+' \xd7 '+fr(s2.r)+' reps':'—');}).join('<br>');var ab=b.assisted?'<span class="ex-assisted-badge"><i class="ti ti-arrow-down-right"></i> Assisted</span>':'';var nb=b.note?'<div class="ex-note">"'+b.note+'"</div>':'';return '<div class="hist-block"><div class="hist-name">'+e1.name+' / '+e2.name+' <span style="font-size:11px;background:#1a1a5c;color:#7a7ae0;padding:2px 7px;border-radius:20px;font-weight:500;"><i class="ti ti-arrows-exchange"></i> Superset</span>'+ab+'</div>'+nb+'<div class="hist-sets">'+lines+'</div></div>';}
+      if(b.type==='dropset'){const ex=b.exercises[0];const lines=ex.dropSets.map(function(drops,j){return 'Set '+(j+1)+': '+drops.map(function(d){return fw(d.w)+' \xd7 '+fr(d.r)+' reps';}).join(' \u2192 ');}).join('<br>');var ab=b.assisted?'<span class="ex-assisted-badge"><i class="ti ti-arrow-down-right"></i> Assisted</span>':'';var nb=b.note?'<div class="ex-note">"'+b.note+'"</div>':'';return '<div class="hist-block"><div class="hist-name">'+ex.name+' <span style="font-size:11px;background:#FEF3E2;color:#A05C00;padding:2px 7px;border-radius:20px;font-weight:500;">\u2193 Dropset</span>'+ab+'</div>'+nb+'<div class="hist-sets">'+lines+'</div></div>';}
       return '';
     }).join('');
 
@@ -1836,28 +1836,38 @@ function toggleAssisted(bi){
 
 function addExNote(bi){
   document.querySelectorAll('.ex-menu-dropdown').forEach(function(m){ m.style.display='none'; });
-  blocks[bi]._editingNote = true;
-  renderBlocks();
-  // Focus the note input
+  // Just focus the always-visible input
   setTimeout(function(){ var inp = document.getElementById('note-inp-'+bi); if(inp) inp.focus(); }, 50);
 }
 
-function saveExNote(bi){
+function autoSaveExNote(bi){
   var inp = document.getElementById('note-inp-'+bi);
-  if(inp) blocks[bi].note = inp.value.trim() || null;
-  blocks[bi]._editingNote = false;
-  renderBlocks();
+  if(!inp) return;
+  var val = inp.value.trim();
+  blocks[bi].note = val || null;
+  // Show/hide trash icon without re-rendering
+  var del = document.getElementById('note-del-'+bi);
+  if(del) del.style.display = val ? '' : 'none';
+}
+
+function showConfirm(title, body, okLabel, onOk){
+  document.getElementById('confirm-modal-title').textContent = title;
+  document.getElementById('confirm-modal-body').textContent = body;
+  var btn = document.getElementById('confirm-modal-ok');
+  btn.textContent = okLabel || 'Confirm';
+  btn.onclick = function(){ closeModal('confirm-modal'); onOk(); };
+  openModal('confirm-modal');
 }
 
 function removeExNote(bi){
   if(blocks[bi].note){
-    if(!confirm('Remove this note?')) return;
+    showConfirm('Remove note?', '"'+blocks[bi].note+'"', 'Remove', function(){
+      blocks[bi].note = null; blocks[bi]._editingNote = false; renderBlocks();
+    });
+    return;
   }
-  blocks[bi].note = null;
-  blocks[bi]._editingNote = false;
-  renderBlocks();
+  blocks[bi].note = null; blocks[bi]._editingNote = false; renderBlocks();
 }
-
 
 function confirmRemoveBlock(bi){
   var b = blocks[bi];
@@ -1866,7 +1876,13 @@ function confirmRemoveBlock(bi){
     if(ex.dropSets){ ex.dropSets.forEach(function(ds){ ds.forEach(function(d){ if(d.w||d.r) hasData=true; }); }); }
     else { (ex.sets||[]).forEach(function(s){ if(s.w||s.r) hasData=true; }); }
   });
-  if(hasData && !confirm('Remove this exercise? You have data logged.')) return;
+  if(hasData){
+    var name = b.exercises[0] ? b.exercises[0].name : 'this exercise';
+    showConfirm('Remove exercise?', 'You have sets logged for '+name+'. Remove it from this workout?', 'Remove', function(){
+      blocks.splice(bi,1); renderBlocks(); renderExSelect();
+    });
+    return;
+  }
   blocks.splice(bi,1); renderBlocks(); renderExSelect();
 }
 
@@ -1920,11 +1936,7 @@ function renderBlocks(){
     if(b.type === 'single'){
       const ex = b.exercises[0];
       const assistedBadge = b.assisted ? '<span class="ex-assisted-badge"><i class="ti ti-arrow-down-right"></i> Assisted</span>' : '';
-      const noteHtml = b._editingNote
-        ? `<div class="ex-note-input-row"><input type="text" id="note-inp-${bi}" value="${(b.note||'').replace(/"/g,'&quot;')}" placeholder="e.g. Shoulder hurting today..." onkeydown="if(event.key==='Enter')saveExNote(${bi})"><button class="icon-btn" onclick="saveExNote(${bi})" style="color:#3B6D11;border-color:#3B6D11;padding:4px 7px;"><i class="ti ti-check"></i></button><button class="icon-btn" onclick="removeExNote(${bi})" style="color:#E24B4A;border-color:#E24B4A;padding:4px 7px;"><i class="ti ti-x"></i></button></div>`
-        : b.note
-          ? `<div class="ex-note">"${b.note}" <button onclick="addExNote(${bi})" style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--ts);padding:0 2px;"><i class="ti ti-pencil"></i></button><button onclick="removeExNote(${bi})" style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--ts);padding:0 2px;"><i class="ti ti-x"></i></button></div>`
-          : '';
+      const noteHtml = `<div class="ex-note-input-row"><input type="text" id="note-inp-${bi}" value="${(b.note||'').replace(/"/g,'&quot;')}" placeholder="e.g. Shoulder hurting today..." onblur="autoSaveExNote(${bi})"><button class="icon-btn" onclick="removeExNote(${bi})" style="color:var(--ts);padding:4px 7px;display:${b.note?'':'none'};" id="note-del-${bi}"><i class="ti ti-trash"></i></button></div>`;
       return `<div class="exercise-card">
         <div class="ex-header">
           <span class="ex-name">${ex.name}${assistedBadge}</span>
@@ -1936,7 +1948,7 @@ function renderBlocks(){
                   <i class="ti ti-arrow-down-right"></i> ${b.assisted?'Remove assisted':'Mark as assisted'}
                 </div>
                 <div class="ex-menu-item" onclick="addExNote(${bi})">
-                  <i class="ti ti-note"></i> Add note
+                  <i class="ti ti-note"></i> Note
                 </div>
               </div>
             </div>
@@ -1960,11 +1972,7 @@ function renderBlocks(){
     if(b.type === 'dropset'){
       const ex = b.exercises[0];
       const assistedBadge = b.assisted ? '<span class="ex-assisted-badge"><i class="ti ti-arrow-down-right"></i> Assisted</span>' : '';
-      const noteHtml = b._editingNote
-        ? `<div class="ex-note-input-row"><input type="text" id="note-inp-${bi}" value="${(b.note||'').replace(/"/g,'&quot;')}" placeholder="e.g. Shoulder hurting today..." onkeydown="if(event.key==='Enter')saveExNote(${bi})"><button class="icon-btn" onclick="saveExNote(${bi})" style="color:#3B6D11;border-color:#3B6D11;padding:4px 7px;"><i class="ti ti-check"></i></button><button class="icon-btn" onclick="removeExNote(${bi})" style="color:#E24B4A;border-color:#E24B4A;padding:4px 7px;"><i class="ti ti-x"></i></button></div>`
-        : b.note
-          ? `<div class="ex-note">"${b.note}" <button onclick="addExNote(${bi})" style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--ts);padding:0 2px;"><i class="ti ti-pencil"></i></button><button onclick="removeExNote(${bi})" style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--ts);padding:0 2px;"><i class="ti ti-x"></i></button></div>`
-          : '';
+      const noteHtml = `<div class="ex-note-input-row"><input type="text" id="note-inp-${bi}" value="${(b.note||'').replace(/"/g,'&quot;')}" placeholder="e.g. Shoulder hurting today..." onblur="autoSaveExNote(${bi})"><button class="icon-btn" onclick="removeExNote(${bi})" style="color:var(--ts);padding:4px 7px;display:${b.note?'':'none'};" id="note-del-${bi}"><i class="ti ti-trash"></i></button></div>`;
       return `<div class="dropset-card">
         <div class="ex-header">
           <span class="ex-name">${ex.name} <span class="ex-badge"><i class="ti ti-arrow-down"></i> Dropset</span>${assistedBadge}</span>
@@ -1976,7 +1984,7 @@ function renderBlocks(){
                   <i class="ti ti-arrow-down-right"></i> ${b.assisted?'Remove assisted':'Mark as assisted'}
                 </div>
                 <div class="ex-menu-item" onclick="addExNote(${bi})">
-                  <i class="ti ti-note"></i> Add note
+                  <i class="ti ti-note"></i> Note
                 </div>
               </div>
             </div>
@@ -2637,7 +2645,10 @@ function openEditWorkout(idx){
     if(b.type === 'single'){
       const ex = b.exercises[0];
       return `<div style="margin-bottom:1rem;">
-        <div class="modal-lbl" style="margin-bottom:6px;">${ex.name}</div>
+        <div class="modal-lbl" style="margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;">
+          <span>${ex.name}${b.assisted?'<span class=\"ex-assisted-badge\" style=\"margin-left:6px;\"><i class=\"ti ti-arrow-down-right\"></i> Assisted</span>':''}</span>
+          <button class="icon-btn" style="font-size:12px;padding:3px 8px;${b.assisted?'color:#3B6D11;border-color:#3B6D11;':''}" onclick="toggleEditAssisted(${bi})">${b.assisted?'Remove assisted':'Mark assisted'}</button>
+        </div>
         ${ex.sets.map((s,si) => `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
           <span style="font-size:12px;color:var(--ts);width:40px;">Set ${si+1}</span>
           <input class="modal-inp" style="margin:0;flex:1;" type="number" inputmode="decimal" placeholder="lbs" value="${s.w}" oninput="editSetVal(${bi},0,${si},'w',this.value)">
@@ -2647,7 +2658,7 @@ function openEditWorkout(idx){
       </div>`;
     }
     if(b.type === 'superset'){
-      return b.exercises.map((ex, ei) => `<div style="margin-bottom:1rem;">
+      return (ei===0?`<div style="margin-bottom:4px;display:flex;align-items:center;justify-content:space-between;"><span style="font-size:11px;color:#7a7ae0;font-weight:500;"><i class="ti ti-arrows-exchange"></i> Superset</span><button class="icon-btn" style="font-size:12px;padding:3px 8px;${b.assisted?'color:#3B6D11;border-color:#3B6D11;':''}" onclick="toggleEditAssisted(${bi})">${b.assisted?'Remove assisted':'Mark assisted'}</button></div>`:'') + b.exercises.map((ex, ei) => `<div style="margin-bottom:1rem;">
         <div class="modal-lbl" style="margin-bottom:6px;">${ex.name} <span style="font-weight:400;color:var(--ts);">(Superset)</span></div>
         ${ex.sets.map((s,si) => `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
           <span style="font-size:12px;color:var(--ts);width:40px;">Set ${si+1}</span>
@@ -2672,6 +2683,14 @@ function openEditWorkout(idx){
     return '';
   }).join('');
   openModal('edit-workout-modal');
+}
+
+function toggleEditAssisted(bi){
+  if(pendingEditWorkoutIdx === null) return;
+  var entry = history[pendingEditWorkoutIdx];
+  entry.blocks[bi].assisted = !entry.blocks[bi].assisted;
+  // Re-render the edit blocks section
+  openEditWorkout(pendingEditWorkoutIdx);
 }
 
 function editSetVal(bi, ei, si, f, v){
@@ -3121,6 +3140,16 @@ init();
   <div class="modal-actions">
     <button class="modal-btn" onclick="closeModal('del-workout-modal')">Cancel</button>
     <button class="modal-btn danger" onclick="confirmDeleteWorkout()">Delete</button>
+  </div>
+</div></div>
+
+<!-- Generic confirm modal -->
+<div class="modal-bg" id="confirm-modal"><div class="modal">
+  <div class="modal-title" id="confirm-modal-title">Are you sure?</div>
+  <div class="modal-body" id="confirm-modal-body"></div>
+  <div class="modal-actions">
+    <button class="modal-btn" onclick="closeModal('confirm-modal')">Cancel</button>
+    <button class="modal-btn danger" id="confirm-modal-ok" onclick="">Confirm</button>
   </div>
 </div></div>
 
