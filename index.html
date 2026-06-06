@@ -1235,13 +1235,14 @@ function renderProfileTabBody(workouts, userId){
         '<div class="hist-hdr" onclick="this.closest(\'.hist-entry\').classList.toggle(\'open\')">' +
           '<div class="hist-hdr-left"><div class="hist-date">'+entry.date+(entry.duration_seconds && entry.duration_seconds >= 10 ? ' <span style="font-size:11px;color:var(--ts);font-weight:400;">· '+(entry.duration_seconds >= 3600 ? Math.floor(entry.duration_seconds/3600)+'h '+Math.floor((entry.duration_seconds%3600)/60)+'m' : Math.round(entry.duration_seconds/60)+' min')+'</span>' : '')+'</div><div class="hist-label-row">'+wlabel+tagged+'</div>'+wdesc+'</div>' +
           '<div style="display:flex;align-items:center;gap:4px;">' +
-            '<button class="icon-btn" style="font-size:12px;padding:4px 8px;" onclick="event.stopPropagation();copyUPMWorkout('+idx+');window._upmWorkouts='+JSON.stringify(workouts).replace(/</g,'\\u003c')+'"><i class="ti ti-copy"></i> Copy</button>' +
+            '<button class="icon-btn" style="font-size:12px;padding:4px 8px;" onclick="event.stopPropagation();copyProfileWorkout('+idx+')"><i class="ti ti-copy"></i> Copy</button>' +
             '<i class="ti ti-chevron-down hist-chevron"></i>' +
           '</div>' +
         '</div>' +
         '<div class="hist-body">'+bodyBlocks+'</div>' +
       '</div>';
     }).join('');
+    window._profileWorkouts = workouts;
   }
 
   if(_profileTabSection === 'pbs'){
@@ -1255,7 +1256,8 @@ function renderProfileTabBody(workouts, userId){
           var ws = sets.map(function(s){return parseFloat(s.w)||0;}).filter(function(w){return w>0;});
           if(!ws.length) return;
           var compW = assisted ? Math.min.apply(null,ws) : Math.max.apply(null,ws);
-          var bestR = sets.reduce(function(a,s){return a+(parseFloat(s.r)||0);},0);
+          var bestSet = sets.filter(function(s){return (parseFloat(s.w)||0)===compW;})[0] || sets[0];
+          var bestR = parseFloat((bestSet||{}).r) || 0;
           var isBetter = assisted
             ? (compW < pbMap[ex.name].bestW || (compW===pbMap[ex.name].bestW && bestR>pbMap[ex.name].bestR))
             : (compW > pbMap[ex.name].bestW || (compW===pbMap[ex.name].bestW && bestR>pbMap[ex.name].bestR));
@@ -2798,7 +2800,8 @@ function renderLookupDetail(el, data, names){
       ? Math.min.apply(null, sess.sets.filter(function(s){return parseFloat(s.weight)>0;}).map(function(s){return parseFloat(s.weight)||0;}))
       : Math.max.apply(null, sess.sets.map(function(s){return parseFloat(s.weight)||0;}));
     if(!isFinite(compW)) compW = 0;
-    const totalR = sess.sets.reduce(function(a,s){return a+(parseFloat(s.reps)||0);},0);
+    var _bestS = sess.sets.filter(function(s){return (parseFloat(s.weight)||0)===compW;})[0] || sess.sets[0];
+    const totalR = parseFloat((_bestS||{}).reps) || 0;
     if(isAssisted){
       if(pbIdx===-1 || compW<pbMaxW||(compW===pbMaxW&&totalR>pbTotalR)){ pbMaxW=compW; pbTotalR=totalR; pbIdx=si; }
     } else {
@@ -3319,9 +3322,11 @@ async function viewUserProfile(userId){
 
   document.getElementById('upm-workouts').innerHTML = workouts.map(function(entry,idx){
     var bodyBlocks = entry.blocks.map(function(b){
-      if(b.type==='single'){var ex=b.exercises[0];var lines=ex.sets.map(function(s,i){return 'Set '+(i+1)+': '+fw(s.w)+' x '+fr(s.r)+' reps';}).join('<br>');return '<div class="hist-block"><div class="hist-name">'+ex.name+'</div><div class="hist-sets">'+lines+'</div></div>';}
-      if(b.type==='superset'){var e1=b.exercises[0],e2=b.exercises[1],ms=Math.max(e1.sets.length,e2.sets.length);var lines=Array.from({length:ms},function(_,i){var s1=e1.sets[i],s2=e2.sets[i];return 'Set '+(i+1)+': '+(s1?fw(s1.w)+' x '+fr(s1.r)+' reps':'--')+' / '+(s2?fw(s2.w)+' x '+fr(s2.r)+' reps':'--');}).join('<br>');return '<div class="hist-block"><div class="hist-name">'+e1.name+' / '+e2.name+'</div><div class="hist-sets">'+lines+'</div></div>';}
-      if(b.type==='dropset'){var ex=b.exercises[0];var lines=ex.dropSets.map(function(drops,i){return 'Set '+(i+1)+': '+drops.map(function(d){return fw(d.w)+' x '+fr(d.r)+' reps';}).join(' > ');}).join('<br>');return '<div class="hist-block"><div class="hist-name">'+ex.name+'</div><div class="hist-sets">'+lines+'</div></div>';}
+      var ab = b.assisted ? '<span class="ex-assisted-badge"><i class="ti ti-arrow-down-right"></i> Assisted</span>' : '';
+      var nb = b.note ? '<div class="ex-note">"'+b.note+'"</div>' : '';
+      if(b.type==='single'){var ex=b.exercises[0];var lines=ex.sets.map(function(s,i){return 'Set '+(i+1)+': '+fw(s.w)+' x '+fr(s.r)+' reps';}).join('<br>');return '<div class="hist-block"><div class="hist-name">'+ex.name+ab+'</div>'+nb+'<div class="hist-sets">'+lines+'</div></div>';}
+      if(b.type==='superset'){var e1=b.exercises[0],e2=b.exercises[1],ms=Math.max(e1.sets.length,e2.sets.length);var lines=Array.from({length:ms},function(_,i){var s1=e1.sets[i],s2=e2.sets[i];return 'Set '+(i+1)+': '+(s1?fw(s1.w)+' x '+fr(s1.r)+' reps':'--')+' / '+(s2?fw(s2.w)+' x '+fr(s2.r)+' reps':'--');}).join('<br>');return '<div class="hist-block"><div class="hist-name">'+e1.name+' / '+e2.name+' <span style="font-size:11px;background:#1a1a5c;color:#7a7ae0;padding:2px 7px;border-radius:20px;font-weight:500;"><i class="ti ti-arrows-exchange"></i> Superset</span>'+ab+'</div>'+nb+'<div class="hist-sets">'+lines+'</div></div>';}
+      if(b.type==='dropset'){var ex=b.exercises[0];var lines=ex.dropSets.map(function(drops,i){return 'Set '+(i+1)+': '+drops.map(function(d){return fw(d.w)+' x '+fr(d.r)+' reps';}).join(' > ');}).join('<br>');return '<div class="hist-block"><div class="hist-name">'+ex.name+' <span style="font-size:11px;background:#FEF3E2;color:#A05C00;padding:2px 7px;border-radius:20px;font-weight:500;">↓ Dropset</span>'+ab+'</div>'+nb+'<div class="hist-sets">'+lines+'</div></div>';}
       return '';
     }).join('');
     var wlabel = entry.label ? '<div style="font-weight:500;color:var(--tp);font-size:13px;margin-bottom:2px;">'+entry.label+'</div>' : '';
@@ -3349,7 +3354,8 @@ async function viewUserProfile(userId){
         var ws = sets.map(function(s){return parseFloat(s.w)||0;}).filter(function(w){return w>0;});
         if(!ws.length) return;
         var compW = assisted ? Math.min.apply(null,ws) : Math.max.apply(null,ws);
-        var bestR = sets.reduce(function(a,s){return a+(parseFloat(s.r)||0);},0);
+        var bestSet = sets.filter(function(s){return (parseFloat(s.w)||0)===compW;})[0] || sets[0];
+        var bestR = parseFloat((bestSet||{}).r) || 0;
         var isBetter = assisted
           ? (compW < pbMap[ex.name].bestW || (compW===pbMap[ex.name].bestW && bestR>pbMap[ex.name].bestR))
           : (compW > pbMap[ex.name].bestW || (compW===pbMap[ex.name].bestW && bestR>pbMap[ex.name].bestR));
@@ -3445,6 +3451,18 @@ async function viewUserProfile(userId){
       '<div><div style="font-size:14px;font-weight:500;color:var(--tp);">'+friend.name+'</div>'+uname+togetherStr+'</div>' +
     '</div>';
   }).join('');
+}
+
+function copyProfileWorkout(idx){
+  var workouts = window._profileWorkouts || history;
+  var entry = workouts[idx];
+  if(!entry) return;
+  blocks = entry.blocks.map(function(b){
+    if(b.type==='dropset') return {type:'dropset',exercises:[{name:b.exercises[0].name,dropSets:b.exercises[0].dropSets.map(function(ds){return ds.map(function(){return {w:'',r:''};});})}]};
+    return {type:b.type,exercises:b.exercises.map(function(ex){return {name:ex.name,sets:(ex.sets||[]).map(function(){return {w:'',r:''};})};})};
+  });
+  if(entry.label) document.getElementById('day-inp').value = entry.label;
+  switchTab('log'); renderBlocks(); renderExSelect();
 }
 
 function copyUPMWorkout(idx){
