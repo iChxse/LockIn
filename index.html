@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#8b5cf6">
+<meta name="theme-color" content="#1a1a1a" id="theme-color-meta">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Lock In.">
@@ -33,7 +33,7 @@ input,select,button { font-family: var(--font); }
 .sync-dot.saving { background: #EF9F27; }
 .sync-dot.error { background: #E24B4A; }
 .tabs { display: none; } /* hidden — replaced by bottom bar */
-.bottom-bar { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; z-index: 90; background: var(--bp); border-top: 0.5px solid var(--bo3); display: flex; align-items: center; justify-content: space-around; padding: 6px 0 calc(6px + env(safe-area-inset-bottom)); }
+.bottom-bar { position: fixed; bottom: env(keyboard-inset-height, 0px); left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; z-index: 90; background: var(--bp); border-top: 0.5px solid var(--bo3); display: flex; align-items: center; justify-content: space-around; padding: 6px 0 calc(6px + env(safe-area-inset-bottom)); }
 .btab { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer; background: none; border: none; padding: 6px 4px; color: var(--ts); font-size: 10px; font-family: var(--font); }
 .btab i { font-size: 22px; line-height: 1; }
 .btab.active { color: var(--tp); }
@@ -667,6 +667,7 @@ async function onAuthSuccess(user){
   await loadFromSupabase();
   renderDayChips();
   renderFeed();
+  setTimeout(restoreTimer, 100);
 }
 
 // ── Profile modal ──
@@ -970,57 +971,80 @@ async function saveToSupabase(newEntry){
 // ═══════════════════════════════════════════
 // WORKOUT TIMER
 // ═══════════════════════════════════════════
-var _timerInterval = null;
-var _timerSeconds = 0;
+var _timerStartTs = null;
+var _timerAccum = 0;
 var _timerRunning = false;
+var _timerInterval = null;
 
 function toggleTimer(){
   if(_timerRunning){
+    _timerAccum += Math.floor((Date.now() - _timerStartTs) / 1000);
+    _timerStartTs = null;
     clearInterval(_timerInterval);
     _timerRunning = false;
     document.getElementById('timer-btn').textContent = 'Resume';
     document.getElementById('timer-btn').classList.remove('running');
     document.getElementById('timer-reset-btn').style.display = '';
+    localStorage.setItem('wl_timer', JSON.stringify({accum:_timerAccum, startTs:null, running:false}));
   } else {
+    _timerStartTs = Date.now();
     _timerRunning = true;
     document.getElementById('timer-btn').textContent = 'Pause';
     document.getElementById('timer-btn').classList.add('running');
     document.getElementById('timer-reset-btn').style.display = 'none';
-    _timerInterval = setInterval(function(){
-      _timerSeconds++;
-      updateTimerDisplay();
-    }, 1000);
+    localStorage.setItem('wl_timer', JSON.stringify({accum:_timerAccum, startTs:_timerStartTs, running:true}));
+    _timerInterval = setInterval(updateTimerDisplay, 1000);
   }
 }
 
 function resetTimer(){
   clearInterval(_timerInterval);
-  _timerRunning = false;
-  _timerSeconds = 0;
+  _timerRunning = false; _timerStartTs = null; _timerAccum = 0;
   updateTimerDisplay();
   document.getElementById('timer-btn').textContent = 'Start';
   document.getElementById('timer-btn').classList.remove('running');
   document.getElementById('timer-reset-btn').style.display = 'none';
+  localStorage.removeItem('wl_timer');
+}
+
+function getTimerSeconds(){
+  var total = _timerAccum;
+  if(_timerRunning && _timerStartTs) total += Math.floor((Date.now() - _timerStartTs) / 1000);
+  return total;
 }
 
 function updateTimerDisplay(){
-  var h = Math.floor(_timerSeconds/3600);
-  var m = Math.floor((_timerSeconds%3600)/60);
-  var s = _timerSeconds%60;
-  var display = h > 0
-    ? h+':'+(m<10?'0':'')+m+':'+(s<10?'0':'')+s
-    : m+':'+(s<10?'0':'')+s;
+  var total = getTimerSeconds();
+  var h = Math.floor(total/3600);
+  var m = Math.floor((total%3600)/60);
+  var s = total%60;
+  var display = h > 0 ? h+':'+(m<10?'0':'')+m+':'+(s<10?'0':'')+s : m+':'+(s<10?'0':'')+s;
   var el = document.getElementById('timer-display');
   if(el) el.textContent = display;
 }
 
-function getTimerDuration(){
-  if(_timerSeconds < 60) return null; // don't save if less than a minute
-  var h = Math.floor(_timerSeconds/3600);
-  var m = Math.floor((_timerSeconds%3600)/60);
-  if(h > 0) return h+'h '+m+'m';
-  return m+' min';
+function restoreTimer(){
+  var saved = localStorage.getItem('wl_timer');
+  if(!saved) return;
+  try {
+    var t = JSON.parse(saved);
+    _timerAccum = t.accum || 0;
+    if(t.running && t.startTs){
+      _timerStartTs = t.startTs;
+      _timerRunning = true;
+      document.getElementById('timer-btn').textContent = 'Pause';
+      document.getElementById('timer-btn').classList.add('running');
+      document.getElementById('timer-reset-btn').style.display = 'none';
+      _timerInterval = setInterval(updateTimerDisplay, 1000);
+    } else if(_timerAccum > 0){
+      document.getElementById('timer-btn').textContent = 'Resume';
+      document.getElementById('timer-reset-btn').style.display = '';
+    }
+    updateTimerDisplay();
+  } catch(e){}
 }
+
+
 
 // ═══════════════════════════════════════════
 // PROGRESS SUB-TABS
@@ -1511,6 +1535,8 @@ function toggleTheme(){
   const isDark = document.getElementById('dark-mode-toggle').checked;
   document.body.classList.toggle('dark-mode', isDark);
   localStorage.setItem('wl_theme', isDark ? 'dark' : 'light');
+  var meta = document.getElementById('theme-color-meta');
+  if(meta) meta.content = isDark ? '#1a1a1a' : '#ffffff';
 }
 
 function initTheme(){
@@ -1669,6 +1695,7 @@ function addCustomEx(){
   pickEx(name);
   inp.value = '';
   document.getElementById('add-ex-row').classList.remove('open');
+  saveToSupabase(null);
 }
 
 function addCategory(){
@@ -1772,13 +1799,14 @@ function saveWorkout(){
   const label = document.getElementById('day-inp').value.trim();
   if(!label){ showMsg('Please add a workout name first.'); document.getElementById('day-inp').focus(); return; }
   const desc = document.getElementById('day-desc') ? document.getElementById('day-desc').value.trim() : '';
-  const durationSeconds = _timerSeconds >= 10 ? _timerSeconds : null;
+  const durationSeconds = getTimerSeconds() >= 10 ? getTimerSeconds() : null;
   // Stop and reset timer
-  clearInterval(_timerInterval); _timerRunning = false; _timerSeconds = 0;
+  clearInterval(_timerInterval); _timerRunning = false; _timerStartTs = null; _timerAccum = 0;
   updateTimerDisplay();
   document.getElementById('timer-btn').textContent = 'Start';
   document.getElementById('timer-btn').classList.remove('running');
   document.getElementById('timer-reset-btn').style.display = 'none';
+  localStorage.removeItem('wl_timer');
 
   const d = new Date();
   history.unshift({
@@ -2270,9 +2298,12 @@ function openDeleteWorkout(idx){
 async function confirmDeleteWorkout(){
   if(pendingDeleteWorkoutIdx === null) return;
   const entry = history[pendingDeleteWorkoutIdx];
-  // Delete from Supabase if it has an id
   if(currentUser && entry.id){
-    await sb.from('workouts').delete().eq('id', entry.id);
+    const { error } = await sb.from('workouts').delete().eq('id', entry.id);
+    if(error){
+      alert('Delete failed: ' + error.message + '\nPlease try again.');
+      return;
+    }
   }
   history.splice(pendingDeleteWorkoutIdx, 1);
   localStorage.setItem('wl_history', JSON.stringify(history.slice(0,100)));
