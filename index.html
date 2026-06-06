@@ -386,8 +386,7 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 .picker-select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
-.picker-select.active-sel { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); outline: none; }
-.add-btn {
+.picker-select.add-btn {
   font-size: 13px;
   font-weight: 700;
   padding: 11px 16px;
@@ -434,10 +433,7 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
   gap: 8px;
 }
 .confirm-btn { font-size: 13px; font-weight: 700; padding: 8px 14px; background: var(--superset); color: #fff; border: none; border-radius: var(--pill); cursor: pointer; }
-.save-area { background: var(--bp); border: 1px solid var(--bo3); border-radius: var(--r3); overflow: hidden; margin-bottom: 14px; box-shadow: var(--card-shadow); }
-.save-sec { padding: 1rem; }
-.save-sec + .save-sec { border-top: 1px solid var(--bo3); }
-.day-inp {
+.save-sec + .day-inp {
   width: 100%;
   font-size: 15px;
   font-weight: 500;
@@ -640,11 +636,8 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
 .auth-msg { font-size: 13px; text-align: center; margin-top: 1rem; min-height: 20px; color: var(--ts); font-weight: 500; }
 .auth-msg.error { color: var(--danger); }
 .auth-msg.success { color: var(--success); }
-.profile-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
-.profile-bar-left { display: flex; flex-direction: column; gap: 2px; }
 .friend-card { background: var(--bp); border: 1px solid var(--bo3); border-radius: var(--r3); padding: 1rem; margin-bottom: 10px; box-shadow: var(--card-shadow); }
 .friend-name { font-size: 15px; font-weight: 700; color: var(--tp); margin-bottom: 2px; }
-.friend-meta { font-size: 12px; color: var(--ts); font-weight: 500; }
 .friend-actions { display: flex; gap: 8px; margin-top: 12px; }
 .friend-btn { flex: 1; font-size: 13px; font-weight: 600; padding: 10px; border-radius: var(--r1); cursor: pointer; border: 1px solid var(--bo3); background: var(--input-bg); color: var(--tp); }
 .friend-btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 700; }
@@ -657,7 +650,6 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
 .friends-subtab.active, .progress-subtab.active { color: var(--tp); background: var(--bp); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18); }
 .activity-card { background: var(--bp); border: 1px solid var(--bo3); border-radius: var(--r3); margin-bottom: 12px; overflow: hidden; box-shadow: var(--card-shadow); }
 .activity-hdr { display: flex; align-items: center; gap: 10px; padding: 12px 1rem; }
-.activity-avatar { width: 38px; height: 38px; border-radius: 50%; background: var(--input-bg); border: 1px solid var(--bo3); display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 700; color: var(--tp); flex-shrink: 0; }
 .activity-meta { flex: 1; min-width: 0; }
 .activity-name { font-size: 14px; font-weight: 700; color: var(--tp); }
 .activity-time { font-size: 12px; color: var(--ts); font-weight: 500; }
@@ -676,7 +668,6 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
 .comments-section.open { display: block; }
 .comments-scroll { max-height: 280px; overflow-y: auto; }
 .comment-row { display: flex; gap: 8px; margin-bottom: 10px; }
-.comment-avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--input-bg); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: var(--tp); flex-shrink: 0; }
 .comment-body { flex: 1; }
 .comment-author { font-size: 12px; font-weight: 700; color: var(--tp); }
 .comment-text { font-size: 13px; color: var(--ts); line-height: 1.5; }
@@ -695,7 +686,6 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
 .user-profile-name { font-size: 18px; font-weight: 700; color: var(--tp); letter-spacing: -0.02em; }
 .user-profile-username { font-size: 13px; color: var(--ts); font-weight: 500; }
 .feed-link { text-decoration: underline; text-underline-offset: 2px; text-decoration-color: var(--accent); cursor: pointer; color: var(--accent); }
-.tag-friends-wrap { margin-top: 10px; }
 .tag-friends-selected { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; min-height: 0; }
 .tag-chip { font-size: 12px; font-weight: 600; padding: 5px 10px; background: var(--input-bg); border: 1px solid var(--bo3); border-radius: var(--pill); color: var(--tp); display: flex; align-items: center; gap: 5px; }
 .tag-chip button { background: none; border: none; cursor: pointer; color: var(--ts); font-size: 14px; padding: 0; line-height: 1; }
@@ -706,7 +696,6 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
 .tag-result-item { display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: var(--bp); border: 1px solid var(--bo3); border-radius: var(--r1); cursor: pointer; transition: border-color 0.15s; }
 .tag-result-item:active { border-color: var(--accent); background: var(--accent-soft); }
 .tag-result-name { font-size: 14px; font-weight: 600; color: var(--tp); flex: 1; }
-.tag-result-username { font-size: 12px; color: var(--ts); }
 .workout-timer-bar {
   display: flex;
   align-items: center;
@@ -728,10 +717,6 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
 .stat-item { background: var(--input-bg); border-radius: var(--r2); padding: 12px; border: 1px solid var(--bo3); }
 .stat-item-val { font-size: 24px; font-weight: 800; color: var(--tp); letter-spacing: -0.02em; }
 .stat-item-lbl { font-size: 11px; color: var(--ts); margin-top: 4px; font-weight: 600; }
-.streak-bar { display: flex; align-items: center; gap: 12px; }
-.streak-flame { font-size: 32px; }
-.streak-num { font-size: 36px; font-weight: 800; color: var(--accent); letter-spacing: -0.03em; }
-.streak-lbl { font-size: 13px; color: var(--ts); font-weight: 600; }
 .bar-chart { display: flex; align-items: flex-end; gap: 5px; height: 64px; margin-top: 10px; }
 .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .bar-fill { width: 100%; background: linear-gradient(to top, var(--accent), var(--accent-hover)); border-radius: 4px 4px 0 0; opacity: 0.95; min-height: 3px; }
@@ -1597,10 +1582,6 @@ function renderStats(){
   while(usedDates.has(checkDate.toDateString())){ streak++; checkDate.setDate(checkDate.getDate()-1); }
 
   // ── Calendar — last 10 weeks (Mon-Sun grid) ──
-  // Calendar rendered via renderCalendar() — see below
-  var _statsUsedDates = usedDates;
-  var _statsNow = now;
-
   // ── Weekly stats ──
   var weekStart = new Date(now); weekStart.setDate(now.getDate()-now.getDay()); weekStart.setHours(0,0,0,0);
   var weekWorkouts = history.filter(function(e){ return new Date(e.ts) >= weekStart; });
@@ -1702,10 +1683,6 @@ function renderHeaderStreak(streak){
     el.style.display = 'none';
   }
 }
-
-// ── Monthly Calendar state (kept for potential future use) ──
-var _calViewYear = new Date().getFullYear();
-var _calViewMonth = new Date().getMonth();
 
 async function renderFeed(){
   const el = document.getElementById('friends-feed-content');
@@ -3145,9 +3122,11 @@ function openEditWorkout(idx){
     const noteRow = `<div style="display:flex;gap:6px;align-items:center;margin-bottom:10px;">
       <input type="text" class="modal-inp" style="margin:0;flex:1;font-size:13px;" id="edit-note-inp-${bi}" value="${(b.note||'').replace(/"/g,'&quot;')}" placeholder="Note for this exercise (optional)..." oninput="editNoteVal(${bi},this.value)">
     </div>`;
+    const wrapOpen = `<div style="background:var(--bs);border-radius:var(--r2);padding:12px;margin-bottom:10px;border:0.5px solid var(--bo3);">`;
+    const wrapClose = `</div>`;
     if(b.type === 'single'){
       const ex = b.exercises[0];
-      return `<div style="margin-bottom:1rem;">
+      return wrapOpen + `
         <div class="modal-lbl" style="margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;">
           <span>${ex.name}${b.assisted?'<span class=\"ex-assisted-badge\" style=\"margin-left:6px;\"><i class=\"ti ti-arrow-down-right\"></i> Assisted</span>':''}</span>
           <button class="icon-btn" style="font-size:12px;padding:3px 8px;${b.assisted?'color:#3B6D11;border-color:#3B6D11;':''}" onclick="toggleEditAssisted(${bi})">${b.assisted?'Remove assisted':'Mark assisted'}</button>
@@ -3159,12 +3138,13 @@ function openEditWorkout(idx){
           <span style="font-size:12px;color:var(--ts);">×</span>
           <input class="modal-inp" style="margin:0;flex:1;" type="number" inputmode="numeric" placeholder="reps" value="${s.r}" oninput="editSetVal(${bi},0,${si},'r',this.value)">
         </div>`).join('')}
-      </div>`;
+      ` + wrapClose;
     }
     if(b.type === 'superset'){
-      return (true?`<div style="margin-bottom:4px;display:flex;align-items:center;justify-content:space-between;"><span style="font-size:11px;color:#7a7ae0;font-weight:500;"><i class="ti ti-arrows-exchange"></i> Superset</span><button class="icon-btn" style="font-size:12px;padding:3px 8px;${b.assisted?'color:#3B6D11;border-color:#3B6D11;':''}" onclick="toggleEditAssisted(${bi})">${b.assisted?'Remove assisted':'Mark assisted'}</button></div>`:'') +
+      return wrapOpen +
+        `<div style="margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;"><span style="font-size:11px;color:#7a7ae0;font-weight:500;"><i class="ti ti-arrows-exchange"></i> Superset</span><button class="icon-btn" style="font-size:12px;padding:3px 8px;${b.assisted?'color:#3B6D11;border-color:#3B6D11;':''}" onclick="toggleEditAssisted(${bi})">${b.assisted?'Remove assisted':'Mark assisted'}</button></div>` +
         noteRow +
-        b.exercises.map((ex, ei) => `<div style="margin-bottom:1rem;">
+        b.exercises.map((ex, ei) => `<div style="margin-bottom:8px;">
         <div class="modal-lbl" style="margin-bottom:6px;">${ex.name} <span style="font-weight:400;color:var(--ts);">(Superset)</span></div>
         ${ex.sets.map((s,si) => `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
           <span style="font-size:12px;color:var(--ts);width:40px;">Set ${si+1}</span>
@@ -3172,11 +3152,12 @@ function openEditWorkout(idx){
           <span style="font-size:12px;color:var(--ts);">×</span>
           <input class="modal-inp" style="margin:0;flex:1;" type="number" inputmode="numeric" placeholder="reps" value="${s.r}" oninput="editSetVal(${bi},${ei},${si},'r',this.value)">
         </div>`).join('')}
-      </div>`).join('');
+      </div>`).join('') +
+        wrapClose;
     }
     if(b.type === 'dropset'){
       const ex = b.exercises[0];
-      return `<div style="margin-bottom:1rem;">
+      return wrapOpen + `
         <div class="modal-lbl" style="margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;">
           <span>${ex.name} <span style="font-weight:400;color:var(--ts);">(Dropset)</span>${b.assisted?'<span class=\"ex-assisted-badge\" style=\"margin-left:6px;\"><i class=\"ti ti-arrow-down-right\"></i> Assisted</span>':''}</span>
           <button class="icon-btn" style="font-size:12px;padding:3px 8px;${b.assisted?'color:#3B6D11;border-color:#3B6D11;':''}" onclick="toggleEditAssisted(${bi})">${b.assisted?'Remove assisted':'Mark assisted'}</button>
@@ -3188,7 +3169,7 @@ function openEditWorkout(idx){
           <span style="font-size:12px;color:var(--ts);">×</span>
           <input class="modal-inp" style="margin:0;flex:1;" type="number" inputmode="numeric" placeholder="reps" value="${d.r}" oninput="editDropVal(${bi},${di},${dri},'r',this.value)">
         </div>`).join('')).join('')}
-      </div>`;
+      ` + wrapClose;
     }
     return '';
   }).join('');
