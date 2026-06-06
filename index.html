@@ -111,6 +111,7 @@ body.dark-mode .mode-btn.active, body.dark-mode .cat-tab.active, body.dark-mode 
 .lookup-cat-body { border-top:0.5px solid var(--bo3); }
 .lookup-cat-body .ex-item { border-bottom:0.5px solid var(--bo3); }
 .lookup-cat-body .ex-item:last-child { border-bottom:none; }
+.add-inline-row { display: none; gap: 8px; margin-top: 10px; }
 .add-inline-row.open { display: flex; }
 .add-inline-row input { flex: 1; font-size: 14px; padding: 7px 10px; border: 0.5px solid var(--bo3); border-radius: var(--r1); background: var(--bp); color: var(--tp); }
 .add-inline-row input:focus { outline: none; border-color: var(--bo1); }
@@ -305,6 +306,16 @@ body.dark-mode .mode-btn.active, body.dark-mode .cat-tab.active, body.dark-mode 
 .bar-col { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; }
 .bar-fill { width:100%; background:var(--tp); border-radius:3px 3px 0 0; opacity:.85; min-height:3px; }
 .bar-lbl { font-size:9px; color:var(--ts); }
+
+.ex-menu-wrap { position:relative; display:inline-block; }
+.ex-menu-btn { background:none; border:none; cursor:pointer; color:var(--ts); padding:4px 6px; font-size:16px; line-height:1; border-radius:var(--r1); }
+.ex-menu-btn:hover { color:var(--tp); }
+.ex-menu-dropdown { position:absolute; right:0; top:100%; z-index:200; background:var(--bp); border:0.5px solid var(--bo3); border-radius:var(--r1); box-shadow:0 4px 16px rgba(0,0,0,.18); min-width:160px; overflow:hidden; }
+.ex-menu-item { display:flex; align-items:center; gap:8px; padding:10px 14px; font-size:13px; color:var(--tp); cursor:pointer; white-space:nowrap; }
+.ex-menu-item:hover { background:var(--bs); }
+.ex-menu-item.active { color:#3B6D11; }
+.ex-note { font-size:12px; color:var(--ts); font-style:italic; margin-bottom:8px; margin-top:-6px; }
+.ex-assisted-badge { font-size:11px; background:#1a3a5c; color:#7ab3e0; padding:2px 7px; border-radius:20px; font-weight:500; margin-left:6px; }
 </style>
 </head>
 <body>
@@ -755,9 +766,11 @@ function renderProfileTabBody(workouts, userId){
       const exNames = entry.blocks.flatMap(function(b){return b.exercises.map(function(e){return e.name;});});
       const preview = exNames.slice(0,3).join(', ')+(exNames.length>3?' +'+(exNames.length-3)+' more':'');
       const bodyBlocks = entry.blocks.map(function(b){
-        if(b.type==='single'){var ex=b.exercises[0];var lines=ex.sets.map(function(s,i){return 'Set '+(i+1)+': '+fw(s.w)+' x '+fr(s.r)+' reps';}).join('<br>');return '<div class="hist-block"><div class="hist-name">'+ex.name+'</div><div class="hist-sets">'+lines+'</div></div>';}
-        if(b.type==='superset'){var e1=b.exercises[0],e2=b.exercises[1],ms=Math.max(e1.sets.length,e2.sets.length);var lines=Array.from({length:ms},function(_,i){var s1=e1.sets[i],s2=e2.sets[i];return 'Set '+(i+1)+': '+(s1?fw(s1.w)+' x '+fr(s1.r)+' reps':'—')+' / '+(s2?fw(s2.w)+' x '+fr(s2.r)+' reps':'—');}).join('<br>');return '<div class="hist-block"><div class="hist-name">'+e1.name+' / '+e2.name+'</div><div class="hist-sets">'+lines+'</div></div>';}
-        if(b.type==='dropset'){var ex=b.exercises[0];var lines=ex.dropSets.map(function(drops,i){return 'Set '+(i+1)+': '+drops.map(function(d){return fw(d.w)+' x '+fr(d.r)+' reps';}).join(' > ');}).join('<br>');return '<div class="hist-block"><div class="hist-name">'+ex.name+'</div><div class="hist-sets">'+lines+'</div></div>';}
+        var assistedBadge = b.assisted ? ' <span class="ex-assisted-badge"><i class="ti ti-arrow-down-right"></i> Assisted</span>' : '';
+        var noteHtml = b.note ? '<div class="ex-note">"'+b.note+'"</div>' : '';
+        if(b.type==='single'){var ex=b.exercises[0];var lines=ex.sets.map(function(s,i){return 'Set '+(i+1)+': '+fw(s.w)+' x '+fr(s.r)+' reps';}).join('<br>');return '<div class="hist-block"><div class="hist-name">'+ex.name+assistedBadge+'</div>'+noteHtml+'<div class="hist-sets">'+lines+'</div></div>';}
+        if(b.type==='superset'){var e1=b.exercises[0],e2=b.exercises[1],ms=Math.max(e1.sets.length,e2.sets.length);var lines=Array.from({length:ms},function(_,i){var s1=e1.sets[i],s2=e2.sets[i];return 'Set '+(i+1)+': '+(s1?fw(s1.w)+' x '+fr(s1.r)+' reps':'—')+' / '+(s2?fw(s2.w)+' x '+fr(s2.r)+' reps':'—');}).join('<br>');return '<div class="hist-block"><div class="hist-name">'+e1.name+' / '+e2.name+'</div>'+noteHtml+'<div class="hist-sets">'+lines+'</div></div>';}
+        if(b.type==='dropset'){var ex=b.exercises[0];var lines=ex.dropSets.map(function(drops,i){return 'Set '+(i+1)+': '+drops.map(function(d){return fw(d.w)+' x '+fr(d.r)+' reps';}).join(' > ');}).join('<br>');return '<div class="hist-block"><div class="hist-name">'+ex.name+assistedBadge+'</div>'+noteHtml+'<div class="hist-sets">'+lines+'</div></div>';}
         return '';
       }).join('');
       var wlabel = entry.label?'<div style="font-weight:500;color:var(--tp);font-size:13px;margin-bottom:2px;">'+entry.label+'</div>':'';
@@ -1797,7 +1810,37 @@ async function addCategory(){
   await saveToSupabase(null);
 }
 
-function removeBlock(i){ blocks.splice(i,1); renderBlocks(); renderExSelect(); }
+function toggleExMenu(e, bi){
+  e.stopPropagation();
+  // Close all other menus first
+  document.querySelectorAll('.ex-menu-dropdown').forEach(function(m){ if(m.id !== 'ex-menu-'+bi) m.style.display='none'; });
+  var menu = document.getElementById('ex-menu-'+bi);
+  if(menu) menu.style.display = menu.style.display==='none' ? '' : 'none';
+}
+
+// Close menus on outside click
+document.addEventListener('click', function(e){
+  if(!e.target.closest('.ex-menu-wrap')){
+    document.querySelectorAll('.ex-menu-dropdown').forEach(function(m){ m.style.display='none'; });
+  }
+});
+
+function toggleAssisted(bi){
+  blocks[bi].assisted = !blocks[bi].assisted;
+  document.querySelectorAll('.ex-menu-dropdown').forEach(function(m){ m.style.display='none'; });
+  renderBlocks();
+}
+
+function addExNote(bi){
+  document.querySelectorAll('.ex-menu-dropdown').forEach(function(m){ m.style.display='none'; });
+  var current = blocks[bi].note || '';
+  var note = prompt('Add a note for this exercise:', current);
+  if(note === null) return; // cancelled
+  blocks[bi].note = note.trim() || null;
+  renderBlocks();
+}
+
+
 function addSet(bi,ei){ blocks[bi].exercises[ei].sets.push({w:'',r:''}); renderBlocks(); }
 function remSet(bi,ei,si){ if(blocks[bi].exercises[ei].sets.length===1)return; blocks[bi].exercises[ei].sets.splice(si,1); renderBlocks(); }
 function updSet(bi,ei,si,f,v){ blocks[bi].exercises[ei].sets[si][f]=v; }
@@ -1847,9 +1890,27 @@ function renderBlocks(){
   el.innerHTML = blocks.map((b,bi) => {
     if(b.type === 'single'){
       const ex = b.exercises[0];
+      const assistedBadge = b.assisted ? '<span class="ex-assisted-badge"><i class="ti ti-arrow-down-right"></i> Assisted</span>' : '';
+      const noteHtml = b.note ? `<div class="ex-note">"${b.note}"</div>` : '';
       return `<div class="exercise-card">
-        <div class="ex-header"><span class="ex-name">${ex.name}</span>
-        <button class="remove-btn" onclick="removeBlock(${bi})"><i class="ti ti-x"></i></button></div>
+        <div class="ex-header">
+          <span class="ex-name">${ex.name}${assistedBadge}</span>
+          <div style="display:flex;align-items:center;gap:4px;">
+            <div class="ex-menu-wrap">
+              <button class="ex-menu-btn" onclick="toggleExMenu(event,${bi})"><i class="ti ti-dots"></i></button>
+              <div class="ex-menu-dropdown" id="ex-menu-${bi}" style="display:none;">
+                <div class="ex-menu-item ${b.assisted?'active':''}" onclick="toggleAssisted(${bi})">
+                  <i class="ti ti-arrow-down-right"></i> ${b.assisted?'Remove assisted':'Mark as assisted'}
+                </div>
+                <div class="ex-menu-item" onclick="addExNote(${bi})">
+                  <i class="ti ti-note"></i> ${b.note?'Edit note':'Add note'}
+                </div>
+              </div>
+            </div>
+            <button class="remove-btn" onclick="removeBlock(${bi})"><i class="ti ti-x"></i></button>
+          </div>
+        </div>
+        ${noteHtml}
         ${renderSetTable(ex,bi,0)}
       </div>`;
     }
@@ -1865,11 +1926,27 @@ function renderBlocks(){
     }
     if(b.type === 'dropset'){
       const ex = b.exercises[0];
+      const assistedBadge = b.assisted ? '<span class="ex-assisted-badge"><i class="ti ti-arrow-down-right"></i> Assisted</span>' : '';
+      const noteHtml = b.note ? `<div class="ex-note">"${b.note}"</div>` : '';
       return `<div class="dropset-card">
         <div class="ex-header">
-          <span class="ex-name">${ex.name} <span class="ex-badge"><i class="ti ti-arrow-down"></i> Dropset</span></span>
-          <button class="remove-btn" onclick="removeBlock(${bi})"><i class="ti ti-x"></i></button>
+          <span class="ex-name">${ex.name} <span class="ex-badge"><i class="ti ti-arrow-down"></i> Dropset</span>${assistedBadge}</span>
+          <div style="display:flex;align-items:center;gap:4px;">
+            <div class="ex-menu-wrap">
+              <button class="ex-menu-btn" onclick="toggleExMenu(event,${bi})"><i class="ti ti-dots"></i></button>
+              <div class="ex-menu-dropdown" id="ex-menu-${bi}" style="display:none;">
+                <div class="ex-menu-item ${b.assisted?'active':''}" onclick="toggleAssisted(${bi})">
+                  <i class="ti ti-arrow-down-right"></i> ${b.assisted?'Remove assisted':'Mark as assisted'}
+                </div>
+                <div class="ex-menu-item" onclick="addExNote(${bi})">
+                  <i class="ti ti-note"></i> ${b.note?'Edit note':'Add note'}
+                </div>
+              </div>
+            </div>
+            <button class="remove-btn" onclick="removeBlock(${bi})"><i class="ti ti-x"></i></button>
+          </div>
         </div>
+        ${noteHtml}
         ${renderDSBody(ex,bi)}
         <button class="add-ds-btn" onclick="addDS(${bi})"><i class="ti ti-plus"></i> Add set</button>
       </div>`;
@@ -2118,18 +2195,22 @@ async function confirmEditEx(){
 // Lookup tab
 function getAllData(){
   const map = {};
-  history.forEach(e => e.blocks.forEach(b => b.exercises.forEach(ex => {
-    if(!map[ex.name]) map[ex.name]=[];
-    if(ex.dropSets){
-      ex.dropSets.forEach(ds => {
-        const v = ds.filter(d => d.w||d.r);
-        if(v.length) map[ex.name].push({date:e.date, sets:v.map(d=>({weight:d.w,reps:d.r}))});
-      });
-    } else {
-      const v = (ex.sets||[]).filter(s => s.w||s.r);
-      if(v.length) map[ex.name].push({date:e.date, sets:v.map(s=>({weight:s.w,reps:s.r}))});
-    }
-  })));
+  history.forEach(e => e.blocks.forEach(b => {
+    const assisted = b.assisted || false;
+    const note = b.note || null;
+    b.exercises.forEach(ex => {
+      if(!map[ex.name]) map[ex.name]=[];
+      if(ex.dropSets){
+        ex.dropSets.forEach(ds => {
+          const v = ds.filter(d => d.w||d.r);
+          if(v.length) map[ex.name].push({date:e.date, sets:v.map(d=>({weight:d.w,reps:d.r})), assisted, note});
+        });
+      } else {
+        const v = (ex.sets||[]).filter(s => s.w||s.r);
+        if(v.length) map[ex.name].push({date:e.date, sets:v.map(s=>({weight:s.w,reps:s.r})), assisted, note});
+      }
+    });
+  }));
   return map;
 }
 
@@ -2193,10 +2274,16 @@ function renderLookupDetail(el, data, names){
   if(!selEx) return;
   const sessions = data[selEx]||[];
   let pbIdx=-1, pbMaxW=0, pbTotalR=0;
+  const isAssisted = sessions.length > 0 && sessions.some(function(s){ return s.assisted; });
   sessions.forEach(function(sess,si){
     const maxW = Math.max.apply(null, sess.sets.map(function(s){return parseFloat(s.weight)||0;}));
     const totalR = sess.sets.reduce(function(a,s){return a+(parseFloat(s.reps)||0);},0);
-    if(maxW>pbMaxW||(maxW===pbMaxW&&totalR>pbTotalR)){ pbMaxW=maxW; pbTotalR=totalR; pbIdx=si; }
+    if(isAssisted){
+      // Assisted: lower weight = better PB (less assistance = stronger)
+      if(pbIdx===-1 || maxW<pbMaxW||(maxW===pbMaxW&&totalR>pbTotalR)){ pbMaxW=maxW; pbTotalR=totalR; pbIdx=si; }
+    } else {
+      if(maxW>pbMaxW||(maxW===pbMaxW&&totalR>pbTotalR)){ pbMaxW=maxW; pbTotalR=totalR; pbIdx=si; }
+    }
   });
   const pbSess = pbIdx>=0 ? sessions[pbIdx] : null;
   const pbBlock = pbSess ? '<div style="background:var(--bs);border-radius:var(--r1);padding:10px 12px;margin-bottom:1.25rem;"><div style="font-size:11px;color:var(--ts);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">\u{1F3C6} Personal best \u2014 '+pbSess.date+'</div>'+pbSess.sets.map(function(s,i){return '<div style="font-size:14px;color:var(--tp);line-height:1.8;">Set '+(i+1)+': <strong>'+fw(s.weight)+'</strong> &times; <strong>'+fr(s.reps)+' reps</strong></div>';}).join('')+'</div>' : '';
@@ -2216,7 +2303,7 @@ function renderLookupDetail(el, data, names){
       pbBlock +
       renderProgressChart(sessions) +
       sessions.map(function(sess,si){
-        return '<div class="sess-row"><div class="sess-date">'+sess.date+(si===pbIdx?' <span style="font-size:11px;color:#3B6D11;margin-left:6px;">\u{1F3C6} PB</span>':'')+'</div><div class="sess-grid">'+sess.sets.map(function(s,j){return '<span class="set-badge '+(si===pbIdx?'pr':'')+'">Set '+(j+1)+': '+fw(s.weight)+' x '+fr(s.reps)+' reps</span>';}).join('')+'</div></div>';
+        return '<div class="sess-row"><div class="sess-date">'+sess.date+(si===pbIdx?' <span style="font-size:11px;color:#3B6D11;margin-left:6px;">\u{1F3C6} PB</span>':'')+(sess.assisted?' <span class="ex-assisted-badge"><i class="ti ti-arrow-down-right"></i> Assisted</span>':'')+'</div>'+(sess.note?'<div class="ex-note">"'+sess.note+'"</div>':'')+'<div class="sess-grid">'+sess.sets.map(function(s,j){return '<span class="set-badge '+(si===pbIdx?'pr':'')+'">Set '+(j+1)+': '+fw(s.weight)+' x '+fr(s.reps)+' reps</span>';}).join('')+'</div></div>';
       }).join('') +
     '</div>';
 }
