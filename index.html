@@ -105,7 +105,12 @@ body.dark-mode .mode-btn.active, body.dark-mode .cat-tab.active, body.dark-mode 
 .picker-select.active-sel { outline: 3px solid #1a1a1a; outline-offset: -1px; border-color: transparent; }
 .add-btn { font-size: 14px; font-weight: 500; padding: 8px 14px; border-radius: var(--r1); cursor: pointer; background: var(--tp); color: var(--bp); border: none; flex-shrink: 0; }
 /* Inline add rows (shared pattern) */
-.add-inline-row { display: none; gap: 8px; margin-top: 10px; }
+.lookup-cat-section { margin-bottom:6px; border:0.5px solid var(--bo3); border-radius:var(--r2); overflow:hidden; }
+.lookup-cat-hdr { display:flex; align-items:center; justify-content:space-between; padding:12px 1rem; cursor:pointer; background:var(--bp); }
+.lookup-cat-hdr:active { opacity:.8; }
+.lookup-cat-body { border-top:0.5px solid var(--bo3); }
+.lookup-cat-body .ex-item { border-bottom:0.5px solid var(--bo3); }
+.lookup-cat-body .ex-item:last-child { border-bottom:none; }
 .add-inline-row.open { display: flex; }
 .add-inline-row input { flex: 1; font-size: 14px; padding: 7px 10px; border: 0.5px solid var(--bo3); border-radius: var(--r1); background: var(--bp); color: var(--tp); }
 .add-inline-row input:focus { outline: none; border-color: var(--bo1); }
@@ -313,7 +318,10 @@ body.dark-mode .mode-btn.active, body.dark-mode .cat-tab.active, body.dark-mode 
       <i class="ti ti-user-plus"></i> Friends
     </button>
   </div>
-  <div class="sync-bar" style="margin-bottom:1.25rem;"><div class="sync-dot" id="sync-dot"></div><span id="sync-status">Loading...</span></div>
+  <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:1.25rem;border-bottom:0.5px solid var(--bo3);margin-bottom:1.25rem;">
+    <div class="sync-bar" style="margin-bottom:0;padding-bottom:0;border-bottom:none;"><div class="sync-dot" id="sync-dot"></div><span id="sync-status">Loading...</span></div>
+    <div id="header-streak" style="display:none;align-items:center;gap:4px;font-size:12px;color:var(--ts);"></div>
+  </div>
   <button class="profile-btn" id="profile-btn" style="display:none;" onclick="openMyProfile()"><i class="ti ti-user-circle"></i> Profile</button>
   <div class="tabs">
     <button class="tab active" onclick="switchTab('friends')">Activity</button>
@@ -351,8 +359,9 @@ body.dark-mode .mode-btn.active, body.dark-mode .cat-tab.active, body.dark-mode 
             <button class="icon-btn" onclick="toggleAddCat()"><i class="ti ti-plus"></i></button>
           </div>
           <div class="add-inline-row" id="add-cat-row">
-            <input type="text" id="new-cat-inp" placeholder="New category...">
+            <input type="text" id="new-cat-inp" placeholder="New category..." onkeydown="if(event.key==='Enter')addCategory();if(event.key==='Escape')toggleAddCat()">
             <button class="icon-btn" onclick="addCategory()">Add</button>
+            <button class="icon-btn" onclick="toggleAddCat()" style="color:var(--ts);"><i class="ti ti-x"></i></button>
           </div>
         </div>
         <div class="picker-sec" id="sec-ex" style="display:none;">
@@ -364,8 +373,9 @@ body.dark-mode .mode-btn.active, body.dark-mode .cat-tab.active, body.dark-mode 
             <button class="icon-btn" onclick="toggleAddEx()"><i class="ti ti-plus"></i></button>
           </div>
           <div class="add-inline-row" id="add-ex-row">
-            <input type="text" id="new-ex-inp" placeholder="Exercise name...">
+            <input type="text" id="new-ex-inp" placeholder="Exercise name..." onkeydown="if(event.key==='Enter')addCustomEx();if(event.key==='Escape')toggleAddEx()">
             <button class="icon-btn" onclick="addCustomEx()">Add</button>
+            <button class="icon-btn" onclick="toggleAddEx()" style="color:var(--ts);"><i class="ti ti-x"></i></button>
           </div>
           <div id="ss-pending" style="display:none;"></div>
         </div>
@@ -390,6 +400,7 @@ body.dark-mode .mode-btn.active, body.dark-mode .cat-tab.active, body.dark-mode 
 
   <div id="tab-history" style="display:none;"><div id="hist-list"></div></div>
   <div id="tab-friends">
+    <div id="pull-to-refresh" style="text-align:center;font-size:12px;color:var(--ts);height:0;overflow:hidden;transition:height .2s;">↓ Release to refresh</div>
     <div id="friends-feed-content"></div>
   </div>
   <div id="tab-profile" style="display:none;"></div>
@@ -463,7 +474,6 @@ body.dark-mode .mode-btn.active, body.dark-mode .cat-tab.active, body.dark-mode 
 <div class="modal-bg" id="mgex-modal"><div class="modal">
   <div class="modal-title">Manage exercises</div>
   <div class="exm-list" id="exm-list"></div>
-  <button class="modal-btn" style="width:100%;text-align:center;margin-bottom:8px;" onclick="restoreExercisesFromHistory()"><i class="ti ti-refresh"></i> Restore from workout history</button>
   <button class="modal-btn" style="width:100%;text-align:center;" onclick="closeModal('mgex-modal')">Done</button>
 </div></div>
 
@@ -670,9 +680,15 @@ async function onAuthSuccess(user){
   currentProfile = profile;
   updateGreeting();
   await loadFromSupabase();
+  await restoreExercisesFromHistory();
   renderDayChips();
   renderFeed();
   setTimeout(restoreTimer, 100);
+  // Compute and show streak in header
+  var _ud = new Set(); history.forEach(function(e){ _ud.add(new Date(e.ts).toDateString()); });
+  var _sc = new Date(); _sc.setHours(0,0,0,0); var _s = 0;
+  while(_ud.has(_sc.toDateString())){ _s++; _sc.setDate(_sc.getDate()-1); }
+  renderHeaderStreak(_s);
 }
 
 // ── Profile modal ──
@@ -1090,6 +1106,18 @@ function renderStats(){
 
   var now = new Date();
 
+  // ── Streak ──
+  var checkDate = new Date(now); checkDate.setHours(0,0,0,0);
+  var usedDates = new Set();
+  history.forEach(function(e){ usedDates.add(new Date(e.ts).toDateString()); });
+  var streak = 0;
+  while(usedDates.has(checkDate.toDateString())){ streak++; checkDate.setDate(checkDate.getDate()-1); }
+
+  // ── Calendar — last 10 weeks (Mon-Sun grid) ──
+  // Calendar rendered via renderCalendar() — see below
+  var _statsUsedDates = usedDates;
+  var _statsNow = now;
+
   // ── Weekly stats ──
   var weekStart = new Date(now); weekStart.setDate(now.getDate()-now.getDay()); weekStart.setHours(0,0,0,0);
   var weekWorkouts = history.filter(function(e){ return new Date(e.ts) >= weekStart; });
@@ -1104,17 +1132,7 @@ function renderStats(){
   var totalMins = timedWorkouts.reduce(function(acc,e){ return acc + Math.round(e.duration_seconds/60); }, 0);
   var avgMins = timedWorkouts.length ? Math.round(totalMins / timedWorkouts.length) : 0;
   var longestMins = timedWorkouts.length ? Math.max.apply(null, timedWorkouts.map(function(e){ return Math.round(e.duration_seconds/60); })) : 0;
-
-  // ── Streak ──
-  var streak = 0;
-  var checkDate = new Date(now); checkDate.setHours(0,0,0,0);
-  var sorted = history.slice().sort(function(a,b){ return new Date(b.ts)-new Date(a.ts); });
-  var usedDates = new Set();
-  sorted.forEach(function(e){ usedDates.add(new Date(e.ts).toDateString()); });
-  while(usedDates.has(checkDate.toDateString())){
-    streak++;
-    checkDate.setDate(checkDate.getDate()-1);
-  }
+  function fmtMins(m){ if(!m) return '—'; if(m<60) return m+' min'; var h=Math.floor(m/60),r=m%60; return r>0?h+'h '+r+'m':h+'h'; }
 
   // ── Last 8 weeks bar chart ──
   var weeks = [];
@@ -1122,45 +1140,38 @@ function renderStats(){
     var ws = new Date(now); ws.setDate(now.getDate() - now.getDay() - i*7); ws.setHours(0,0,0,0);
     var we = new Date(ws); we.setDate(ws.getDate()+7);
     var count = history.filter(function(e){ var d=new Date(e.ts); return d>=ws && d<we; }).length;
-    var lbl = (ws.getMonth()+1)+'/'+(ws.getDate());
-    weeks.push({count:count, lbl:lbl});
+    weeks.push({count:count, lbl:(ws.getMonth()+1)+'/'+(ws.getDate())});
   }
   var maxCount = Math.max.apply(null, weeks.map(function(w){return w.count;})) || 1;
-
   var barHTML = weeks.map(function(w){
     var pct = Math.round((w.count/maxCount)*100);
-    return '<div class="bar-col">' +
-      '<div class="bar-fill" style="height:'+pct+'%;"></div>' +
-      '<div class="bar-lbl">'+w.lbl+'</div>' +
-    '</div>';
+    return '<div class="bar-col"><div class="bar-fill" style="height:'+pct+'%;"></div><div class="bar-lbl">'+w.lbl+'</div></div>';
   }).join('');
 
+  renderHeaderStreak(streak);
+
   el.innerHTML =
+    // ── This week ──
     '<div class="stat-card">' +
       '<div class="stat-card-title">This week</div>' +
       '<div class="stat-grid">' +
         '<div class="stat-item"><div class="stat-item-val">'+weekWorkouts.length+'</div><div class="stat-item-lbl">Workouts</div></div>' +
         '<div class="stat-item"><div class="stat-item-val">'+weekSets+'</div><div class="stat-item-lbl">Sets</div></div>' +
-        '<div class="stat-item"><div class="stat-item-val">'+(weekMins ? weekMins+' min' : '—')+'</div><div class="stat-item-lbl">Time</div></div>' +
+        '<div class="stat-item"><div class="stat-item-val">'+fmtMins(weekMins)+'</div><div class="stat-item-lbl">Time</div></div>' +
         '<div class="stat-item"><div class="stat-item-val">'+(weekWorkouts.length ? Math.round(weekSets/weekWorkouts.length) : '—')+'</div><div class="stat-item-lbl">Avg sets/day</div></div>' +
       '</div>' +
     '</div>' +
-    '<div class="stat-card">' +
-      '<div class="stat-card-title">Streak</div>' +
-      '<div class="streak-bar">' +
-        '<div class="streak-flame">🔥</div>' +
-        '<div><div class="streak-num">'+streak+'</div><div class="streak-lbl">day'+(streak===1?'':'s')+' in a row</div></div>' +
-      '</div>' +
-    '</div>' +
+    // ── All time ──
     '<div class="stat-card">' +
       '<div class="stat-card-title">All time</div>' +
       '<div class="stat-grid">' +
         '<div class="stat-item"><div class="stat-item-val">'+history.length+'</div><div class="stat-item-lbl">Workouts</div></div>' +
         '<div class="stat-item"><div class="stat-item-val">'+totalSets+'</div><div class="stat-item-lbl">Total sets</div></div>' +
-        '<div class="stat-item"><div class="stat-item-val">'+(avgMins ? avgMins+' min' : '—')+'</div><div class="stat-item-lbl">Avg session</div></div>' +
-        '<div class="stat-item"><div class="stat-item-val">'+(longestMins ? longestMins+' min' : '—')+'</div><div class="stat-item-lbl">Longest session</div></div>' +
+        '<div class="stat-item"><div class="stat-item-val">'+fmtMins(avgMins)+'</div><div class="stat-item-lbl">Avg session</div></div>' +
+        '<div class="stat-item"><div class="stat-item-val">'+fmtMins(longestMins)+'</div><div class="stat-item-lbl">Longest session</div></div>' +
       '</div>' +
     '</div>' +
+    // ── Bar chart ──
     '<div class="stat-card">' +
       '<div class="stat-card-title">Workouts per week (last 8 weeks)</div>' +
       '<div class="bar-chart">'+barHTML+'</div>' +
@@ -1170,6 +1181,49 @@ function renderStats(){
 
 
 // ── Activity Feed ──
+// ── Pull to refresh on Activity tab ──
+(function(){
+  var startY = 0, isPulling = false;
+  document.addEventListener('touchstart', function(e){
+    if(document.getElementById('tab-friends').style.display === 'none') return;
+    startY = e.touches[0].clientY;
+  }, {passive:true});
+  document.addEventListener('touchmove', function(e){
+    if(!startY) return;
+    var dy = e.touches[0].clientY - startY;
+    var ptr = document.getElementById('pull-to-refresh');
+    if(dy > 10 && window.scrollY === 0){
+      isPulling = true;
+      if(ptr){ ptr.style.height = Math.min(dy*0.5, 36)+'px'; ptr.textContent = dy > 80 ? '↑ Release to refresh' : '↓ Pull to refresh'; }
+    }
+  }, {passive:true});
+  document.addEventListener('touchend', function(e){
+    var ptr = document.getElementById('pull-to-refresh');
+    if(ptr){ ptr.style.height='0'; }
+    var dy = e.changedTouches[0].clientY - startY;
+    startY = 0;
+    if(isPulling && dy > 80 && document.getElementById('tab-friends').style.display !== 'none'){
+      renderFeed();
+    }
+    isPulling = false;
+  }, {passive:true});
+})();
+
+function renderHeaderStreak(streak){
+  var el = document.getElementById('header-streak');
+  if(!el) return;
+  if(streak > 0){
+    el.style.display = 'flex';
+    el.innerHTML = '🔥 <strong style="color:var(--tp);">'+streak+'</strong>&nbsp;day streak';
+  } else {
+    el.style.display = 'none';
+  }
+}
+
+// ── Monthly Calendar state (kept for potential future use) ──
+var _calViewYear = new Date().getFullYear();
+var _calViewMonth = new Date().getMonth();
+
 async function renderFeed(){
   const el = document.getElementById('friends-feed-content');
   if(!currentUser){ el.innerHTML='<div class="empty">Sign in to see activity.</div>'; return; }
@@ -1710,38 +1764,14 @@ function pickSS(name){
 function cancelSS(){ ssFirst=null; document.getElementById('ss-pending').style.display='none'; renderExSelect(); }
 
 async function restoreExercisesFromHistory(){
-  if(!history.length){ alert('No workout history found.'); return; }
-  var added = 0;
-  history.forEach(function(entry){
-    entry.blocks.forEach(function(b){
-      b.exercises.forEach(function(ex){
-        var name = ex.name;
-        if(!name) return;
-        // Find which category this exercise belongs to
-        var foundCat = null;
-        Object.keys(EX).forEach(function(cat){
-          if(EX[cat].includes(name)) foundCat = cat;
-        });
-        if(!foundCat){
-          // Add to "Other" category by default
-          if(!EX['Other']) EX['Other'] = [];
-          if(!EX['Other'].includes(name)){
-            EX['Other'].push(name);
-            added++;
-          }
-        }
-      });
-    });
-  });
-  if(added === 0){
-    alert('All exercises from your history are already in your list.');
-    return;
-  }
-  localStorage.setItem('wl_exercises', JSON.stringify(EX));
-  await saveToSupabase(null);
-  renderCatSelect();
-  renderExSelect();
-  alert(added + ' exercise' + (added===1?'':'s') + ' restored from history.');
+  if(!history.length) return;
+  // Build a set of all exercises currently in the list (any category)
+  var allKnown = new Set();
+  Object.keys(EX).forEach(function(cat){ EX[cat].forEach(function(ex){ allKnown.add(ex); }); });
+  // We only want to restore exercises that were previously in a named category
+  // Don't auto-add unknowns to "Other" — that caused the wrong category issue
+  // Instead just ensure nothing is lost from existing categories
+  // Nothing to do here — the merge in loadFromSupabase handles this
 }
 
 async function addCustomEx(){
@@ -1913,13 +1943,38 @@ function showMsg(m){
 
 // Category modal
 function openCatModal(){
-  document.getElementById('cat-list').innerHTML = Object.keys(EX).map(cat =>
-    `<div class="cat-row-m">
-      <input class="cat-inp" value="${cat}" onblur="renameCat('${esc(cat)}',this.value)">
+  document.getElementById('cat-list').innerHTML = Object.keys(EX).map((cat,i) =>
+    `<div class="cat-row-m" draggable="false" data-cat="${esc(cat)}">
+      <i class="ti ti-grip-vertical" style="color:var(--ts);cursor:grab;font-size:16px;flex-shrink:0;" onmousedown="this.closest('[draggable]').setAttribute('draggable','true')" ontouchstart="this.closest('[draggable]').setAttribute('draggable','true')"></i>
+      <input class="cat-inp" value="${cat}" onblur="renameCat('${esc(cat)}',this.value)" style="flex:1;min-width:0;">
       <button class="action-btn" onclick="openDelCat('${esc(cat)}')" style="color:#A32D2D;"><i class="ti ti-trash"></i></button>
     </div>`
   ).join('');
+  initCatDrag();
   openModal('cat-modal');
+}
+
+function initCatDrag(){
+  const list = document.getElementById('cat-list');
+  if(!list) return;
+  let dragSrc = null;
+  list.querySelectorAll('.cat-row-m').forEach(function(row){
+    row.addEventListener('dragstart', function(){ dragSrc = row; row.style.opacity='.4'; });
+    row.addEventListener('dragend', function(){ row.style.opacity=''; row.setAttribute('draggable','false'); });
+    row.addEventListener('dragover', function(e){ e.preventDefault(); });
+    row.addEventListener('drop', function(e){
+      e.preventDefault();
+      if(!dragSrc || dragSrc===row) return;
+      const cats = Object.keys(EX);
+      const si = cats.indexOf(dragSrc.dataset.cat);
+      const ti = cats.indexOf(row.dataset.cat);
+      if(si===-1||ti===-1) return;
+      cats.splice(ti,0,cats.splice(si,1)[0]);
+      const ne = {}; cats.forEach(function(k){ ne[k]=EX[k]; }); EX=ne;
+      saveToSupabase(null);
+      openCatModal();
+    });
+  });
 }
 
 function renameCat(old, n){
@@ -1938,13 +1993,37 @@ function openExSettingsModal(){
   document.getElementById('ex-settings-cat-name').textContent = cat;
   const list = EX[cat]||[];
   document.getElementById('ex-settings-list').innerHTML = list.length
-    ? list.map(ex => `<div class="exm-row">
-        <div style="flex:1;"><div class="exm-name">${ex}</div><div class="exm-cat">${cat}${sessCount(ex)>0?' · '+sessCount(ex)+' sessions':''}</div></div>
+    ? list.map(ex => `<div class="exm-row" draggable="false" data-ex="${esc(ex)}" data-cat="${esc(cat)}">
+        <i class="ti ti-grip-vertical" style="color:var(--ts);cursor:grab;font-size:16px;flex-shrink:0;" onmousedown="this.closest('[draggable]').setAttribute('draggable','true')" ontouchstart="this.closest('[draggable]').setAttribute('draggable','true')"></i>
+        <div style="flex:1;min-width:0;"><div class="exm-name">${ex}</div><div class="exm-cat">${cat}${sessCount(ex)>0?' · '+sessCount(ex)+' sessions':''}</div></div>
         <button class="action-btn" onclick="openEditEx('${esc(ex)}');closeModal('ex-settings-modal')"><i class="ti ti-pencil"></i></button>
         <button class="action-btn" onclick="openDelEx('${esc(ex)}');closeModal('ex-settings-modal')" style="color:#A32D2D;"><i class="ti ti-trash"></i></button>
       </div>`).join('')
     : '<div style="font-size:13px;color:var(--ts);text-align:center;padding:1rem;">No exercises in this category yet.</div>';
+  initExDrag(cat);
   openModal('ex-settings-modal');
+}
+
+function initExDrag(cat){
+  const list = document.getElementById('ex-settings-list');
+  if(!list) return;
+  let dragSrc = null;
+  list.querySelectorAll('.exm-row').forEach(function(row){
+    row.addEventListener('dragstart', function(){ dragSrc = row; row.style.opacity='.4'; });
+    row.addEventListener('dragend', function(){ row.style.opacity=''; row.setAttribute('draggable','false'); });
+    row.addEventListener('dragover', function(e){ e.preventDefault(); });
+    row.addEventListener('drop', function(e){
+      e.preventDefault();
+      if(!dragSrc || dragSrc===row) return;
+      const exs = EX[cat];
+      const si = exs.indexOf(dragSrc.dataset.ex);
+      const ti = exs.indexOf(row.dataset.ex);
+      if(si===-1||ti===-1) return;
+      exs.splice(ti,0,exs.splice(si,1)[0]);
+      saveToSupabase(null);
+      openExSettingsModal();
+    });
+  });
 }
 
 function openDelCat(cat){
@@ -2057,58 +2136,93 @@ function getAllData(){
 function renderLookup(){
   const q = (document.getElementById('ex-search').value||'').toLowerCase();
   const data = getAllData();
-  const names = Object.keys(data).filter(n=>n.toLowerCase().includes(q)).sort();
   const el = document.getElementById('lookup-content');
-  if(!names.length){
-    el.innerHTML = `<div class="empty"><i class="ti ti-barbell" style="font-size:32px;display:block;margin-bottom:8px"></i>${Object.keys(data).length?'No matches':'Log some workouts first'}</div>`;
+
+  if(q){
+    const names = Object.keys(data).filter(function(n){return n.toLowerCase().includes(q);}).sort();
+    if(!names.length){ el.innerHTML='<div class="empty"><i class="ti ti-barbell" style="font-size:32px;display:block;margin-bottom:8px"></i>No matches</div>'; return; }
+    if(!selEx||!names.includes(selEx)) selEx=names[0];
+    renderLookupDetail(el, data, names);
     return;
   }
-  if(!selEx||!names.includes(selEx)) selEx=names[0];
-  const sessions = data[selEx]||[];
 
-  // PB = session with highest single-set weight; ties broken by total reps
+  if(selEx){
+    renderLookupDetail(el, data, null);
+    return;
+  }
+
+  const catNames = Object.keys(EX);
+  if(!catNames.length){ el.innerHTML='<div class="empty"><i class="ti ti-barbell" style="font-size:32px;display:block;margin-bottom:8px"></i>Log some workouts first</div>'; return; }
+
+  el.innerHTML = catNames.map(function(cat){
+    const exsInCat = (EX[cat]||[]).filter(function(ex){ return data[ex]&&data[ex].length>0; });
+    if(!exsInCat.length) return '';
+    return '<div class="lookup-cat-section">' +
+      '<div class="lookup-cat-hdr" onclick="toggleLookupCat(this)">' +
+        '<span style="font-size:14px;font-weight:500;color:var(--tp);">'+cat+'</span>' +
+        '<div style="display:flex;align-items:center;gap:8px;">' +
+          '<span style="font-size:12px;color:var(--ts);">'+exsInCat.length+' exercises</span>' +
+          '<i class="ti ti-chevron-down" style="color:var(--ts);font-size:16px;transition:transform .2s;"></i>' +
+        '</div>' +
+      '</div>' +
+      '<div class="lookup-cat-body" style="display:none;">' +
+        exsInCat.map(function(ex){
+          return '<div class="ex-item" data-ex="'+esc(ex)+'" onclick="selExercise(this.dataset.ex)">' +
+            '<span class="ex-item-name">'+ex+'</span>' +
+            '<span class="ex-item-count">'+(data[ex]||[]).length+'x</span>' +
+          '</div>';
+        }).join('') +
+      '</div>' +
+    '</div>';
+  }).join('');
+
+  // Auto-open first category with data
+  const first = el.querySelector('.lookup-cat-hdr');
+  if(first) toggleLookupCat(first);
+}
+
+function toggleLookupCat(hdr){
+  const body = hdr.nextElementSibling;
+  const icon = hdr.querySelector('.ti-chevron-down');
+  const open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : '';
+  if(icon) icon.style.transform = open ? '' : 'rotate(180deg)';
+}
+
+function renderLookupDetail(el, data, names){
+  if(!selEx) return;
+  const sessions = data[selEx]||[];
   let pbIdx=-1, pbMaxW=0, pbTotalR=0;
-  sessions.forEach((sess,si) => {
-    const maxW = Math.max(...sess.sets.map(s=>parseFloat(s.weight)||0));
-    const totalR = sess.sets.reduce((a,s)=>a+(parseFloat(s.reps)||0),0);
+  sessions.forEach(function(sess,si){
+    const maxW = Math.max.apply(null, sess.sets.map(function(s){return parseFloat(s.weight)||0;}));
+    const totalR = sess.sets.reduce(function(a,s){return a+(parseFloat(s.reps)||0);},0);
     if(maxW>pbMaxW||(maxW===pbMaxW&&totalR>pbTotalR)){ pbMaxW=maxW; pbTotalR=totalR; pbIdx=si; }
   });
   const pbSess = pbIdx>=0 ? sessions[pbIdx] : null;
-
-  const pbBlock = pbSess ? `
-    <div style="background:var(--bs);border-radius:var(--r1);padding:10px 12px;margin-bottom:1.25rem;">
-      <div style="font-size:11px;color:var(--ts);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">🏆 Personal best &mdash; ${pbSess.date}</div>
-      ${pbSess.sets.map((s,i)=>
-        `<div style="font-size:14px;color:var(--tp);line-height:1.8;">Set ${i+1}: <strong>${fw(s.weight)}</strong> &times; <strong>${fr(s.reps)} reps</strong></div>`
-      ).join('')}
-    </div>` : '';
-
-  el.innerHTML = `
-    <div class="ex-list">${names.map(n => `
-      <div class="ex-item ${n===selEx?'active':''}" onclick="selExercise('${esc(n)}')">
-        <span class="ex-item-name">${n}</span>
-        <span class="ex-item-count">${data[n].length}x</span>
-      </div>`).join('')}
-    </div>
-    <div class="ex-detail">
-      <div class="ex-detail-name">${selEx}</div>
-      <div class="stat-row">
-        <div class="stat-pill"><div class="stat-lbl">Best weight</div><div class="stat-val">${pbMaxW?pbMaxW+' lbs':'—'}</div></div>
-        <div class="stat-pill"><div class="stat-lbl">Sessions</div><div class="stat-val">${sessions.length}</div></div>
-        <div class="stat-pill"><div class="stat-lbl">Last weight</div><div class="stat-val">${sessions.length?Math.max(...sessions[0].sets.map(s=>parseFloat(s.weight)||0))+' lbs':'—'}</div></div>
-      </div>
-      ${pbBlock}
-      ${renderProgressChart(sessions)}
-      ${sessions.map((sess,si) => `<div class="sess-row">
-        <div class="sess-date">${sess.date}${si===pbIdx?' <span style="font-size:11px;color:#3B6D11;margin-left:6px;">🏆 PB</span>':''}</div>
-        <div class="sess-grid">${sess.sets.map((s,j) =>
-          `<span class="set-badge ${si===pbIdx?'pr':''}">Set ${j+1}: ${fw(s.weight)} x ${fr(s.reps)} reps</span>`
-        ).join('')}</div>
-      </div>`).join('')}
-    </div>`;
+  const pbBlock = pbSess ? '<div style="background:var(--bs);border-radius:var(--r1);padding:10px 12px;margin-bottom:1.25rem;"><div style="font-size:11px;color:var(--ts);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">\u{1F3C6} Personal best \u2014 '+pbSess.date+'</div>'+pbSess.sets.map(function(s,i){return '<div style="font-size:14px;color:var(--tp);line-height:1.8;">Set '+(i+1)+': <strong>'+fw(s.weight)+'</strong> &times; <strong>'+fr(s.reps)+' reps</strong></div>';}).join('')+'</div>' : '';
+  const listHtml = names ? '<div class="ex-list">'+names.map(function(n){var cls=n===selEx?'active':'';return '<div class="ex-item '+cls+'" data-n="'+encodeURIComponent(n)+'" onclick="selExercise(decodeURIComponent(this.dataset.n))"><span class="ex-item-name">'+n+'</span><span class="ex-item-count">'+data[n].length+'x</span></div>';}).join('')+'</div>' : ''
+  const lastW = sessions.length ? Math.max.apply(null, sessions[0].sets.map(function(s){return parseFloat(s.weight)||0;})) : 0;
+  el.innerHTML = listHtml +
+    '<div class="ex-detail">' +
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:1rem;">' +
+        '<button class="icon-btn" onclick="selEx=null;renderLookup()" style="font-size:12px;padding:4px 8px;"><i class="ti ti-arrow-left"></i> Back</button>' +
+        '<div class="ex-detail-name" style="margin:0;">'+selEx+'</div>' +
+      '</div>' +
+      '<div class="stat-row">' +
+        '<div class="stat-pill"><div class="stat-lbl">Best weight</div><div class="stat-val">'+(pbMaxW?pbMaxW+' lbs':'\u2014')+'</div></div>' +
+        '<div class="stat-pill"><div class="stat-lbl">Sessions</div><div class="stat-val">'+sessions.length+'</div></div>' +
+        '<div class="stat-pill"><div class="stat-lbl">Last weight</div><div class="stat-val">'+(lastW?lastW+' lbs':'\u2014')+'</div></div>' +
+      '</div>' +
+      pbBlock +
+      renderProgressChart(sessions) +
+      sessions.map(function(sess,si){
+        return '<div class="sess-row"><div class="sess-date">'+sess.date+(si===pbIdx?' <span style="font-size:11px;color:#3B6D11;margin-left:6px;">\u{1F3C6} PB</span>':'')+'</div><div class="sess-grid">'+sess.sets.map(function(s,j){return '<span class="set-badge '+(si===pbIdx?'pr':'')+'">Set '+(j+1)+': '+fw(s.weight)+' x '+fr(s.reps)+' reps</span>';}).join('')+'</div></div>';
+      }).join('') +
+    '</div>';
 }
 
 function selExercise(n){ selEx=n; renderLookup(); }
+
 
 // History tab
 function toggleHistEntry(idx){
@@ -2369,6 +2483,17 @@ async function confirmDeleteWorkout(){
   localStorage.setItem('wl_history', JSON.stringify(history.slice(0,100)));
   pendingDeleteWorkoutIdx = null;
   closeModal('del-workout-modal');
+  // Clean up "Other" category — remove exercises no longer in any workout
+  if(EX['Other'] && EX['Other'].length){
+    const usedInHistory = new Set();
+    history.forEach(function(e){ e.blocks.forEach(function(b){ b.exercises.forEach(function(ex){ usedInHistory.add(ex.name); }); }); });
+    const before = EX['Other'].length;
+    EX['Other'] = EX['Other'].filter(function(name){ return usedInHistory.has(name); });
+    if(EX['Other'].length !== before){
+      localStorage.setItem('wl_exercises', JSON.stringify(EX));
+      saveToSupabase(null);
+    }
+  }
   renderHistory();
 }
 
