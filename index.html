@@ -463,6 +463,7 @@ body.dark-mode .mode-btn.active, body.dark-mode .cat-tab.active, body.dark-mode 
 <div class="modal-bg" id="mgex-modal"><div class="modal">
   <div class="modal-title">Manage exercises</div>
   <div class="exm-list" id="exm-list"></div>
+  <button class="modal-btn" style="width:100%;text-align:center;margin-bottom:8px;" onclick="restoreExercisesFromHistory()"><i class="ti ti-refresh"></i> Restore from workout history</button>
   <button class="modal-btn" style="width:100%;text-align:center;" onclick="closeModal('mgex-modal')">Done</button>
 </div></div>
 
@@ -1707,6 +1708,41 @@ function pickSS(name){
 }
 
 function cancelSS(){ ssFirst=null; document.getElementById('ss-pending').style.display='none'; renderExSelect(); }
+
+async function restoreExercisesFromHistory(){
+  if(!history.length){ alert('No workout history found.'); return; }
+  var added = 0;
+  history.forEach(function(entry){
+    entry.blocks.forEach(function(b){
+      b.exercises.forEach(function(ex){
+        var name = ex.name;
+        if(!name) return;
+        // Find which category this exercise belongs to
+        var foundCat = null;
+        Object.keys(EX).forEach(function(cat){
+          if(EX[cat].includes(name)) foundCat = cat;
+        });
+        if(!foundCat){
+          // Add to "Other" category by default
+          if(!EX['Other']) EX['Other'] = [];
+          if(!EX['Other'].includes(name)){
+            EX['Other'].push(name);
+            added++;
+          }
+        }
+      });
+    });
+  });
+  if(added === 0){
+    alert('All exercises from your history are already in your list.');
+    return;
+  }
+  localStorage.setItem('wl_exercises', JSON.stringify(EX));
+  await saveToSupabase(null);
+  renderCatSelect();
+  renderExSelect();
+  alert(added + ' exercise' + (added===1?'':'s') + ' restored from history.');
+}
 
 async function addCustomEx(){
   const inp = document.getElementById('new-ex-inp'), name = inp.value.trim();
