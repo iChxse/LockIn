@@ -780,6 +780,13 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
 .badge-name { font-size:14px; font-weight:600; color:var(--tp); line-height:1.3; }
 .badge-desc { font-size:12px; color:var(--ts); margin-top:1px; }
 .badge-next { font-size:11px; color:var(--ts); margin-top:3px; opacity:0.7; }
+
+.profile-stats-row { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:1.25rem; }
+.profile-stat-box { background:var(--bs); border-radius:var(--r2); border:0.5px solid var(--bo3); padding:10px 8px; text-align:center; cursor:pointer; }
+.profile-stat-box:active { opacity:.7; }
+.profile-stat-val { font-size:18px; font-weight:700; color:var(--tp); line-height:1; margin-bottom:3px; }
+.profile-stat-lbl { font-size:10px; color:var(--ts); text-transform:uppercase; letter-spacing:.04em; font-weight:500; }
+.member-since { font-size:11px; color:var(--ts); margin-top:2px; }
 </style>
 </head>
 <body>
@@ -1187,15 +1194,21 @@ async function renderProfileTab(){
   const name = currentProfile?.name || '';
   const username = currentProfile?.username ? '@'+currentProfile.username : '';
 
+  const memberSince = currentProfile.created_at
+    ? 'Member since ' + new Date(currentProfile.created_at).toLocaleDateString('en-US',{month:'long',year:'numeric'})
+    : '';
+
   el.innerHTML =
-    '<div style="display:flex;align-items:center;gap:16px;margin-bottom:1.25rem;padding-bottom:1.25rem;border-bottom:0.5px solid var(--bo3);">' +
+    '<div style="display:flex;align-items:center;gap:16px;margin-bottom:1rem;padding-bottom:1rem;border-bottom:0.5px solid var(--bo3);">' +
       avatarHtml +
       '<div style="flex:1;">' +
         '<div style="font-size:20px;font-weight:600;color:var(--tp);">'+name+'</div>' +
         '<div style="font-size:14px;color:var(--ts);">'+username+'</div>' +
+        (memberSince ? '<div class="member-since">'+memberSince+'</div>' : '') +
       '</div>' +
       '<button class="icon-btn" onclick="openProfileModal()" style="align-self:flex-start;"><i class="ti ti-settings"></i> Settings</button>' +
     '</div>' +
+    renderProfileStatsRow(workouts||[], true) +
     '<div id="profile-tab-inner"></div>';
 
   // Render sub-tabs inline
@@ -1294,7 +1307,7 @@ function renderProfileTabBody(workouts, userId){
   }
 
   if(_profileTabSection === 'badges'){
-    body.innerHTML = renderBadges(workouts);
+    body.innerHTML = renderBadges(history.length ? history : workouts);
     return;
   }
   if(_profileTabSection === 'friends'){
@@ -3455,6 +3468,95 @@ function renderBadges(workoutHistory){
 }
 
 
+
+// ── Profile stat customization ────────────────────────────────────────────────
+var STAT_OPTIONS = {
+  workouts:  { label: 'Total workouts', fn: function(h){ return h.length; } },
+  sets:      { label: 'Total sets',     fn: function(h){ return countTotalSets(h); } },
+  time:      { label: 'Time in gym',    fn: function(h){
+    var mins = h.reduce(function(a,e){ return a+(e.duration_seconds ? Math.round(e.duration_seconds/60) : 0); }, 0);
+    if(!mins) return '—';
+    if(mins < 60) return mins+'m';
+    var h2 = Math.floor(mins/60), m2 = mins%60;
+    return m2 > 0 ? h2+'h '+m2+'m' : h2+'h';
+  }},
+  streak:    { label: 'Highest streak', fn: function(h){ return calcStreak(h)+'d'; } },
+  exercises: { label: 'Exercises',      fn: function(h){
+    var exNames = new Set();
+    h.forEach(function(e){ e.blocks.forEach(function(b){ b.exercises.forEach(function(ex){ exNames.add(ex.name); }); }); });
+    return exNames.size;
+  }},
+};
+
+function getProfileStats(){
+  // Use current user's saved prefs from their profile
+  if(currentProfile && currentProfile.stat_prefs) return currentProfile.stat_prefs;
+  try { return JSON.parse(localStorage.getItem('wl_profile_stats')) || ['workouts','sets','time']; }
+  catch(e){ return ['workouts','sets','time']; }
+}
+
+async function saveProfileStats(arr){
+  // Save to currentProfile object and Supabase
+  if(currentProfile) currentProfile.stat_prefs = arr;
+  localStorage.setItem('wl_profile_stats', JSON.stringify(arr));
+  if(currentUser) await sb.from('profiles').update({ stat_prefs: arr }).eq('id', currentUser.id);
+}
+
+function renderProfileStatsRow(workoutHistory, editable, prefs){
+  var chosen = prefs ? prefs : (editable ? getProfileStats() : ['workouts','sets','time']);
+  return '<div class="profile-stats-row">' +
+    chosen.map(function(key, i){
+      var opt = STAT_OPTIONS[key];
+      var val = opt ? opt.fn(workoutHistory) : '—';
+      var lbl = opt ? opt.label : '—';
+      return '<div class="profile-stat-box"'+(editable?' onclick="openStatPicker('+i+')"':'')+'>'+
+        '<div class="profile-stat-val">'+val+'</div>'+
+        '<div class="profile-stat-lbl">'+lbl+(editable?' <i class="ti ti-chevron-down" style="font-size:9px;opacity:.5;"></i>':'')+'</div>'+
+      '</div>';
+    }).join('') +
+  '</div>';
+}
+
+function openStatPicker(slotIdx){
+  var chosen = getProfileStats();
+  document.querySelectorAll('.stat-picker-dropdown').forEach(function(el){ el.remove(); });
+  var boxes = document.querySelectorAll('.profile-stat-box');
+  var box = boxes[slotIdx];
+  if(!box) return;
+  var dropdown = document.createElement('div');
+  dropdown.className = 'stat-picker-dropdown';
+  dropdown.style.cssText = 'position:fixed;z-index:300;background:var(--bp);border:0.5px solid var(--bo3);border-radius:var(--r2);box-shadow:0 4px 16px rgba(0,0,0,.25);min-width:160px;overflow:hidden;';
+  Object.keys(STAT_OPTIONS).forEach(function(key){
+    var item = document.createElement('div');
+    item.style.cssText = 'padding:11px 14px;font-size:13px;cursor:pointer;'+(chosen[slotIdx]===key?'color:var(--tp);font-weight:600;background:var(--bs);':'color:var(--ts);');
+    item.textContent = STAT_OPTIONS[key].label;
+    item.addEventListener('click', function(e){
+      e.stopPropagation();
+      pickStat(slotIdx, key);
+    });
+    dropdown.appendChild(item);
+  });
+  var rect = box.getBoundingClientRect();
+  dropdown.style.top = (rect.bottom + 4) + 'px';
+  dropdown.style.left = rect.left + 'px';
+  document.body.appendChild(dropdown);
+  setTimeout(function(){
+    document.addEventListener('click', function close(){
+      dropdown.remove();
+      document.removeEventListener('click', close);
+    });
+  }, 0);
+}
+
+async function pickStat(slotIdx, key){
+  var chosen = getProfileStats();
+  chosen[slotIdx] = key;
+  await saveProfileStats(chosen);
+  document.querySelectorAll('.stat-picker-dropdown').forEach(function(el){ el.remove(); });
+  renderProfileTab();
+}
+
+
 // ── User profile view ──
 function switchUPMTab(tab){
   document.getElementById('upm-workouts').style.display = tab==='workouts' ? '' : 'none';
@@ -3486,6 +3588,10 @@ async function viewUserProfile(userId){
     document.getElementById('upm-name').textContent = profile.name || 'Unknown';
     document.getElementById('upm-username').textContent = profile.username ? '@'+profile.username : '';
     document.getElementById('upm-avatar').innerHTML = getAvatarHtml(profile, 56);
+    // Member since
+    var upmMember = document.getElementById('upm-member-since');
+    if(upmMember) upmMember.textContent = profile.created_at
+      ? 'Member since ' + new Date(profile.created_at).toLocaleDateString('en-US',{month:'long',year:'numeric'}) : '';
   }
 
   var wres = await sb.from('workouts').select('*').eq('user_id', userId).order('ts',{ascending:false}).limit(50);
@@ -3559,6 +3665,11 @@ async function viewUserProfile(userId){
     '</div>';
   }).join('') : '<div style="font-size:13px;color:var(--ts);text-align:center;padding:1rem;">No data yet.</div>';
   document.getElementById('upm-badges').innerHTML = renderBadges(workouts);
+  var upmStats = document.getElementById('upm-stats-row');
+  if(upmStats){
+    var upmPrefs = (profile && profile.stat_prefs) ? profile.stat_prefs : ['workouts','sets','time'];
+    upmStats.innerHTML = renderProfileStatsRow(workouts, false, upmPrefs);
+  }
   } // end else (has workouts)
 
   // ── Friends tab ──────────────────────────────────────────────────────────
@@ -3883,9 +3994,11 @@ document.addEventListener('DOMContentLoaded', function(){ init(); });
     <div style="flex:1;">
       <div class="user-profile-name" id="upm-name"></div>
       <div class="user-profile-username" id="upm-username"></div>
+      <div class="member-since" id="upm-member-since"></div>
     </div>
     <button class="icon-btn" id="upm-edit-btn" style="display:none;align-self:flex-start;" onclick="closeModal('user-profile-modal');openProfileModal()"><i class="ti ti-settings"></i> Settings</button>
   </div>
+  <div id="upm-stats-row" style="flex-shrink:0;"></div>
   <div class="friends-subtabs" style="margin-bottom:1rem;flex-shrink:0;">
     <button class="friends-subtab active" onclick="switchUPMTab('workouts')" id="upm-tab-workouts">Workouts</button>
     <button class="friends-subtab" onclick="switchUPMTab('pbs')" id="upm-tab-pbs">Personal Bests</button>
