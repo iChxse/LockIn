@@ -971,6 +971,7 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
       <div class="auth-field"><label>Username</label><input type="text" id="signup-username" placeholder="e.g. alexlifts" autocomplete="off" oninput="this.value=this.value.toLowerCase().replace(/[^a-z0-9_]/g,'')"><div style="font-size:11px;color:var(--ts);margin-top:4px;">Lowercase letters, numbers, underscores only</div></div>
       <div class="auth-field"><label>Email</label><input type="email" id="signup-email" placeholder="you@example.com" autocomplete="email"></div>
       <div class="auth-field"><label>Password</label><input type="password" id="signup-password" placeholder="At least 6 characters" autocomplete="new-password"></div>
+      <div class="auth-field"><label>Confirm password</label><input type="password" id="signup-password-confirm" placeholder="Re-enter your password" autocomplete="new-password"></div>
       <button class="auth-btn" onclick="doSignup()">Create account</button>
     </div>
     <div class="auth-msg" id="auth-msg"></div>
@@ -1087,6 +1088,11 @@ async function doSignup(){
   const username = document.getElementById('signup-username').value.trim().toLowerCase();
   const email    = document.getElementById('signup-email').value.trim();
   const pass     = document.getElementById('signup-password').value;
+  const passConfirm = document.getElementById('signup-password-confirm').value;
+  if(pass !== passConfirm){
+    setAuthMsg('Passwords do not match.','error');
+    return;
+  }
   if(!name||!username||!email||!pass){ setAuthMsg('Please fill in all fields.','error'); return; }
   if(username.length < 3){ setAuthMsg('Username must be at least 3 characters.','error'); return; }
   if(pass.length < 6){ setAuthMsg('Password must be at least 6 characters.','error'); return; }
@@ -2369,9 +2375,9 @@ function renderSetTable(ex, bi, ei){
     <thead><tr><th>Set</th><th>Weight (lbs)</th><th></th><th>Reps</th><th></th></tr></thead>
     <tbody>${ex.sets.map((s,j) => `<tr>
       <td class="set-num">${j+1}</td>
-      <td><input class="set-inp" type="number" inputmode="decimal" min="0" placeholder="0" value="${s.w}" oninput="updSet(${bi},${ei},${j},'w',this.value)"></td>
+      <td><input class="set-inp w-inp" type="number" inputmode="decimal" enterkeyhint="next" min="0" placeholder="0" value="${s.w}" id="w-${bi}-${ei}-${j}" oninput="updSet(${bi},${ei},${j},'w',this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();var r=document.getElementById('r-${bi}-${ei}-${j}');if(r)r.focus();}"></td>
       <td class="xlbl">×</td>
-      <td><input class="set-inp" type="number" inputmode="numeric" min="0" placeholder="0" value="${s.r}" oninput="updSet(${bi},${ei},${j},'r',this.value)"></td>
+      <td><input class="set-inp r-inp" type="number" inputmode="numeric" enterkeyhint="next" min="0" placeholder="0" value="${s.r}" id="r-${bi}-${ei}-${j}" oninput="updSet(${bi},${ei},${j},'r',this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();var nw=document.getElementById('w-${bi}-${ei}-${j+1}');if(nw)nw.focus();}"></td>
       <td><button class="del-set-btn" onclick="remSet(${bi},${ei},${j})"><i class="ti ti-minus"></i></button></td>
     </tr>`).join('')}</tbody>
   </table>
@@ -2388,9 +2394,9 @@ function renderDSBody(ex, bi){
       <div class="drop-rows">
         ${drops.map((d,dri) => `<div class="drop-row">
           <span class="drop-lbl">Drop ${dri+1}</span>
-          <input class="drop-inp" type="number" inputmode="decimal" min="0" placeholder="lbs" value="${d.w}" oninput="updDrop(${bi},${di},${dri},'w',this.value)">
+          <input class="drop-inp" type="number" inputmode="decimal" enterkeyhint="next" min="0" placeholder="lbs" value="${d.w}" id="dw-${bi}-${di}-${dri}" oninput="updDrop(${bi},${di},${dri},'w',this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();var r=document.getElementById('dr-${bi}-${di}-${dri}');if(r)r.focus();}">
           <span class="drop-x">×</span>
-          <input class="drop-inp" type="number" inputmode="numeric" min="0" placeholder="reps" value="${d.r}" oninput="updDrop(${bi},${di},${dri},'r',this.value)">
+          <input class="drop-inp" type="number" inputmode="numeric" enterkeyhint="next" min="0" placeholder="reps" value="${d.r}" id="dr-${bi}-${di}-${dri}" oninput="updDrop(${bi},${di},${dri},'r',this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();var nw=document.getElementById('dw-${bi}-${di}-${dri+1}');if(nw)nw.focus();}">
           <button class="drop-del" onclick="remDrop(${bi},${di},${dri})"><i class="ti ti-minus"></i></button>
         </div>`).join('')}
         <button class="add-drop-btn" onclick="addDrop(${bi},${di})"><i class="ti ti-plus"></i> Add drop</button>
