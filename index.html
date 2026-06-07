@@ -772,6 +772,14 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
   .app { border-left: 1px solid var(--bo3); border-right: 1px solid var(--bo3); background: var(--bs); }
   .bottom-bar { border-left: 1px solid var(--bo3); border-right: 1px solid var(--bo3); }
 }
+
+.badge-grid { display:flex; flex-direction:column; gap:8px; padding:4px 0; }
+.badge-item { display:flex; align-items:center; gap:12px; padding:12px 14px; background:var(--bs); border-radius:var(--r2); border:0.5px solid var(--bo3); }
+.badge-item.locked { opacity:0.4; }
+.badge-icon { font-size:28px; line-height:1; flex-shrink:0; width:36px; text-align:center; }
+.badge-name { font-size:14px; font-weight:600; color:var(--tp); line-height:1.3; }
+.badge-desc { font-size:12px; color:var(--ts); margin-top:1px; }
+.badge-next { font-size:11px; color:var(--ts); margin-top:3px; opacity:0.7; }
 </style>
 </head>
 <body>
@@ -1201,10 +1209,11 @@ function renderProfileTabContent(workouts, userId){
   if(!inner) return;
 
   inner.innerHTML =
-    '<div style="display:flex;border-bottom:0.5px solid var(--bo3);margin-bottom:1rem;">' +
+    '<div class="friends-subtabs">' +
       '<button class="friends-subtab '+(_profileTabSection==='workouts'?'active':'')+'" onclick="setProfileTabSection(\'workouts\')">Workouts</button>' +
       '<button class="friends-subtab '+(_profileTabSection==='pbs'?'active':'')+'" onclick="setProfileTabSection(\'pbs\')">Personal Bests</button>' +
       '<button class="friends-subtab '+(_profileTabSection==='friends'?'active':'')+'" onclick="setProfileTabSection(\'friends\')">Friends</button>' +
+      '<button class="friends-subtab '+(_profileTabSection==='badges'?'active':'')+'" onclick="setProfileTabSection(\'badges\')">Badges</button>' +
     '</div>' +
     '<div id="profile-tab-body"></div>';
 
@@ -1284,6 +1293,10 @@ function renderProfileTabBody(workouts, userId){
     }).join('');
   }
 
+  if(_profileTabSection === 'badges'){
+    body.innerHTML = renderBadges(workouts);
+    return;
+  }
   if(_profileTabSection === 'friends'){
     body.innerHTML = '<div style="color:var(--ts);font-size:13px;padding:8px 0;">Loading...</div>';
     loadProfileTabFriends(workouts, userId);
@@ -3286,14 +3299,173 @@ async function handleAvatarUpload(event){
   img.src = url;
 }
 
+
+
+// ── Badges ──────────────────────────────────────────────────────────────────
+
+// Tiered badge categories — each shows ONE badge (current tier), greyed if not started
+var BADGE_CATEGORIES = [
+  {
+    id: 'streak',
+    tiers: [
+      { icon:'🔥', name:'Streak Holder I',   desc:'7 day streak',   check: function(h){ return calcStreak(h) >= 7; } },
+      { icon:'🔥', name:'Streak Holder II',  desc:'14 day streak',  check: function(h){ return calcStreak(h) >= 14; } },
+      { icon:'🔥', name:'Streak Holder III', desc:'30 day streak',  check: function(h){ return calcStreak(h) >= 30; } },
+      { icon:'🔥', name:'Streak Holder IV',  desc:'60 day streak',  check: function(h){ return calcStreak(h) >= 60; } },
+      { icon:'🔥', name:'Streak Holder V',   desc:'100 day streak', check: function(h){ return calcStreak(h) >= 100; } },
+    ]
+  },
+  {
+    id: 'workouts',
+    tiers: [
+      { icon:'🏋️', name:'Iron Beginner', desc:'Log 1 workout',   check: function(h){ return h.length >= 1; } },
+      { icon:'🏋️', name:'Iron Regular',  desc:'Log 5 workouts',  check: function(h){ return h.length >= 5; } },
+      { icon:'🏋️', name:'Iron Veteran',  desc:'Log 10 workouts', check: function(h){ return h.length >= 10; } },
+      { icon:'🏋️', name:'Iron Legend',   desc:'Log 25 workouts', check: function(h){ return h.length >= 25; } },
+      { icon:'🏋️', name:'Iron Elite',    desc:'Log 50 workouts', check: function(h){ return h.length >= 50; } },
+      { icon:'🏆', name:'Iron God',       desc:'Log 100 workouts',check: function(h){ return h.length >= 100; } },
+    ]
+  },
+  {
+    id: 'sets',
+    tiers: [
+      { icon:'⚡', name:'Set Grinder I',   desc:'100 total sets',  check: function(h){ return countTotalSets(h) >= 100; } },
+      { icon:'⚡', name:'Set Grinder II',  desc:'250 total sets',  check: function(h){ return countTotalSets(h) >= 250; } },
+      { icon:'⚡', name:'Set Grinder III', desc:'500 total sets',  check: function(h){ return countTotalSets(h) >= 500; } },
+      { icon:'⚡', name:'Set Grinder IV',  desc:'1000 total sets', check: function(h){ return countTotalSets(h) >= 1000; } },
+      { icon:'⚡', name:'Set Grinder V',   desc:'2500 total sets', check: function(h){ return countTotalSets(h) >= 2500; } },
+    ]
+  },
+  {
+    id: 'weight',
+    tiers: [
+      { icon:'💥', name:'Plate Club I',   desc:'Log 135 lbs on any lift', check: function(h){ return hasHeavySet(h, 135); } },
+      { icon:'💥', name:'Plate Club II',  desc:'Log 225 lbs on any lift', check: function(h){ return hasHeavySet(h, 225); } },
+      { icon:'💥', name:'Plate Club III', desc:'Log 315 lbs on any lift', check: function(h){ return hasHeavySet(h, 315); } },
+      { icon:'💥', name:'Plate Club IV',  desc:'Log 405 lbs on any lift', check: function(h){ return hasHeavySet(h, 405); } },
+    ]
+  },
+  {
+    id: 'weekly',
+    tiers: [
+      { icon:'📅', name:'Weekend Warrior', desc:'3 workouts in a week', check: function(h){ return maxDaysInAnyWeek(h) >= 3; } },
+      { icon:'📅', name:'Weekday Grinder', desc:'5 workouts in a week', check: function(h){ return maxDaysInAnyWeek(h) >= 5; } },
+      { icon:'🗓️', name:'Full Week',       desc:'7 workouts in a week', check: function(h){ return maxDaysInAnyWeek(h) >= 7; } },
+    ]
+  },
+  {
+    id: 'social',
+    tiers: [
+      { icon:'👥', name:'Tag Team I',  desc:'Tag a friend in a workout',      check: function(h){ return countTotalTags(h) >= 1; } },
+      { icon:'👥', name:'Tag Team II', desc:'Tag a friend 5 times in workouts', check: function(h){ return countTotalTags(h) >= 5; } },
+    ]
+  },
+];
+
+function calcStreak(h){
+  if(!h.length) return 0;
+  var dates = new Set(h.map(function(e){ return new Date(e.ts).toDateString(); }));
+  var streak = 0;
+  var d = new Date(); d.setHours(0,0,0,0);
+  while(dates.has(d.toDateString())){ streak++; d.setDate(d.getDate()-1); }
+  return streak;
+}
+
+function countTotalSets(h){
+  var total = 0;
+  h.forEach(function(e){
+    e.blocks.forEach(function(b){
+      b.exercises.forEach(function(ex){
+        total += ex.dropSets ? ex.dropSets.length : (ex.sets||[]).length;
+      });
+    });
+  });
+  return total;
+}
+
+function hasHeavySet(h, minWeight){
+  return h.some(function(e){
+    return e.blocks.some(function(b){
+      return b.exercises.some(function(ex){
+        var sets = ex.dropSets ? [].concat.apply([],ex.dropSets) : (ex.sets||[]);
+        return sets.some(function(s){ return (parseFloat(s.w)||parseFloat(s.weight)||0) >= minWeight; });
+      });
+    });
+  });
+}
+
+function maxDaysInAnyWeek(h){
+  if(!h.length) return 0;
+  var weekMap = {};
+  h.forEach(function(e){
+    var d = new Date(e.ts);
+    var weekKey = d.getFullYear()+'W'+getWeekNum(d);
+    if(!weekMap[weekKey]) weekMap[weekKey] = new Set();
+    weekMap[weekKey].add(d.toDateString());
+  });
+  return Math.max.apply(null, Object.values(weekMap).map(function(s){ return s.size; }));
+}
+
+function getWeekNum(d){
+  var start = new Date(d.getFullYear(),0,1);
+  return Math.ceil(((d-start)/86400000 + start.getDay()+1)/7);
+}
+
+function countTaggedFriends(h){
+  var friends = new Set();
+  h.forEach(function(e){
+    if(e.tagged) e.tagged.forEach(function(t){ friends.add(t.id); });
+  });
+  return friends.size;
+}
+
+function countTotalTags(h){
+  var total = 0;
+  h.forEach(function(e){ if(e.tagged) total += e.tagged.length; });
+  return total;
+}
+
+function renderBadges(workoutHistory){
+  return '<div class="badge-grid">' +
+    BADGE_CATEGORIES.map(function(cat){
+      var earnedIdx = -1;
+      cat.tiers.forEach(function(tier, i){
+        if(tier.check(workoutHistory)) earnedIdx = i;
+      });
+
+      var earned = earnedIdx >= 0;
+      var displayTier = earned ? cat.tiers[earnedIdx] : cat.tiers[0];
+      var nextTier = earnedIdx < cat.tiers.length - 1 ? cat.tiers[earnedIdx + 1] : null;
+
+      var earnedLine = earned ? displayTier.desc : 'Locked — ' + displayTier.desc;
+      var nextLine = earned && nextTier
+        ? '→ Next: ' + nextTier.desc
+        : earned ? '✓ Max tier reached' : '';
+
+      return '<div class="badge-item' + (earned ? '' : ' locked') + '">' +
+        '<div class="badge-icon">' + displayTier.icon + '</div>' +
+        '<div style="flex:1;min-width:0;">' +
+          '<div class="badge-name">' + displayTier.name + '</div>' +
+          '<div class="badge-desc">' + earnedLine + '</div>' +
+          (nextLine ? '<div class="badge-next">' + nextLine + '</div>' : '') +
+        '</div>' +
+      '</div>';
+    }).join('') +
+  '</div>';
+}
+
+
 // ── User profile view ──
 function switchUPMTab(tab){
   document.getElementById('upm-workouts').style.display = tab==='workouts' ? '' : 'none';
   document.getElementById('upm-pbs').style.display = tab==='pbs' ? '' : 'none';
   document.getElementById('upm-friends').style.display = tab==='friends' ? '' : 'none';
+  document.getElementById('upm-badges').style.display = tab==='badges' ? '' : 'none';
   document.getElementById('upm-tab-workouts').classList.toggle('active', tab==='workouts');
   document.getElementById('upm-tab-pbs').classList.toggle('active', tab==='pbs');
   document.getElementById('upm-tab-friends').classList.toggle('active', tab==='friends');
+  document.getElementById('upm-badges').style.display = tab==='badges' ? '' : 'none';
+  document.getElementById('upm-tab-badges').classList.toggle('active', tab==='badges');
 }
 
 async function viewUserProfile(userId){
@@ -3386,6 +3558,7 @@ async function viewUserProfile(userId){
       '<div class="hist-body"><div style="font-size:12px;color:var(--ts);margin-bottom:8px;">PB on '+pb.date+'</div><div class="hist-sets">'+lines+'</div></div>' +
     '</div>';
   }).join('') : '<div style="font-size:13px;color:var(--ts);text-align:center;padding:1rem;">No data yet.</div>';
+  document.getElementById('upm-badges').innerHTML = renderBadges(workouts);
   } // end else (has workouts)
 
   // ── Friends tab ──────────────────────────────────────────────────────────
@@ -3713,14 +3886,16 @@ document.addEventListener('DOMContentLoaded', function(){ init(); });
     </div>
     <button class="icon-btn" id="upm-edit-btn" style="display:none;align-self:flex-start;" onclick="closeModal('user-profile-modal');openProfileModal()"><i class="ti ti-settings"></i> Settings</button>
   </div>
-  <div style="display:flex;border-bottom:0.5px solid var(--bo3);margin-bottom:1rem;flex-shrink:0;">
+  <div class="friends-subtabs" style="margin-bottom:1rem;flex-shrink:0;">
     <button class="friends-subtab active" onclick="switchUPMTab('workouts')" id="upm-tab-workouts">Workouts</button>
     <button class="friends-subtab" onclick="switchUPMTab('pbs')" id="upm-tab-pbs">Personal Bests</button>
     <button class="friends-subtab" onclick="switchUPMTab('friends')" id="upm-tab-friends">Friends</button>
+    <button class="friends-subtab" onclick="switchUPMTab('badges')" id="upm-tab-badges">Badges</button>
   </div>
   <div id="upm-workouts" style="flex:1;overflow-y:auto;min-height:0;"></div>
   <div id="upm-pbs" style="display:none;flex:1;overflow-y:auto;min-height:0;"></div>
   <div id="upm-friends" style="display:none;flex:1;overflow-y:auto;min-height:0;"></div>
+  <div id="upm-badges" style="display:none;flex:1;overflow-y:auto;min-height:0;padding:4px 0;"></div>
   <div class="modal-actions" style="margin-top:1rem;flex-shrink:0;">
     <button class="modal-btn" onclick="closeModal('user-profile-modal')">Close</button>
   </div>
