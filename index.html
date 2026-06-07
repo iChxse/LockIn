@@ -2375,9 +2375,9 @@ function renderSetTable(ex, bi, ei){
     <thead><tr><th>Set</th><th>Weight (lbs)</th><th></th><th>Reps</th><th></th></tr></thead>
     <tbody>${ex.sets.map((s,j) => `<tr>
       <td class="set-num">${j+1}</td>
-      <td><input class="set-inp w-inp" type="number" inputmode="decimal" enterkeyhint="next" min="0" placeholder="0" value="${s.w}" id="w-${bi}-${ei}-${j}" oninput="updSet(${bi},${ei},${j},'w',this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();var r=document.getElementById('r-${bi}-${ei}-${j}');if(r)r.focus();}"></td>
+      <td><input class="set-inp w-inp" type="text" inputmode="decimal" pattern="[0-9]*" enterkeyhint="next" min="0" placeholder="0" value="${s.w}" id="w-${bi}-${ei}-${j}" oninput="updSet(${bi},${ei},${j},'w',this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();var r=document.getElementById('r-${bi}-${ei}-${j}');if(r)r.focus();}"></td>
       <td class="xlbl">×</td>
-      <td><input class="set-inp r-inp" type="number" inputmode="numeric" enterkeyhint="next" min="0" placeholder="0" value="${s.r}" id="r-${bi}-${ei}-${j}" oninput="updSet(${bi},${ei},${j},'r',this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();var nw=document.getElementById('w-${bi}-${ei}-${j+1}');if(nw)nw.focus();}"></td>
+      <td><input class="set-inp r-inp" type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="next" min="0" placeholder="0" value="${s.r}" id="r-${bi}-${ei}-${j}" oninput="updSet(${bi},${ei},${j},'r',this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();var nw=document.getElementById('w-${bi}-${ei}-${j+1}');if(nw)nw.focus();}"></td>
       <td><button class="del-set-btn" onclick="remSet(${bi},${ei},${j})"><i class="ti ti-minus"></i></button></td>
     </tr>`).join('')}</tbody>
   </table>
@@ -2394,9 +2394,9 @@ function renderDSBody(ex, bi){
       <div class="drop-rows">
         ${drops.map((d,dri) => `<div class="drop-row">
           <span class="drop-lbl">Drop ${dri+1}</span>
-          <input class="drop-inp" type="number" inputmode="decimal" enterkeyhint="next" min="0" placeholder="lbs" value="${d.w}" id="dw-${bi}-${di}-${dri}" oninput="updDrop(${bi},${di},${dri},'w',this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();var r=document.getElementById('dr-${bi}-${di}-${dri}');if(r)r.focus();}">
+          <input class="drop-inp" type="text" inputmode="decimal" pattern="[0-9]*" enterkeyhint="next" min="0" placeholder="lbs" value="${d.w}" id="dw-${bi}-${di}-${dri}" oninput="updDrop(${bi},${di},${dri},'w',this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();var r=document.getElementById('dr-${bi}-${di}-${dri}');if(r)r.focus();}">
           <span class="drop-x">×</span>
-          <input class="drop-inp" type="number" inputmode="numeric" enterkeyhint="next" min="0" placeholder="reps" value="${d.r}" id="dr-${bi}-${di}-${dri}" oninput="updDrop(${bi},${di},${dri},'r',this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();var nw=document.getElementById('dw-${bi}-${di}-${dri+1}');if(nw)nw.focus();}">
+          <input class="drop-inp" type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="next" min="0" placeholder="reps" value="${d.r}" id="dr-${bi}-${di}-${dri}" oninput="updDrop(${bi},${di},${dri},'r',this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();var nw=document.getElementById('dw-${bi}-${di}-${dri+1}');if(nw)nw.focus();}">
           <button class="drop-del" onclick="remDrop(${bi},${di},${dri})"><i class="ti ti-minus"></i></button>
         </div>`).join('')}
         <button class="add-drop-btn" onclick="addDrop(${bi},${di})"><i class="ti ti-plus"></i> Add drop</button>
