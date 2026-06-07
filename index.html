@@ -386,20 +386,8 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 .picker-select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.picker-select.active-sel { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); outline: none; }
 .add-btn {
-  font-size: 13px;
-  font-weight: 700;
-  padding: 11px 16px;
-  border-radius: var(--r1);
-  cursor: pointer;
-  background: var(--accent);
-  color: #fff;
-  border: none;
-  flex-shrink: 0;
-  white-space: nowrap;
-  transition: background 0.15s, transform 0.1s;
-}
-.picker-select.add-btn {
   font-size: 13px;
   font-weight: 700;
   padding: 11px 16px;
@@ -446,7 +434,10 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
   gap: 8px;
 }
 .confirm-btn { font-size: 13px; font-weight: 700; padding: 8px 14px; background: var(--superset); color: #fff; border: none; border-radius: var(--pill); cursor: pointer; }
-.save-sec + .day-inp {
+.save-area { background: var(--bp); border: 1px solid var(--bo3); border-radius: var(--r3); overflow: hidden; margin-bottom: 14px; box-shadow: var(--card-shadow); }
+.save-sec { padding: 1rem; }
+.save-sec + .save-sec { border-top: 1px solid var(--bo3); }
+.day-inp {
   width: 100%;
   font-size: 15px;
   font-weight: 500;
@@ -649,8 +640,11 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
 .auth-msg { font-size: 13px; text-align: center; margin-top: 1rem; min-height: 20px; color: var(--ts); font-weight: 500; }
 .auth-msg.error { color: var(--danger); }
 .auth-msg.success { color: var(--success); }
+.profile-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
+.profile-bar-left { display: flex; flex-direction: column; gap: 2px; }
 .friend-card { background: var(--bp); border: 1px solid var(--bo3); border-radius: var(--r3); padding: 1rem; margin-bottom: 10px; box-shadow: var(--card-shadow); }
 .friend-name { font-size: 15px; font-weight: 700; color: var(--tp); margin-bottom: 2px; }
+.friend-meta { font-size: 12px; color: var(--ts); font-weight: 500; }
 .friend-actions { display: flex; gap: 8px; margin-top: 12px; }
 .friend-btn { flex: 1; font-size: 13px; font-weight: 600; padding: 10px; border-radius: var(--r1); cursor: pointer; border: 1px solid var(--bo3); background: var(--input-bg); color: var(--tp); }
 .friend-btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 700; }
@@ -663,6 +657,7 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
 .friends-subtab.active, .progress-subtab.active { color: var(--tp); background: var(--bp); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18); }
 .activity-card { background: var(--bp); border: 1px solid var(--bo3); border-radius: var(--r3); margin-bottom: 12px; overflow: hidden; box-shadow: var(--card-shadow); }
 .activity-hdr { display: flex; align-items: center; gap: 10px; padding: 12px 1rem; }
+.activity-avatar { width: 38px; height: 38px; border-radius: 50%; background: var(--input-bg); border: 1px solid var(--bo3); display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 700; color: var(--tp); flex-shrink: 0; }
 .activity-meta { flex: 1; min-width: 0; }
 .activity-name { font-size: 14px; font-weight: 700; color: var(--tp); }
 .activity-time { font-size: 12px; color: var(--ts); font-weight: 500; }
@@ -681,6 +676,7 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
 .comments-section.open { display: block; }
 .comments-scroll { max-height: 280px; overflow-y: auto; }
 .comment-row { display: flex; gap: 8px; margin-bottom: 10px; }
+.comment-avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--input-bg); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: var(--tp); flex-shrink: 0; }
 .comment-body { flex: 1; }
 .comment-author { font-size: 12px; font-weight: 700; color: var(--tp); }
 .comment-text { font-size: 13px; color: var(--ts); line-height: 1.5; }
@@ -699,6 +695,7 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
 .user-profile-name { font-size: 18px; font-weight: 700; color: var(--tp); letter-spacing: -0.02em; }
 .user-profile-username { font-size: 13px; color: var(--ts); font-weight: 500; }
 .feed-link { text-decoration: underline; text-underline-offset: 2px; text-decoration-color: var(--accent); cursor: pointer; color: var(--accent); }
+.tag-friends-wrap { margin-top: 10px; }
 .tag-friends-selected { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; min-height: 0; }
 .tag-chip { font-size: 12px; font-weight: 600; padding: 5px 10px; background: var(--input-bg); border: 1px solid var(--bo3); border-radius: var(--pill); color: var(--tp); display: flex; align-items: center; gap: 5px; }
 .tag-chip button { background: none; border: none; cursor: pointer; color: var(--ts); font-size: 14px; padding: 0; line-height: 1; }
@@ -709,6 +706,7 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
 .tag-result-item { display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: var(--bp); border: 1px solid var(--bo3); border-radius: var(--r1); cursor: pointer; transition: border-color 0.15s; }
 .tag-result-item:active { border-color: var(--accent); background: var(--accent-soft); }
 .tag-result-name { font-size: 14px; font-weight: 600; color: var(--tp); flex: 1; }
+.tag-result-username { font-size: 12px; color: var(--ts); }
 .workout-timer-bar {
   display: flex;
   align-items: center;
@@ -730,6 +728,10 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
 .stat-item { background: var(--input-bg); border-radius: var(--r2); padding: 12px; border: 1px solid var(--bo3); }
 .stat-item-val { font-size: 24px; font-weight: 800; color: var(--tp); letter-spacing: -0.02em; }
 .stat-item-lbl { font-size: 11px; color: var(--ts); margin-top: 4px; font-weight: 600; }
+.streak-bar { display: flex; align-items: center; gap: 12px; }
+.streak-flame { font-size: 32px; }
+.streak-num { font-size: 36px; font-weight: 800; color: var(--accent); letter-spacing: -0.03em; }
+.streak-lbl { font-size: 13px; color: var(--ts); font-weight: 600; }
 .bar-chart { display: flex; align-items: flex-end; gap: 5px; height: 64px; margin-top: 10px; }
 .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .bar-fill { width: 100%; background: linear-gradient(to top, var(--accent), var(--accent-hover)); border-radius: 4px 4px 0 0; opacity: 0.95; min-height: 3px; }
@@ -784,7 +786,7 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
     </button>
   </div>
   <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:1.25rem;border-bottom:0.5px solid var(--bo3);margin-bottom:1.25rem;">
-    <div class="sync-bar" style="margin-bottom:0;padding-bottom:0;border-bottom:none;"><div class="sync-dot" id="sync-dot"></div><span id="sync-status">Loading...</span></div>
+    <div class="sync-bar" style="margin-bottom:0;padding-bottom:0;border-bottom:none;"><div class="sync-dot" id="sync-dot"></div><span id="sync-status"></span></div>
     <div id="header-streak" style="display:none;align-items:center;gap:4px;font-size:12px;color:var(--ts);"></div>
   </div>
   <div class="tabs">
@@ -896,12 +898,126 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
 </div>
 
 <!-- Modals -->
+<div class="modal-bg" id="cat-modal"><div class="modal">
+  <div class="modal-title">Manage categories</div>
+  <div class="cat-list" id="cat-list"></div>
+  <button class="modal-btn" style="width:100%;text-align:center;" onclick="closeModal('cat-modal')">Done</button>
+</div></div>
 
+<div class="modal-bg" id="del-cat-modal"><div class="modal">
+  <div class="modal-title">Delete category?</div>
+  <div id="del-cat-body" class="modal-body"></div>
+  <div id="del-cat-warn" class="modal-warn" style="display:none;"></div>
+  <div class="modal-actions">
+    <button class="modal-btn" onclick="closeModal('del-cat-modal');openCatModal()">Cancel</button>
+    <button class="modal-btn danger" onclick="confirmDelCat()">Delete</button>
+  </div>
+</div></div>
+
+<div class="modal-bg" id="edit-ex-modal"><div class="modal">
+  <div class="modal-title">Edit exercise</div>
+  <div class="modal-lbl">Name</div>
+  <input type="text" class="modal-inp" id="edit-ex-name" placeholder="Exercise name">
+  <div class="modal-lbl">Category</div>
+  <select class="modal-sel" id="edit-ex-cat"></select>
+  <div class="modal-hint">More options coming soon — photo, notes.</div>
+  <div class="modal-actions">
+    <button class="modal-btn" onclick="closeModal('edit-ex-modal')">Cancel</button>
+    <button class="modal-btn primary" onclick="confirmEditEx()">Save</button>
+  </div>
+</div></div>
+
+<div class="modal-bg" id="del-ex-modal"><div class="modal">
+  <div class="modal-title">Delete exercise?</div>
+  <div id="del-ex-body" class="modal-body"></div>
+  <div id="del-ex-warn" class="modal-warn" style="display:none;"></div>
+  <div class="modal-actions">
+    <button class="modal-btn" onclick="closeModal('del-ex-modal')">Cancel</button>
+    <button class="modal-btn danger" onclick="confirmDelEx()">Delete</button>
+  </div>
+</div></div>
+
+<div class="modal-bg" id="mgex-modal"><div class="modal">
+  <div class="modal-title">Manage exercises</div>
+  <div class="exm-list" id="exm-list"></div>
+  <button class="modal-btn" style="width:100%;text-align:center;" onclick="closeModal('mgex-modal')">Done</button>
+</div></div>
+
+<div class="modal-bg" id="ex-settings-modal"><div class="modal">
+  <div class="modal-title">Manage exercises</div>
+  <div class="modal-body" style="margin-bottom:.75rem;">Showing exercises in <strong id="ex-settings-cat-name"></strong></div>
+  <div class="exm-list" id="ex-settings-list"></div>
+  <button class="modal-btn" style="width:100%;text-align:center;" onclick="closeModal('ex-settings-modal')">Done</button>
+</div></div>
+
+
+<!-- Auth screen -->
+<div class="auth-screen" id="auth-screen">
+  <div class="auth-box">
+    <div class="auth-logo">💪 Lock In.</div>
+    <div class="auth-sub">Track your gains, share your progress.</div>
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="showAuthTab('login')">Sign in</button>
+      <button class="auth-tab" onclick="showAuthTab('signup')">Create account</button>
+    </div>
+    <div id="auth-login">
+      <div class="auth-field"><label>Username/Email</label><input type="text" id="login-email" placeholder="username or you@example.com" autocomplete="email"></div>
+      <div class="auth-field"><label>Password</label><input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password"></div>
+      <button class="auth-btn" onclick="doLogin()">Sign in</button>
+      <button class="auth-btn" onclick="doForgotPassword()" style="background:none;color:var(--ts);border:none;font-size:13px;margin-top:8px;">Forgot password?</button>
+    </div>
+    <div id="auth-signup" style="display:none;">
+      <div class="auth-field"><label>Your name</label><input type="text" id="signup-name" placeholder="e.g. Alex" autocomplete="name"></div>
+      <div class="auth-field"><label>Username</label><input type="text" id="signup-username" placeholder="e.g. alexlifts" autocomplete="off" oninput="this.value=this.value.toLowerCase().replace(/[^a-z0-9_]/g,'')"><div style="font-size:11px;color:var(--ts);margin-top:4px;">Lowercase letters, numbers, underscores only</div></div>
+      <div class="auth-field"><label>Email</label><input type="email" id="signup-email" placeholder="you@example.com" autocomplete="email"></div>
+      <div class="auth-field"><label>Password</label><input type="password" id="signup-password" placeholder="At least 6 characters" autocomplete="new-password"></div>
+      <button class="auth-btn" onclick="doSignup()">Create account</button>
+    </div>
+    <div class="auth-msg" id="auth-msg"></div>
+  </div>
+</div>
+
+<!-- Profile modal -->
+<div class="modal-bg" id="profile-modal"><div class="modal">
+  <div class="modal-title">Profile</div>
+  <div class="profile-pic-wrap" onclick="document.getElementById('avatar-file-inp').click()">
+    <div class="profile-pic-circle" id="profile-pic-preview"></div>
+    <div class="profile-pic-edit"><i class="ti ti-pencil"></i></div>
+  </div>
+  <input type="file" id="avatar-file-inp" accept="image/*" style="display:none;" onchange="handleAvatarUpload(event)">
+  <div class="modal-lbl">Your name</div>
+  <input type="text" class="modal-inp" id="profile-name-inp" placeholder="Your name">
+  <div class="modal-lbl">Username</div>
+  <input type="text" class="modal-inp" id="profile-username-inp" placeholder="e.g. alexlifts" oninput="this.value=this.value.toLowerCase().replace(/[^a-z0-9_]/g,'')">
+  <div style="font-size:11px;color:var(--ts);margin-top:-16px;margin-bottom:1.25rem;">Your unique @username for finding friends</div>
+  <div class="modal-lbl">Email</div>
+  <div style="font-size:14px;color:var(--ts);margin-bottom:1.25rem;" id="profile-email-display"></div>
+  <div class="toggle-row">
+    <span class="toggle-lbl">Dark mode</span>
+    <label class="toggle-switch">
+      <input type="checkbox" id="dark-mode-toggle" onchange="toggleTheme()">
+      <div class="toggle-track"></div>
+    </label>
+  </div>
+  <div class="modal-actions" style="justify-content:space-between;margin-top:1.25rem;">
+    <button class="modal-btn danger" onclick="doSignOut()">Sign out</button>
+    <div style="display:flex;gap:8px;">
+      <button class="modal-btn" onclick="closeModal('profile-modal')">Cancel</button>
+      <button class="modal-btn primary" onclick="saveProfile()">Save</button>
+    </div>
+  </div>
+</div></div>
+
+<!-- Friend workout viewer modal -->
+<div class="modal-bg" id="friend-history-modal"><div class="modal">
+  <div class="modal-title" id="friend-history-title">Workouts</div>
+  <div id="friend-history-list" style="max-height:60vh;overflow-y:auto;"></div>
+  <div class="modal-actions" style="margin-top:1rem;">
+    <button class="modal-btn" onclick="closeModal('friend-history-modal')">Close</button>
+  </div>
+</div></div>
 
 <script>
-
-
-
 
 // ═══════════════════════════════════════════
 // SUPABASE CONFIG — replace with your values
@@ -1018,7 +1134,6 @@ async function doSignOut(){
 }
 
 async function onAuthSuccess(user){
-  try {
   currentUser = user;
   document.getElementById('auth-screen').classList.remove('show');
   // Load or create profile
@@ -1033,19 +1148,13 @@ async function onAuthSuccess(user){
   await loadFromSupabase();
   await restoreExercisesFromHistory();
   renderDayChips();
-  switchTab('friends');
+  renderFeed();
   setTimeout(restoreTimer, 100);
   // Compute and show streak in header
   var _ud = new Set(); history.forEach(function(e){ _ud.add(new Date(e.ts).toDateString()); });
   var _sc = new Date(); _sc.setHours(0,0,0,0); var _s = 0;
   while(_ud.has(_sc.toDateString())){ _s++; _sc.setDate(_sc.getDate()-1); }
   renderHeaderStreak(_s);
-  } catch(err) {
-    console.error('onAuthSuccess error:', err);
-    setSS('error', 'Load error — ' + (err.message||'unknown'));
-    // Still try to show the feed with local data
-    switchTab('friends');
-  }
 }
 
 // ── Profile modal ──
@@ -1126,14 +1235,13 @@ function renderProfileTabBody(workouts, userId){
         '<div class="hist-hdr" onclick="this.closest(\'.hist-entry\').classList.toggle(\'open\')">' +
           '<div class="hist-hdr-left"><div class="hist-date">'+entry.date+(entry.duration_seconds && entry.duration_seconds >= 10 ? ' <span style="font-size:11px;color:var(--ts);font-weight:400;">· '+(entry.duration_seconds >= 3600 ? Math.floor(entry.duration_seconds/3600)+'h '+Math.floor((entry.duration_seconds%3600)/60)+'m' : Math.round(entry.duration_seconds/60)+' min')+'</span>' : '')+'</div><div class="hist-label-row">'+wlabel+tagged+'</div>'+wdesc+'</div>' +
           '<div style="display:flex;align-items:center;gap:4px;">' +
-            '<button class="icon-btn" style="font-size:12px;padding:4px 8px;" onclick="event.stopPropagation();copyProfileWorkout('+idx+')"><i class="ti ti-copy"></i> Copy</button>' +
+            '<button class="icon-btn" style="font-size:12px;padding:4px 8px;" onclick="event.stopPropagation();copyUPMWorkout('+idx+');window._upmWorkouts='+JSON.stringify(workouts).replace(/</g,'\\u003c')+'"><i class="ti ti-copy"></i> Copy</button>' +
             '<i class="ti ti-chevron-down hist-chevron"></i>' +
           '</div>' +
         '</div>' +
         '<div class="hist-body">'+bodyBlocks+'</div>' +
       '</div>';
     }).join('');
-    window._profileWorkouts = workouts;
   }
 
   if(_profileTabSection === 'pbs'){
@@ -1147,8 +1255,7 @@ function renderProfileTabBody(workouts, userId){
           var ws = sets.map(function(s){return parseFloat(s.w)||0;}).filter(function(w){return w>0;});
           if(!ws.length) return;
           var compW = assisted ? Math.min.apply(null,ws) : Math.max.apply(null,ws);
-          var bestSet = sets.filter(function(s){return (parseFloat(s.w)||0)===compW;})[0] || sets[0];
-          var bestR = parseFloat((bestSet||{}).r) || 0;
+          var bestR = sets.reduce(function(a,s){return a+(parseFloat(s.r)||0);},0);
           var isBetter = assisted
             ? (compW < pbMap[ex.name].bestW || (compW===pbMap[ex.name].bestW && bestR>pbMap[ex.name].bestR))
             : (compW > pbMap[ex.name].bestW || (compW===pbMap[ex.name].bestW && bestR>pbMap[ex.name].bestR));
@@ -1488,6 +1595,10 @@ function renderStats(){
   while(usedDates.has(checkDate.toDateString())){ streak++; checkDate.setDate(checkDate.getDate()-1); }
 
   // ── Calendar — last 10 weeks (Mon-Sun grid) ──
+  // Calendar rendered via renderCalendar() — see below
+  var _statsUsedDates = usedDates;
+  var _statsNow = now;
+
   // ── Weekly stats ──
   var weekStart = new Date(now); weekStart.setDate(now.getDate()-now.getDay()); weekStart.setHours(0,0,0,0);
   var weekWorkouts = history.filter(function(e){ return new Date(e.ts) >= weekStart; });
@@ -1589,6 +1700,10 @@ function renderHeaderStreak(streak){
     el.style.display = 'none';
   }
 }
+
+// ── Monthly Calendar state (kept for potential future use) ──
+var _calViewYear = new Date().getFullYear();
+var _calViewMonth = new Date().getMonth();
 
 async function renderFeed(){
   const el = document.getElementById('friends-feed-content');
@@ -1917,6 +2032,8 @@ let delExName = null, editExName = null, delCatName = null;
 
 function updateGreeting() {
     const hour = new Date().getHours();
+    const d = new Date();
+    document.getElementById('today-date').textContent = d.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
 
     let text;
 
@@ -2003,7 +2120,6 @@ function init(){
       onAuthSuccess(session.user);
     } else {
       document.getElementById('auth-screen').classList.add('show');
-      document.getElementById('sync-status').textContent = '';
       load(); // load local data as fallback
     }
   });
@@ -2684,8 +2800,7 @@ function renderLookupDetail(el, data, names){
       ? Math.min.apply(null, sess.sets.filter(function(s){return parseFloat(s.weight)>0;}).map(function(s){return parseFloat(s.weight)||0;}))
       : Math.max.apply(null, sess.sets.map(function(s){return parseFloat(s.weight)||0;}));
     if(!isFinite(compW)) compW = 0;
-    var _bestS = sess.sets.filter(function(s){return (parseFloat(s.weight)||0)===compW;})[0] || sess.sets[0];
-    const totalR = parseFloat((_bestS||{}).reps) || 0;
+    const totalR = sess.sets.reduce(function(a,s){return a+(parseFloat(s.reps)||0);},0);
     if(isAssisted){
       if(pbIdx===-1 || compW<pbMaxW||(compW===pbMaxW&&totalR>pbTotalR)){ pbMaxW=compW; pbTotalR=totalR; pbIdx=si; }
     } else {
@@ -3029,11 +3144,9 @@ function openEditWorkout(idx){
     const noteRow = `<div style="display:flex;gap:6px;align-items:center;margin-bottom:10px;">
       <input type="text" class="modal-inp" style="margin:0;flex:1;font-size:13px;" id="edit-note-inp-${bi}" value="${(b.note||'').replace(/"/g,'&quot;')}" placeholder="Note for this exercise (optional)..." oninput="editNoteVal(${bi},this.value)">
     </div>`;
-    const wrapOpen = `<div style="background:var(--bs);border-radius:var(--r2);padding:12px;margin-bottom:10px;border:0.5px solid var(--bo3);">`;
-    const wrapClose = `</div>`;
     if(b.type === 'single'){
       const ex = b.exercises[0];
-      return wrapOpen + `
+      return `<div style="margin-bottom:1rem;">
         <div class="modal-lbl" style="margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;">
           <span>${ex.name}${b.assisted?'<span class=\"ex-assisted-badge\" style=\"margin-left:6px;\"><i class=\"ti ti-arrow-down-right\"></i> Assisted</span>':''}</span>
           <button class="icon-btn" style="font-size:12px;padding:3px 8px;${b.assisted?'color:#3B6D11;border-color:#3B6D11;':''}" onclick="toggleEditAssisted(${bi})">${b.assisted?'Remove assisted':'Mark assisted'}</button>
@@ -3045,13 +3158,12 @@ function openEditWorkout(idx){
           <span style="font-size:12px;color:var(--ts);">×</span>
           <input class="modal-inp" style="margin:0;flex:1;" type="number" inputmode="numeric" placeholder="reps" value="${s.r}" oninput="editSetVal(${bi},0,${si},'r',this.value)">
         </div>`).join('')}
-      ` + wrapClose;
+      </div>`;
     }
     if(b.type === 'superset'){
-      return wrapOpen +
-        `<div style="margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;"><span style="font-size:11px;color:#7a7ae0;font-weight:500;"><i class="ti ti-arrows-exchange"></i> Superset</span><button class="icon-btn" style="font-size:12px;padding:3px 8px;${b.assisted?'color:#3B6D11;border-color:#3B6D11;':''}" onclick="toggleEditAssisted(${bi})">${b.assisted?'Remove assisted':'Mark assisted'}</button></div>` +
+      return (true?`<div style="margin-bottom:4px;display:flex;align-items:center;justify-content:space-between;"><span style="font-size:11px;color:#7a7ae0;font-weight:500;"><i class="ti ti-arrows-exchange"></i> Superset</span><button class="icon-btn" style="font-size:12px;padding:3px 8px;${b.assisted?'color:#3B6D11;border-color:#3B6D11;':''}" onclick="toggleEditAssisted(${bi})">${b.assisted?'Remove assisted':'Mark assisted'}</button></div>`:'') +
         noteRow +
-        b.exercises.map((ex, ei) => `<div style="margin-bottom:8px;">
+        b.exercises.map((ex, ei) => `<div style="margin-bottom:1rem;">
         <div class="modal-lbl" style="margin-bottom:6px;">${ex.name} <span style="font-weight:400;color:var(--ts);">(Superset)</span></div>
         ${ex.sets.map((s,si) => `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
           <span style="font-size:12px;color:var(--ts);width:40px;">Set ${si+1}</span>
@@ -3059,12 +3171,11 @@ function openEditWorkout(idx){
           <span style="font-size:12px;color:var(--ts);">×</span>
           <input class="modal-inp" style="margin:0;flex:1;" type="number" inputmode="numeric" placeholder="reps" value="${s.r}" oninput="editSetVal(${bi},${ei},${si},'r',this.value)">
         </div>`).join('')}
-      </div>`).join('') +
-        wrapClose;
+      </div>`).join('');
     }
     if(b.type === 'dropset'){
       const ex = b.exercises[0];
-      return wrapOpen + `
+      return `<div style="margin-bottom:1rem;">
         <div class="modal-lbl" style="margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;">
           <span>${ex.name} <span style="font-weight:400;color:var(--ts);">(Dropset)</span>${b.assisted?'<span class=\"ex-assisted-badge\" style=\"margin-left:6px;\"><i class=\"ti ti-arrow-down-right\"></i> Assisted</span>':''}</span>
           <button class="icon-btn" style="font-size:12px;padding:3px 8px;${b.assisted?'color:#3B6D11;border-color:#3B6D11;':''}" onclick="toggleEditAssisted(${bi})">${b.assisted?'Remove assisted':'Mark assisted'}</button>
@@ -3076,7 +3187,7 @@ function openEditWorkout(idx){
           <span style="font-size:12px;color:var(--ts);">×</span>
           <input class="modal-inp" style="margin:0;flex:1;" type="number" inputmode="numeric" placeholder="reps" value="${d.r}" oninput="editDropVal(${bi},${di},${dri},'r',this.value)">
         </div>`).join('')).join('')}
-      ` + wrapClose;
+      </div>`;
     }
     return '';
   }).join('');
@@ -3210,11 +3321,9 @@ async function viewUserProfile(userId){
 
   document.getElementById('upm-workouts').innerHTML = workouts.map(function(entry,idx){
     var bodyBlocks = entry.blocks.map(function(b){
-      var ab = b.assisted ? '<span class="ex-assisted-badge"><i class="ti ti-arrow-down-right"></i> Assisted</span>' : '';
-      var nb = b.note ? '<div class="ex-note">"'+b.note+'"</div>' : '';
-      if(b.type==='single'){var ex=b.exercises[0];var lines=ex.sets.map(function(s,i){return 'Set '+(i+1)+': '+fw(s.w)+' x '+fr(s.r)+' reps';}).join('<br>');return '<div class="hist-block"><div class="hist-name">'+ex.name+ab+'</div>'+nb+'<div class="hist-sets">'+lines+'</div></div>';}
-      if(b.type==='superset'){var e1=b.exercises[0],e2=b.exercises[1],ms=Math.max(e1.sets.length,e2.sets.length);var lines=Array.from({length:ms},function(_,i){var s1=e1.sets[i],s2=e2.sets[i];return 'Set '+(i+1)+': '+(s1?fw(s1.w)+' x '+fr(s1.r)+' reps':'--')+' / '+(s2?fw(s2.w)+' x '+fr(s2.r)+' reps':'--');}).join('<br>');return '<div class="hist-block"><div class="hist-name">'+e1.name+' / '+e2.name+' <span style="font-size:11px;background:#1a1a5c;color:#7a7ae0;padding:2px 7px;border-radius:20px;font-weight:500;"><i class="ti ti-arrows-exchange"></i> Superset</span>'+ab+'</div>'+nb+'<div class="hist-sets">'+lines+'</div></div>';}
-      if(b.type==='dropset'){var ex=b.exercises[0];var lines=ex.dropSets.map(function(drops,i){return 'Set '+(i+1)+': '+drops.map(function(d){return fw(d.w)+' x '+fr(d.r)+' reps';}).join(' > ');}).join('<br>');return '<div class="hist-block"><div class="hist-name">'+ex.name+' <span style="font-size:11px;background:#FEF3E2;color:#A05C00;padding:2px 7px;border-radius:20px;font-weight:500;">↓ Dropset</span>'+ab+'</div>'+nb+'<div class="hist-sets">'+lines+'</div></div>';}
+      if(b.type==='single'){var ex=b.exercises[0];var lines=ex.sets.map(function(s,i){return 'Set '+(i+1)+': '+fw(s.w)+' x '+fr(s.r)+' reps';}).join('<br>');return '<div class="hist-block"><div class="hist-name">'+ex.name+'</div><div class="hist-sets">'+lines+'</div></div>';}
+      if(b.type==='superset'){var e1=b.exercises[0],e2=b.exercises[1],ms=Math.max(e1.sets.length,e2.sets.length);var lines=Array.from({length:ms},function(_,i){var s1=e1.sets[i],s2=e2.sets[i];return 'Set '+(i+1)+': '+(s1?fw(s1.w)+' x '+fr(s1.r)+' reps':'--')+' / '+(s2?fw(s2.w)+' x '+fr(s2.r)+' reps':'--');}).join('<br>');return '<div class="hist-block"><div class="hist-name">'+e1.name+' / '+e2.name+'</div><div class="hist-sets">'+lines+'</div></div>';}
+      if(b.type==='dropset'){var ex=b.exercises[0];var lines=ex.dropSets.map(function(drops,i){return 'Set '+(i+1)+': '+drops.map(function(d){return fw(d.w)+' x '+fr(d.r)+' reps';}).join(' > ');}).join('<br>');return '<div class="hist-block"><div class="hist-name">'+ex.name+'</div><div class="hist-sets">'+lines+'</div></div>';}
       return '';
     }).join('');
     var wlabel = entry.label ? '<div style="font-weight:500;color:var(--tp);font-size:13px;margin-bottom:2px;">'+entry.label+'</div>' : '';
@@ -3242,8 +3351,7 @@ async function viewUserProfile(userId){
         var ws = sets.map(function(s){return parseFloat(s.w)||0;}).filter(function(w){return w>0;});
         if(!ws.length) return;
         var compW = assisted ? Math.min.apply(null,ws) : Math.max.apply(null,ws);
-        var bestSet = sets.filter(function(s){return (parseFloat(s.w)||0)===compW;})[0] || sets[0];
-        var bestR = parseFloat((bestSet||{}).r) || 0;
+        var bestR = sets.reduce(function(a,s){return a+(parseFloat(s.r)||0);},0);
         var isBetter = assisted
           ? (compW < pbMap[ex.name].bestW || (compW===pbMap[ex.name].bestW && bestR>pbMap[ex.name].bestR))
           : (compW > pbMap[ex.name].bestW || (compW===pbMap[ex.name].bestW && bestR>pbMap[ex.name].bestR));
@@ -3339,18 +3447,6 @@ async function viewUserProfile(userId){
       '<div><div style="font-size:14px;font-weight:500;color:var(--tp);">'+friend.name+'</div>'+uname+togetherStr+'</div>' +
     '</div>';
   }).join('');
-}
-
-function copyProfileWorkout(idx){
-  var workouts = window._profileWorkouts || history;
-  var entry = workouts[idx];
-  if(!entry) return;
-  blocks = entry.blocks.map(function(b){
-    if(b.type==='dropset') return {type:'dropset',exercises:[{name:b.exercises[0].name,dropSets:b.exercises[0].dropSets.map(function(ds){return ds.map(function(){return {w:'',r:''};});})}]};
-    return {type:b.type,exercises:b.exercises.map(function(ex){return {name:ex.name,sets:(ex.sets||[]).map(function(){return {w:'',r:''};})};})};
-  });
-  if(entry.label) document.getElementById('day-inp').value = entry.label;
-  switchTab('log'); renderBlocks(); renderExSelect();
 }
 
 function copyUPMWorkout(idx){
@@ -3560,125 +3656,6 @@ function switchTab(tab){
 
 document.addEventListener('DOMContentLoaded', function(){ init(); });
 </script>
-<div class="modal-bg" id="cat-modal"><div class="modal">
-  <div class="modal-title">Manage categories</div>
-  <div class="cat-list" id="cat-list"></div>
-  <button class="modal-btn" style="width:100%;text-align:center;" onclick="closeModal('cat-modal')">Done</button>
-</div></div>
-
-<div class="modal-bg" id="del-cat-modal"><div class="modal">
-  <div class="modal-title">Delete category?</div>
-  <div id="del-cat-body" class="modal-body"></div>
-  <div id="del-cat-warn" class="modal-warn" style="display:none;"></div>
-  <div class="modal-actions">
-    <button class="modal-btn" onclick="closeModal('del-cat-modal');openCatModal()">Cancel</button>
-    <button class="modal-btn danger" onclick="confirmDelCat()">Delete</button>
-  </div>
-</div></div>
-
-<div class="modal-bg" id="edit-ex-modal"><div class="modal">
-  <div class="modal-title">Edit exercise</div>
-  <div class="modal-lbl">Name</div>
-  <input type="text" class="modal-inp" id="edit-ex-name" placeholder="Exercise name">
-  <div class="modal-lbl">Category</div>
-  <select class="modal-sel" id="edit-ex-cat"></select>
-  <div class="modal-hint">More options coming soon — photo, notes.</div>
-  <div class="modal-actions">
-    <button class="modal-btn" onclick="closeModal('edit-ex-modal')">Cancel</button>
-    <button class="modal-btn primary" onclick="confirmEditEx()">Save</button>
-  </div>
-</div></div>
-
-<div class="modal-bg" id="del-ex-modal"><div class="modal">
-  <div class="modal-title">Delete exercise?</div>
-  <div id="del-ex-body" class="modal-body"></div>
-  <div id="del-ex-warn" class="modal-warn" style="display:none;"></div>
-  <div class="modal-actions">
-    <button class="modal-btn" onclick="closeModal('del-ex-modal')">Cancel</button>
-    <button class="modal-btn danger" onclick="confirmDelEx()">Delete</button>
-  </div>
-</div></div>
-
-<div class="modal-bg" id="mgex-modal"><div class="modal">
-  <div class="modal-title">Manage exercises</div>
-  <div class="exm-list" id="exm-list"></div>
-  <button class="modal-btn" style="width:100%;text-align:center;" onclick="closeModal('mgex-modal')">Done</button>
-</div></div>
-
-<div class="modal-bg" id="ex-settings-modal"><div class="modal">
-  <div class="modal-title">Manage exercises</div>
-  <div class="modal-body" style="margin-bottom:.75rem;">Showing exercises in <strong id="ex-settings-cat-name"></strong></div>
-  <div class="exm-list" id="ex-settings-list"></div>
-  <button class="modal-btn" style="width:100%;text-align:center;" onclick="closeModal('ex-settings-modal')">Done</button>
-</div></div>
-
-
-<!-- Auth screen -->
-<div class="auth-screen" id="auth-screen">
-  <div class="auth-box">
-    <div class="auth-logo">💪 Lock In.</div>
-    <div class="auth-sub">Track your gains, share your progress.</div>
-    <div class="auth-tabs">
-      <button class="auth-tab active" onclick="showAuthTab('login')">Sign in</button>
-      <button class="auth-tab" onclick="showAuthTab('signup')">Create account</button>
-    </div>
-    <div id="auth-login">
-      <div class="auth-field"><label>Username/Email</label><input type="text" id="login-email" placeholder="username or you@example.com" autocomplete="email"></div>
-      <div class="auth-field"><label>Password</label><input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password"></div>
-      <button class="auth-btn" onclick="doLogin()">Sign in</button>
-      <button class="auth-btn" onclick="doForgotPassword()" style="background:none;color:var(--ts);border:none;font-size:13px;margin-top:8px;">Forgot password?</button>
-    </div>
-    <div id="auth-signup" style="display:none;">
-      <div class="auth-field"><label>Your name</label><input type="text" id="signup-name" placeholder="e.g. Alex" autocomplete="name"></div>
-      <div class="auth-field"><label>Username</label><input type="text" id="signup-username" placeholder="e.g. alexlifts" autocomplete="off" oninput="this.value=this.value.toLowerCase().replace(/[^a-z0-9_]/g,'')"><div style="font-size:11px;color:var(--ts);margin-top:4px;">Lowercase letters, numbers, underscores only</div></div>
-      <div class="auth-field"><label>Email</label><input type="email" id="signup-email" placeholder="you@example.com" autocomplete="email"></div>
-      <div class="auth-field"><label>Password</label><input type="password" id="signup-password" placeholder="At least 6 characters" autocomplete="new-password"></div>
-      <button class="auth-btn" onclick="doSignup()">Create account</button>
-    </div>
-    <div class="auth-msg" id="auth-msg"></div>
-  </div>
-</div>
-
-<!-- Profile modal -->
-<div class="modal-bg" id="profile-modal"><div class="modal">
-  <div class="modal-title">Profile</div>
-  <div class="profile-pic-wrap" onclick="document.getElementById('avatar-file-inp').click()">
-    <div class="profile-pic-circle" id="profile-pic-preview"></div>
-    <div class="profile-pic-edit"><i class="ti ti-pencil"></i></div>
-  </div>
-  <input type="file" id="avatar-file-inp" accept="image/*" style="display:none;" onchange="handleAvatarUpload(event)">
-  <div class="modal-lbl">Your name</div>
-  <input type="text" class="modal-inp" id="profile-name-inp" placeholder="Your name">
-  <div class="modal-lbl">Username</div>
-  <input type="text" class="modal-inp" id="profile-username-inp" placeholder="e.g. alexlifts" oninput="this.value=this.value.toLowerCase().replace(/[^a-z0-9_]/g,'')">
-  <div style="font-size:11px;color:var(--ts);margin-top:-16px;margin-bottom:1.25rem;">Your unique @username for finding friends</div>
-  <div class="modal-lbl">Email</div>
-  <div style="font-size:14px;color:var(--ts);margin-bottom:1.25rem;" id="profile-email-display"></div>
-  <div class="toggle-row">
-    <span class="toggle-lbl">Dark mode</span>
-    <label class="toggle-switch">
-      <input type="checkbox" id="dark-mode-toggle" onchange="toggleTheme()">
-      <div class="toggle-track"></div>
-    </label>
-  </div>
-  <div class="modal-actions" style="justify-content:space-between;margin-top:1.25rem;">
-    <button class="modal-btn danger" onclick="doSignOut()">Sign out</button>
-    <div style="display:flex;gap:8px;">
-      <button class="modal-btn" onclick="closeModal('profile-modal')">Cancel</button>
-      <button class="modal-btn primary" onclick="saveProfile()">Save</button>
-    </div>
-  </div>
-</div></div>
-
-<!-- Friend workout viewer modal -->
-<div class="modal-bg" id="friend-history-modal"><div class="modal">
-  <div class="modal-title" id="friend-history-title">Workouts</div>
-  <div id="friend-history-list" style="max-height:60vh;overflow-y:auto;"></div>
-  <div class="modal-actions" style="margin-top:1rem;">
-    <button class="modal-btn" onclick="closeModal('friend-history-modal')">Close</button>
-  </div>
-</div></div>
-
 <!-- Delete workout confirm -->
 <div class="modal-bg" id="del-workout-modal"><div class="modal">
   <div class="modal-title">Delete workout?</div>
