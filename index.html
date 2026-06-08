@@ -72,7 +72,7 @@ input, select, button, textarea { font-family: var(--font); }
 .app {
   max-width: 480px;
   margin: 0 auto;
-  padding: max(1rem, env(safe-area-inset-top)) 1rem calc(var(--bottom-nav-h) + env(safe-area-inset-bottom, 0px) + 1.25rem);
+  padding: env(safe-area-inset-top) 1rem calc(var(--bottom-nav-h) + env(safe-area-inset-bottom, 0px) + 1.25rem);
   min-height: 100vh;
   position: relative;
 }
@@ -840,18 +840,12 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
   </div>
 </div>
 <div class="app">
-  <div style="display:flex;align-items:flex-start;justify-content:space-between;">
-    <div>
-      <div class="date" id="today-date"></div>
-      <div class="title" id="greeting"></div>
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:0.5px solid var(--bo3);margin-bottom:12px;">
+    <div style="width:80px;"></div>
+    <div style="font-size:22px;font-weight:800;color:var(--tp);letter-spacing:-0.02em;">Lock In.</div>
+    <div style="width:80px;display:flex;justify-content:flex-end;">
+      <button id="add-friends-btn" onclick="openManageFriendsModal()" style="display:none;background:var(--bp);border:0.5px solid var(--bo3);border-radius:var(--r1);cursor:pointer;color:var(--ts);font-size:13px;padding:5px 10px;align-items:center;gap:5px;flex-shrink:0;"><i class="ti ti-user-plus"></i> Friends</button>
     </div>
-    <button id="add-friends-btn" onclick="openManageFriendsModal()" style="display:none;margin-top:4px;background:var(--bp);border:0.5px solid var(--bo3);border-radius:var(--r1);cursor:pointer;color:var(--ts);font-size:13px;padding:5px 10px;align-items:center;gap:5px;flex-shrink:0;">
-      <i class="ti ti-user-plus"></i> Friends
-    </button>
-  </div>
-  <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:1.25rem;border-bottom:0.5px solid var(--bo3);margin-bottom:1.25rem;">
-    <div class="sync-bar" style="margin-bottom:0;padding-bottom:0;border-bottom:none;"><div class="sync-dot" id="sync-dot"></div><span id="sync-status"></span></div>
-    <div id="header-streak" style="display:none;align-items:center;gap:4px;font-size:12px;color:var(--ts);"></div>
   </div>
   <div class="tabs">
     <button class="tab active" onclick="switchTab('friends')">Activity</button>
@@ -1198,8 +1192,8 @@ async function doSignOut(){
   renderBlocks(); renderDayChips();
   closeModal('profile-modal');
   document.getElementById('auth-screen').classList.add('show');
-  document.getElementById('greeting').textContent = '';
-  document.getElementById('today-date').textContent = '';
+  var _g=document.getElementById('greeting'); if(_g) _g.textContent = '';
+  var _td=document.getElementById('today-date'); if(_td) _td.textContent = '';
   setSS('ok','Signed out');
 }
 
@@ -1256,7 +1250,10 @@ async function renderProfileTab(){
         '<div style="font-size:14px;color:var(--ts);">'+username+'</div>' +
         (memberSince ? '<div class="member-since">'+memberSince+'</div>' : '') +
       '</div>' +
-      '<button class="icon-btn" onclick="openProfileModal()" style="align-self:flex-start;"><i class="ti ti-settings"></i> Settings</button>' +
+      '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">' +
+        '<button class="icon-btn" onclick="openProfileModal()" style="align-self:flex-start;"><i class="ti ti-settings"></i> Settings</button>' +
+        (calcStreak(workouts||[]) > 0 ? '<div style="font-size:13px;font-weight:700;color:var(--tp);text-align:right;">🔥 '+calcStreak(workouts||[])+' day streak</div>' : '') +
+      '</div>' +
     '</div>' +
     renderProfileStatsRow(workouts||[], true) +
     '<div id="profile-tab-inner"></div>';
@@ -1780,7 +1777,7 @@ function renderHeaderStreak(streak){
   if(!el) return;
   if(streak > 0){
     el.style.display = 'flex';
-    el.innerHTML = '🔥 <strong style="color:var(--tp);">'+streak+'</strong>&nbsp;day streak';
+    el.innerHTML = '🔥 <strong>'+streak+'</strong>';
   } else {
     el.style.display = 'none';
   }
@@ -2279,7 +2276,7 @@ let delExName = null, editExName = null, delCatName = null;
 function updateGreeting() {
     const hour = new Date().getHours();
     const d = new Date();
-    document.getElementById('today-date').textContent = d.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+    var _td2=document.getElementById('today-date'); if(_td2) _td2.textContent = d.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
 
     let text;
 
@@ -2294,7 +2291,7 @@ function updateGreeting() {
     }
 
     const name = currentProfile?.name ? ", " + currentProfile.name : "";
-    document.getElementById("greeting").textContent = text + name;
+    var _gr=document.getElementById("greeting"); if(_gr) _gr.textContent = text + name;
 }
 
 function fw(w){ return w ? w+' lbs' : '—'; }
@@ -2320,8 +2317,8 @@ function save(){
 }
 
 function setSS(s, m){
-  document.getElementById('sync-dot').className = 'sync-dot' + (s==='saving'?' saving':s==='error'?' error':'');
-  document.getElementById('sync-status').textContent = m;
+  (document.getElementById('sync-dot')||{}).className = 'sync-dot' + (s==='saving'?' saving':s==='error'?' error':'');
+  (document.getElementById('sync-status')||document.createElement('span')).textContent = m;
 }
 
 function pastLabels(){
@@ -2382,7 +2379,7 @@ function init(){
     }
   });
   const d = new Date();
-  document.getElementById('today-date').textContent = d.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+  var _td2=document.getElementById('today-date'); if(_td2) _td2.textContent = d.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
   load();
   updateGreeting();
   renderDayChips();
