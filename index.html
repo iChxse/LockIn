@@ -165,9 +165,10 @@ input, select, button, textarea { font-family: var(--font); }
 #tab-log:not([style*="display: none"]) {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 8px;
 }
-#tab-log:not([style*="display: none"]) #blocks-list { display: flex; flex-direction: column; gap: 12px; }
+#tab-log:not([style*="display: none"]) #blocks-list { display: flex; flex-direction: column; gap: 8px; }
+#tab-log:not([style*="display: none"]) #blocks-list:empty { display: none; }
 #tab-log:not([style*="display: none"]) > div:last-child {
   margin-top: 4px;
   margin-bottom: 0 !important;
@@ -292,10 +293,12 @@ input, select, button, textarea { font-family: var(--font); }
   margin-bottom: 0;
   box-shadow: var(--card-shadow);
 }
-.picker-sec { padding: 1rem; }
+.picker-sec { padding: 0.75rem 1rem; }
+.picker-area > div > div:last-child { padding-bottom: 0; }
+#picker-exp > .picker-sec:last-child { padding-bottom: 0; }
 .picker-sec + .picker-sec { border-top: 1px solid var(--bo3); }
 .sec-lbl { font-size: 11px; font-weight: 700; color: var(--ts); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 10px; }
-.add-trigger { display: flex; align-items: center; gap: 12px; padding: 1rem 1.1rem; cursor: pointer; transition: background 0.15s; }
+.add-trigger { display: flex; align-items: center; gap: 12px; padding: 0.65rem 1.1rem; cursor: pointer; transition: background 0.15s; }
 .add-trigger:active { background: var(--bs-elevated); }
 .add-trigger-icon {
   width: 36px;
@@ -474,6 +477,7 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
   cursor: pointer;
   transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
   box-shadow: 0 4px 16px var(--accent-glow);
+  clip-path: inset(0 -20px -20px -20px);
   letter-spacing: -0.01em;
 }
 .save-btn:active { transform: scale(0.99); background: var(--accent-hover); }
@@ -905,7 +909,7 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
         </div>
       </div>
     </div>
-    <div style="margin-top:32px;margin-bottom:14px;">
+    <div style="margin:0;padding:0;">
       <button class="save-btn" id="save-btn" onclick="openSaveModal()"><i class="ti ti-device-floppy"></i> Save workout</button>
     </div>
   </div>
