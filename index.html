@@ -169,9 +169,6 @@ input, select, button, textarea { font-family: var(--font); }
 }
 #tab-log:not([style*="display: none"]) #blocks-list { display: flex; flex-direction: column; gap: 12px; }
 #tab-log:not([style*="display: none"]) > div:last-child {
-  position: sticky;
-  bottom: calc(var(--bottom-nav-h) + env(safe-area-inset-bottom, 0px) + 10px);
-  z-index: 15;
   margin-top: 4px;
   margin-bottom: 0 !important;
   padding-top: 12px;
@@ -3939,8 +3936,12 @@ async function searchEditTagFriends(){
   var { data } = await sb.from('profiles')
     .select('id,name,username,avatar_url')
     .in('id', efriendIds)
-    .or('username.ilike.'+uq+'%,name.ilike.%'+q+'%')
-    .limit(5);
+    .limit(20);
+  if(!data) data = [];
+  var luq = uq.toLowerCase();
+  data = data.filter(function(u){
+    return (u.username||'').toLowerCase().startsWith(luq) || (u.name||'').toLowerCase().includes(q.toLowerCase());
+  }).slice(0,5);
   if(!data || !data.length){ el.innerHTML='<div style="font-size:13px;color:var(--ts);padding:4px 0;">No users found.</div>'; return; }
   el.innerHTML = data.map(function(u){
     if(_editTaggedFriends.some(function(f){ return f.id===u.id; })) return '';
@@ -3994,9 +3995,13 @@ async function searchTagFriends(){
   var { data } = await sb.from('profiles')
     .select('id,name,username,avatar_url')
     .in('id', friendIds)
-    .or('username.ilike.'+uq+'%,name.ilike.%'+q+'%')
-    .limit(5);
-  if(!data || !data.length){ el.innerHTML='<div style="font-size:13px;color:var(--ts);padding:4px 0;">No users found.</div>'; return; }
+    .limit(20);
+  if(!data) data = [];
+  var lq = uq.toLowerCase();
+  data = data.filter(function(u){
+    return (u.username||'').toLowerCase().startsWith(lq) || (u.name||'').toLowerCase().includes(q.toLowerCase());
+  }).slice(0,5);
+  if(!data.length){ el.innerHTML='<div style="font-size:13px;color:var(--ts);padding:4px 0;">No friends found matching "'+q+'".</div>'; return; }
   el.innerHTML = data.map(function(u){
     var alreadyTagged = _taggedFriends.some(function(f){ return f.id===u.id; });
     if(alreadyTagged) return '';
