@@ -817,6 +817,15 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes fadeUp { to { opacity: 1; transform: translateY(0); } }
+.comment-reply-btn { background:none; border:none; font-size:11px; color:var(--ts); cursor:pointer; padding:2px 0; margin-top:3px; }
+.comment-reply-btn:hover { color:var(--tp); }
+.comment-del-btn { background:none; border:none; font-size:11px; color:var(--ts); cursor:pointer; padding:2px 0; margin-top:3px; opacity:0.6; }
+.comment-del-btn:hover { color:#E24B4A; opacity:1; }
+.comment-replies { margin-left:34px; margin-top:6px; border-left:2px solid var(--bo3); padding-left:10px; }
+.comment-reply-input-row { display:flex; gap:6px; margin-top:6px; margin-left:34px; }
+.comment-reply-input-row input { flex:1; font-size:12px; padding:7px 10px; border:1px solid var(--bo3); border-radius:var(--r1); background:var(--input-bg); color:var(--tp); }
+.comment-reply-input-row input:focus { outline:none; border-color:var(--accent); }
+.comment-reply-input-row button { font-size:12px; padding:7px 12px; border-radius:var(--r1); background:var(--accent); color:#fff; border:none; cursor:pointer; }
 </style>
 <div id="rotate-overlay" style="display:none;position:fixed;inset:0;background:var(--bs);z-index:9999;flex-direction:column;align-items:center;justify-content:center;gap:16px;">
   <i class="ti ti-rotate" style="font-size:48px;color:var(--tp);"></i>
@@ -1299,7 +1308,12 @@ function renderProfileTabBody(workouts, userId){
       }).join('');
       var wlabel = entry.label?'<div style="font-weight:500;color:var(--tp);font-size:13px;margin-bottom:2px;">'+entry.label+'</div>':'';
       var wdesc = entry.desc?'<div style="font-size:12px;color:var(--ts);margin-bottom:4px;">'+entry.desc+'</div>':'';
-      var tagged = entry.tagged&&entry.tagged.length?'<span style="font-size:11px;color:var(--ts);">with '+entry.tagged.map(function(t){return t.username?'@'+t.username:t.name;}).join(', ')+'</span>':'';
+      var tagged = (function(arr){
+        if(!arr||!arr.length) return '';
+        var names = arr.map(function(t){ return t.name; });
+        var list = names.length===1 ? names[0] : names.length===2 ? names[0]+' and '+names[1] : names.slice(0,-1).join(', ')+', and '+names[names.length-1];
+        return '<span style="font-size:11px;color:var(--ts);">with '+list+'</span>';
+      })(entry.tagged);
       return '<div class="hist-entry" id="ptab-w-'+idx+'">' +
         '<div class="hist-hdr" onclick="this.closest(\'.hist-entry\').classList.toggle(\'open\')">' +
           '<div class="hist-hdr-left"><div class="hist-date">'+entry.date+(entry.duration_seconds && entry.duration_seconds >= 10 ? ' <span style="font-size:11px;color:var(--ts);font-weight:400;">· '+(entry.duration_seconds >= 3600 ? Math.floor(entry.duration_seconds/3600)+'h '+Math.floor((entry.duration_seconds%3600)/60)+'m' : Math.round(entry.duration_seconds/60)+' min')+'</span>' : '')+'</div><div class="hist-label-row">'+wlabel+tagged+'</div></div>' +
@@ -1833,17 +1847,43 @@ async function renderFeed(){
       return '';
     }).join('');
 
-    const commentsHtml = comments.map(function(c){
+    // Separate top-level and replies
+    const topLevel = comments.filter(function(c){ return !c.parent_id; });
+    const repliesMap = {};
+    comments.filter(function(c){ return c.parent_id; }).forEach(function(c){
+      if(!repliesMap[c.parent_id]) repliesMap[c.parent_id] = [];
+      repliesMap[c.parent_id].push(c);
+    });
+    const workoutOwnerId = w.user_id;
+    const commentsHtml = topLevel.map(function(c){
       const cname = (c.profile && c.profile.name) ? c.profile.name : '?';
-      const cinit = cname.charAt(0).toUpperCase();
-      const cusername = (c.profile && c.profile.username) ? ' @'+c.profile.username : '';
-      return '<div class="comment-row">' +
+      const canDelete = currentUser && (c.user_id === currentUser.id || workoutOwnerId === currentUser.id);
+      const delBtn = canDelete ? ' <button class="comment-del-btn" onclick="deleteComment(\''+c.id+'\','+i+')" title="Delete"><i class="ti ti-trash" style="font-size:10px;"></i></button>' : '';
+      const replies = (repliesMap[c.id]||[]).map(function(r){
+        const rname = (r.profile && r.profile.name) ? r.profile.name : '?';
+        const canDelReply = currentUser && (r.user_id === currentUser.id || workoutOwnerId === currentUser.id);
+        const replyDelBtn = canDelReply ? ' <button class="comment-del-btn" onclick="deleteComment(\''+r.id+'\','+i+')" title="Delete"><i class="ti ti-trash" style="font-size:10px;"></i></button>' : '';
+        return '<div class="comment-row" style="margin-bottom:8px;" id="comment-'+r.id+'">' +
+          getAvatarHtml(r.profile, 22) +
+          '<div class="comment-body">' +
+            '<div class="comment-author"><span class="feed-link" onclick="viewUserProfile(\''+r.user_id+'\')" >'+rname+'</span></div>' +
+            '<div class="comment-text">'+r.body+'</div>' +
+            '<div class="comment-time">'+timeAgo(r.created_at)+replyDelBtn+'</div>' +
+          '</div></div>';
+      }).join('');
+      const repliesHtml = replies ? '<div class="comment-replies">'+replies+'</div>' : '';
+      return '<div class="comment-row" id="comment-'+c.id+'">' +
         getAvatarHtml(c.profile, 26) +
         '<div class="comment-body">' +
           '<div class="comment-author"><span class="feed-link" onclick="viewUserProfile(\''+c.user_id+'\')" >'+cname+'</span></div>' +
           '<div class="comment-text">'+c.body+'</div>' +
-          '<div class="comment-time">'+timeAgo(c.created_at)+'</div>' +
-        '</div></div>';
+          '<div class="comment-time">'+timeAgo(c.created_at)+
+            ' <button class="comment-reply-btn" onclick="toggleReplyInput(this,\''+c.id+'\','+i+',\''+cname+'\')" >Reply</button>' +
+            delBtn +
+          '</div>' +
+        '</div></div>' +
+        repliesHtml +
+        '<div class="comment-reply-input-wrap" id="reply-wrap-'+c.id+'"></div>';
     }).join('');
 
     const ago = timeAgo(w.ts);
@@ -1964,6 +2004,101 @@ function toggleFeedDetail(i){
   lbl.innerHTML = el.classList.contains('open') ? 'Hide sets <i class="ti ti-chevron-up"></i>' : 'Show sets <i class="ti ti-chevron-down"></i>';
 }
 
+
+
+async function deleteComment(commentId, workoutIdx){
+  var hasReplies = !!(
+    document.getElementById('comment-'+commentId) &&
+    document.getElementById('comment-'+commentId).nextElementSibling &&
+    document.getElementById('comment-'+commentId).nextElementSibling.classList.contains('comment-replies') &&
+    document.getElementById('comment-'+commentId).nextElementSibling.children.length > 0
+  );
+
+  var msg = hasReplies ? 'Delete this comment and all its replies?' : 'Delete this comment?';
+
+  showConfirm('Delete comment', msg, 'Delete', async function(){
+    var el = document.getElementById('comment-'+commentId);
+    if(!el) return;
+    await sb.from('workout_comments').delete().eq('parent_id', commentId);
+    await sb.from('workout_comments').delete().eq('id', commentId);
+    var nextEl = el.nextElementSibling;
+    if(nextEl && nextEl.classList.contains('comment-replies')) nextEl.remove();
+    var wrapEl = document.getElementById('reply-wrap-'+commentId);
+    if(wrapEl) wrapEl.remove();
+    el.remove();
+    var section = document.getElementById('acomments-'+workoutIdx);
+    if(section){
+      var commentBtn = section.closest('.activity-card') && section.closest('.activity-card').querySelector('.activity-action-btn:not([data-wid])');
+      if(commentBtn){
+        var remaining = section.querySelectorAll('.comment-row').length;
+        commentBtn.innerHTML = '<i class="ti ti-message"></i> ' + (remaining > 0 ? remaining + ' ' : '') + 'Comment' + (remaining===1?'':'s');
+      }
+    }
+  }, true);
+}
+
+function toggleReplyInput(btn, commentId, workoutIdx, replyToName){
+  var wrap = document.getElementById('reply-wrap-'+commentId);
+  if(!wrap) return;
+  if(wrap.innerHTML){
+    wrap.innerHTML = '';
+    return;
+  }
+  wrap.innerHTML =
+    '<div class="comment-reply-input-row">' +
+      '<input type="text" placeholder="Reply to '+replyToName+'..." id="reply-inp-'+commentId+'" data-cid="'+commentId+'" data-wid="'+workoutIdx+'" onkeydown="if(event.key===\'Enter\'){var el=this;submitReply(el.dataset.cid,el.dataset.wid);}">' +
+      '<button onclick="var inp=document.getElementById(\'reply-inp-'+commentId+'\');submitReply(\''+commentId+'\','+workoutIdx+')">Send</button>' +
+    '</div>';
+  document.getElementById('reply-inp-'+commentId).focus();
+}
+
+async function submitReply(parentId, workoutIdx){
+  var inp = document.getElementById('reply-inp-'+parentId);
+  if(!inp) return;
+  var body = inp.value.trim();
+  if(!body || !currentUser) return;
+  var workout = window._feedWorkouts && window._feedWorkouts[workoutIdx];
+  if(!workout) return;
+  inp.value = '';
+  var wrap = document.getElementById('reply-wrap-'+parentId);
+
+  var { data, error } = await sb.from('workout_comments')
+    .insert({ workout_id: workout.id, user_id: currentUser.id, body: body, parent_id: parentId })
+    .select('*').single();
+  if(error){ console.error('Reply error:', error); return; }
+
+  var newId = data ? data.id : 'tmp-'+Date.now();
+  var name = currentProfile.name || 'You';
+  var delBtn = '<button class="comment-del-btn" onclick="deleteComment(\'' + newId + '\',' + workoutIdx + ')" title="Delete"><i class="ti ti-trash" style="font-size:10px;"></i></button>';
+
+  var makeReplyRow = function(){
+    var div = document.createElement('div');
+    div.className = 'comment-row';
+    div.id = 'comment-'+newId;
+    div.style.marginBottom = '8px';
+    div.innerHTML = getAvatarHtml(currentProfile, 22) +
+      '<div class="comment-body">' +
+        '<div class="comment-author"><span class="feed-link" onclick="viewUserProfile(\'' + currentUser.id + '\')">'+name+'</span></div>' +
+        '<div class="comment-text">'+body+'</div>' +
+        '<div class="comment-time">just now '+delBtn+'</div>' +
+      '</div>';
+    return div;
+  };
+
+  var repliesDiv = document.getElementById('comment-'+parentId) && document.getElementById('comment-'+parentId).nextElementSibling;
+  if(repliesDiv && repliesDiv.classList && repliesDiv.classList.contains('comment-replies')){
+    repliesDiv.appendChild(makeReplyRow());
+  } else {
+    var newReplies = document.createElement('div');
+    newReplies.className = 'comment-replies';
+    newReplies.appendChild(makeReplyRow());
+    var parentRow = document.getElementById('comment-'+parentId);
+    if(parentRow && parentRow.nextSibling) parentRow.parentNode.insertBefore(newReplies, parentRow.nextSibling);
+  }
+  if(wrap) wrap.innerHTML = '';
+}
+
+
 function toggleComments(i){
   document.getElementById('acomments-'+i).classList.toggle('open');
 }
@@ -2002,24 +2137,30 @@ async function postComment(workoutId, i){
   if(!body) return;
   inp.value = '';
 
-  // Save to DB
-  await sb.from('workout_comments').insert({workout_id: workoutId, user_id: currentUser.id, body});
+  const { data: newData } = await sb.from('workout_comments')
+    .insert({workout_id: workoutId, user_id: currentUser.id, body})
+    .select('id').single();
+  const newCid = newData ? newData.id : 'tmp-'+Date.now();
 
-  // Append comment to scroll container
   const section = document.getElementById('acomments-'+i);
   const scrollDiv = document.getElementById('acomments-scroll-'+i);
   const inputRow = section.querySelector('.comment-input-row');
   const name = currentProfile.name || 'You';
   const newComment = document.createElement('div');
   newComment.className = 'comment-row';
+  newComment.id = 'comment-'+newCid;
   newComment.innerHTML =
     getAvatarHtml(currentProfile, 26) +
     '<div class="comment-body">' +
-      '<div class="comment-author"><span class="feed-link" onclick="viewUserProfile(\''+currentUser.id+'\')">' + name + '</span></div>' +
-      '<div class="comment-text">' + body + '</div>' +
-      '<div class="comment-time">just now</div>' +
+      '<div class="comment-author"><span class="feed-link" onclick="viewUserProfile(\'' + currentUser.id + '\')">'+name+'</span></div>' +
+      '<div class="comment-text">'+body+'</div>' +
+      '<div class="comment-time">just now <button class="comment-reply-btn" onclick="toggleReplyInput(this,\'' + newCid + '\',' + i + ',\'' + name + '\')">Reply</button> <button class="comment-del-btn" onclick="deleteComment(\'' + newCid + '\',' + i + ')" title="Delete"><i class="ti ti-trash" style="font-size:10px;"></i></button></div>' +
     '</div>';
+  const replyWrap = document.createElement('div');
+  replyWrap.className = 'comment-reply-input-wrap';
+  replyWrap.id = 'reply-wrap-'+newCid;
   (scrollDiv || section).insertBefore(newComment, scrollDiv ? null : inputRow);
+  (scrollDiv || section).insertBefore(replyWrap, scrollDiv ? null : inputRow);
   if(scrollDiv) scrollDiv.scrollTop = scrollDiv.scrollHeight;
 
   // Update comment count button
@@ -2442,11 +2583,12 @@ function autoSaveExNote(bi){
   if(!val) renderBlocks(); // hide the input row if empty
 }
 
-function showConfirm(title, body, okLabel, onOk){
+function showConfirm(title, body, okLabel, onOk, isDanger){
   document.getElementById('confirm-modal-title').textContent = title;
   document.getElementById('confirm-modal-body').textContent = body;
   var btn = document.getElementById('confirm-modal-ok');
   btn.textContent = okLabel || 'Confirm';
+  btn.className = 'modal-btn' + (isDanger ? ' danger' : ' primary');
   btn.onclick = function(){ closeModal('confirm-modal'); onOk(); };
   openModal('confirm-modal');
 }
@@ -3049,7 +3191,12 @@ function renderHistory(){
           <div class="hist-date">${entry.date}${entry.duration_seconds && entry.duration_seconds >= 10 ? ' <span style="font-size:11px;color:var(--ts);font-weight:400;">· ' + (entry.duration_seconds >= 3600 ? Math.floor(entry.duration_seconds/3600)+'h '+Math.floor((entry.duration_seconds%3600)/60)+'m' : Math.round(entry.duration_seconds/60)+' min') + '</span>' : ''}</div>
           <div class="hist-label-row">
             ${entry.label ? `<span class="hist-tag">${entry.label}</span>` : `<span class="hist-preview" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;">${preview}</span>`}
-            ${entry.tagged && entry.tagged.length ? `<span style="font-size:11px;color:var(--ts);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px;">with ${entry.tagged.map(t=>t.username?'@'+t.username:t.name).join(', ')}</span>` : ''}
+            ${(function(arr){
+              if(!arr||!arr.length) return '';
+              var names=arr.map(function(t){return t.name;});
+              var list=names.length===1?names[0]:names.length===2?names[0]+' and '+names[1]:names.slice(0,-1).join(', ')+', and '+names[names.length-1];
+              return '<span style="font-size:11px;color:var(--ts);">with '+list+'</span>';
+            })(entry.tagged)}
           </div>
         </div>
         <div style="display:flex;align-items:center;gap:4px;flex-shrink:0;">
@@ -3197,7 +3344,12 @@ async function viewFriendWorkouts(userId, name){
           '<div class="hist-date">'+entry.date+(entry.duration_seconds && entry.duration_seconds >= 10 ? ' <span style="font-size:11px;color:var(--ts);font-weight:400;">· '+(entry.duration_seconds >= 3600 ? Math.floor(entry.duration_seconds/3600)+'h '+Math.floor((entry.duration_seconds%3600)/60)+'m' : Math.round(entry.duration_seconds/60)+' min')+'</span>' : '')+'</div>' +
           '<div class="hist-label-row">' +
             (entry.label ? '<span class="hist-tag">'+entry.label+'</span>' : '<span class="hist-preview" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px;">'+preview+'</span>') +
-            (entry.tagged && entry.tagged.length ? '<span style="font-size:11px;color:var(--ts);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100px;">with '+entry.tagged.map(function(t){return t.username?'@'+t.username:t.name;}).join(', ')+'</span>' : '') +
+            (function(arr){
+        if(!arr||!arr.length) return '';
+        var names=arr.map(function(t){return t.name;});
+        var list=names.length===1?names[0]:names.length===2?names[0]+' and '+names[1]:names.slice(0,-1).join(', ')+', and '+names[names.length-1];
+        return '<span style="font-size:11px;color:var(--ts);">with '+list+'</span>';
+      })(entry.tagged) +
           '</div>' +
         '</div>' +
         '<div style="display:flex;align-items:center;gap:8px;">' +
