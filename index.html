@@ -844,7 +844,7 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
     <div style="width:80px;"></div>
     <div style="font-size:22px;font-weight:800;color:var(--tp);letter-spacing:-0.02em;">Lock In.</div>
     <div style="width:80px;display:flex;justify-content:flex-end;">
-      <button id="add-friends-btn" onclick="openManageFriendsModal()" style="display:none;background:var(--bp);border:0.5px solid var(--bo3);border-radius:var(--r1);cursor:pointer;color:var(--ts);font-size:13px;padding:5px 10px;align-items:center;gap:5px;flex-shrink:0;"><i class="ti ti-user-plus"></i> Friends</button>
+      <button id="add-friends-btn" onclick="openManageFriendsModal()" style="display:none;background:var(--bp);border:0.5px solid var(--bo3);border-radius:var(--r1);cursor:pointer;color:var(--ts);font-size:13px;padding:4px 10px;align-items:center;gap:5px;flex-shrink:0;line-height:1;"><i class="ti ti-user-plus"></i> Friends</button>
     </div>
   </div>
   <div class="tabs">
@@ -1513,8 +1513,15 @@ async function flushPending(){
         label: entry.label,
         desc: entry.desc || null,
         blocks: entry.blocks
-      }).select().single();
-      if(!error) uploaded.push(entry.ts);
+      }).select('id').single();
+      if(!error){
+        uploaded.push(entry.ts);
+        // Store id back into local history
+        if(data && data.id){
+          const localEntry = history.find(function(e){ return e.ts === entry.ts; });
+          if(localEntry) localEntry.id = data.id;
+        }
+      }
     } catch(e){ break; } // still offline, stop trying
   }
   if(uploaded.length){
@@ -1543,7 +1550,7 @@ async function saveToSupabase(newEntry){
   }
   try {
     if(newEntry){
-      await sb.from('workouts').insert({
+      const { data: inserted } = await sb.from('workouts').insert({
         user_id: currentUser.id,
         date: newEntry.date,
         ts: newEntry.ts,
@@ -1552,7 +1559,13 @@ async function saveToSupabase(newEntry){
         tagged: newEntry.tagged || null,
         duration_seconds: newEntry.duration_seconds || null,
         blocks: newEntry.blocks
-      });
+      }).select('id').single();
+      // Store the returned id back into local history so delete works immediately
+      if(inserted && inserted.id){
+        const localEntry = history.find(function(e){ return e.ts === newEntry.ts; });
+        if(localEntry) localEntry.id = inserted.id;
+        localStorage.setItem('wl_history', JSON.stringify(history.slice(0,100)));
+      }
     }
     const { error: exErr } = await sb.from('exercise_lists').upsert({ user_id: currentUser.id, exercises: EX }, { onConflict: 'user_id' });
     if(exErr) console.error('Exercise save error:', exErr);
@@ -3391,58 +3404,54 @@ document.querySelectorAll('.modal-bg').forEach(el => {
 });
 
 let pendingDeleteWorkoutIdx = null;
+let pendingDeleteWorkoutTs = null;
 let pendingEditWorkoutIdx = null;
 
 function openDeleteWorkout(idx){
   pendingDeleteWorkoutIdx = idx;
+  pendingDeleteWorkoutTs = history[idx] ? history[idx].ts : null;
   openModal('del-workout-modal');
 }
 
 async function confirmDeleteWorkout(){
   if(pendingDeleteWorkoutIdx === null) return;
-  const entry = history[pendingDeleteWorkoutIdx];
-
-  // Remove from local state and localStorage immediately
-  history.splice(pendingDeleteWorkoutIdx, 1);
-  localStorage.setItem('wl_history', JSON.stringify(history.slice(0,100)));
-
-  // Also remove from pending upload queue in case it hadn't synced yet
-  const pending = JSON.parse(localStorage.getItem('wl_pending') || '[]');
-  const filteredPending = pending.filter(function(p){ return p.id !== entry.id && p.ts !== entry.ts; });
-  localStorage.setItem('wl_pending', JSON.stringify(filteredPending));
-
-  if(currentUser && entry.id){
-    const { error } = await sb.from('workouts').delete().eq('id', entry.id);
-    if(error){
-      // Re-add to history if delete failed
-      history.splice(pendingDeleteWorkoutIdx, 0, entry);
-      localStorage.setItem('wl_history', JSON.stringify(history.slice(0,100)));
-      pendingDeleteWorkoutIdx = null;
-      closeModal('del-workout-modal');
-      alert('Delete failed: ' + error.message + '\nPlease try again.');
-      return;
-    }
-    // Verify it's actually gone
-    const { data: check } = await sb.from('workouts').select('id').eq('id', entry.id).maybeSingle();
-    if(check){
-      // Still exists — try once more
-      await sb.from('workouts').delete().eq('id', entry.id);
-    }
+  let realIdx = pendingDeleteWorkoutIdx;
+  if(pendingDeleteWorkoutTs){
+    const found = history.findIndex(function(e){ return e.ts === pendingDeleteWorkoutTs; });
+    if(found !== -1) realIdx = found;
   }
+  const entry = history[realIdx];
+  if(!entry){ pendingDeleteWorkoutIdx = null; pendingDeleteWorkoutTs = null; closeModal('del-workout-modal'); return; }
 
   pendingDeleteWorkoutIdx = null;
+  pendingDeleteWorkoutTs = null;
   closeModal('del-workout-modal');
-  if(EX['Other'] && EX['Other'].length){
-    const usedInHistory = new Set();
-    history.forEach(function(e){ e.blocks.forEach(function(b){ b.exercises.forEach(function(ex){ usedInHistory.add(ex.name); }); }); });
-    const before = EX['Other'].length;
-    EX['Other'] = EX['Other'].filter(function(name){ return usedInHistory.has(name); });
-    if(EX['Other'].length !== before){
-      localStorage.setItem('wl_exercises', JSON.stringify(EX));
-      saveToSupabase(null);
-    }
-  }
+
+  history.splice(realIdx, 1);
+  localStorage.setItem('wl_history', JSON.stringify(history.slice(0,100)));
+  const pending = JSON.parse(localStorage.getItem('wl_pending') || '[]');
+  localStorage.setItem('wl_pending', JSON.stringify(pending.filter(function(p){ return p.id !== entry.id && p.ts !== entry.ts; })));
+
   renderHistory();
+  renderFeed();
+
+  if(currentUser && entry.id){
+    const { error } = await sb.from('workouts').delete().eq('id', entry.id).eq('user_id', currentUser.id);
+    if(error)
+    await loadFromSupabase();
+    renderHistory();
+  } else if(entry.id) {
+    // currentUser not ready yet — wait and retry
+    setTimeout(async function(){
+      if(currentUser){
+        await sb.from('workouts').delete().eq('id', entry.id).eq('user_id', currentUser.id);
+        await loadFromSupabase();
+        renderHistory();
+      } else {
+      }
+    }, 1000);
+  } else {
+  }
 }
 
 
