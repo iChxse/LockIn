@@ -696,7 +696,7 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
 .user-profile-avatar { width: 56px; height: 56px; border-radius: 50%; background: var(--input-bg); border: 1px solid var(--bo3); display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 700; color: var(--tp); overflow: hidden; flex-shrink: 0; }
 .user-profile-name { font-size: 18px; font-weight: 700; color: var(--tp); letter-spacing: -0.02em; }
 .user-profile-username { font-size: 13px; color: var(--ts); font-weight: 500; }
-.feed-link { text-decoration: underline; text-underline-offset: 2px; text-decoration-color: var(--accent); cursor: pointer; color: var(--accent); }
+.feed-link { text-decoration: none; cursor: pointer; color: var(--accent); }
 .tag-friends-wrap { margin-top: 10px; }
 .tag-friends-selected { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; min-height: 0; }
 .tag-chip { font-size: 12px; font-weight: 600; padding: 5px 10px; background: var(--input-bg); border: 1px solid var(--bo3); border-radius: var(--pill); color: var(--tp); display: flex; align-items: center; gap: 5px; }
@@ -794,6 +794,29 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
   body > *:not(#rotate-overlay) { display:none !important; }
   #rotate-overlay { display:flex !important; }
 }
+/* ── Loading screen ── */
+#loading-screen {
+  position: fixed; inset: 0; z-index: 9999;
+  background: #0a0a0b;
+  display: flex; align-items: center; justify-content: center;
+  transition: opacity 0.6s ease, visibility 0.6s ease;
+}
+#loading-screen.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+#loading-inner { display: flex; flex-direction: column; align-items: center; gap: 24px; }
+#loading-ring {
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  border: 2.5px solid rgba(255,255,255,0.08);
+  border-top-color: var(--accent, #7c3aed);
+  animation: spin 0.9s linear infinite;
+}
+#loading-text {
+  font-size: 28px; font-weight: 800; letter-spacing: -0.02em; color: #fff;
+  opacity: 0; transform: translateY(6px);
+  animation: fadeUp 0.5s ease 0.4s forwards;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes fadeUp { to { opacity: 1; transform: translateY(0); } }
 </style>
 <div id="rotate-overlay" style="display:none;position:fixed;inset:0;background:var(--bs);z-index:9999;flex-direction:column;align-items:center;justify-content:center;gap:16px;">
   <i class="ti ti-rotate" style="font-size:48px;color:var(--tp);"></i>
@@ -801,6 +824,12 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
 </div>
 </head>
 <body>
+<div id="loading-screen">
+  <div id="loading-inner">
+    <div id="loading-ring"></div>
+    <div id="loading-text">Lock In.</div>
+  </div>
+</div>
 <div class="app">
   <div style="display:flex;align-items:flex-start;justify-content:space-between;">
     <div>
@@ -1187,6 +1216,7 @@ async function onAuthSuccess(user){
   var _sc = new Date(); _sc.setHours(0,0,0,0); var _s = 0;
   while(_ud.has(_sc.toDateString())){ _s++; _sc.setDate(_sc.getDate()-1); }
   renderHeaderStreak(_s);
+  hideLoadingScreen();
 }
 
 // ── Profile modal ──
@@ -1272,13 +1302,10 @@ function renderProfileTabBody(workouts, userId){
       var tagged = entry.tagged&&entry.tagged.length?'<span style="font-size:11px;color:var(--ts);">with '+entry.tagged.map(function(t){return t.username?'@'+t.username:t.name;}).join(', ')+'</span>':'';
       return '<div class="hist-entry" id="ptab-w-'+idx+'">' +
         '<div class="hist-hdr" onclick="this.closest(\'.hist-entry\').classList.toggle(\'open\')">' +
-          '<div class="hist-hdr-left"><div class="hist-date">'+entry.date+(entry.duration_seconds && entry.duration_seconds >= 10 ? ' <span style="font-size:11px;color:var(--ts);font-weight:400;">· '+(entry.duration_seconds >= 3600 ? Math.floor(entry.duration_seconds/3600)+'h '+Math.floor((entry.duration_seconds%3600)/60)+'m' : Math.round(entry.duration_seconds/60)+' min')+'</span>' : '')+'</div><div class="hist-label-row">'+wlabel+tagged+'</div>'+wdesc+'</div>' +
-          '<div style="display:flex;align-items:center;gap:4px;">' +
-            '<button class="icon-btn" style="font-size:12px;padding:4px 8px;" onclick="event.stopPropagation();copyUPMWorkout('+idx+');window._upmWorkouts='+JSON.stringify(workouts).replace(/</g,'\\u003c')+'"><i class="ti ti-copy"></i> Copy</button>' +
-            '<i class="ti ti-chevron-down hist-chevron"></i>' +
-          '</div>' +
+          '<div class="hist-hdr-left"><div class="hist-date">'+entry.date+(entry.duration_seconds && entry.duration_seconds >= 10 ? ' <span style="font-size:11px;color:var(--ts);font-weight:400;">· '+(entry.duration_seconds >= 3600 ? Math.floor(entry.duration_seconds/3600)+'h '+Math.floor((entry.duration_seconds%3600)/60)+'m' : Math.round(entry.duration_seconds/60)+' min')+'</span>' : '')+'</div><div class="hist-label-row">'+wlabel+tagged+'</div></div>' +
+          '<i class="ti ti-chevron-down hist-chevron"></i>' +
         '</div>' +
-        '<div class="hist-body">'+bodyBlocks+'</div>' +
+        '<div class="hist-body">'+(wdesc||'')+bodyBlocks+'<button class="icon-btn" onclick="copyProfileWorkout('+idx+')" style="width:100%;justify-content:center;margin-top:10px;font-size:12px;padding:6px 12px;"><i class="ti ti-copy"></i> Copy Workout</button></div>' +
       '</div>';
     }).join('');
   }
@@ -1312,7 +1339,7 @@ function renderProfileTabBody(workouts, userId){
       var pb=pbMap[name];
       var assistedBadge = pb.assisted ? ' <span class="ex-assisted-badge"><i class="ti ti-arrow-down-right"></i> Assisted</span>' : '';
       var bestLabel = pb.assisted ? 'Best (lowest assist): '+fw(String(pb.bestW))+' × '+fr(String(pb.bestR))+' reps' : 'Best: '+fw(String(pb.bestW))+' × '+fr(String(pb.bestR))+' reps';
-      var lines=pb.bestSets.map(function(s,i){return 'Set '+(i+1)+': '+fw(s.w)+' x '+fr(s.r)+' reps';}).join('<br>');
+      var lines=pb.bestSets.map(function(s,i){return 'Set '+(i+1)+': '+fw(s.w)+' x '+fr(s.r)+' reps'+(s.warmup?' <span class="ex-warmup-badge">Warm-up</span>':'');}).join('<br>');
       return '<div class="hist-entry" id="ptab-pb-'+pi+'"><div class="hist-hdr" onclick="this.closest(\'.hist-entry\').classList.toggle(\'open\')"><div class="hist-hdr-left"><div class="hist-date" style="font-weight:500;color:var(--tp);">'+name+assistedBadge+'</div><div style="font-size:12px;color:var(--ts);">'+bestLabel+'</div></div><i class="ti ti-chevron-down hist-chevron"></i></div><div class="hist-body"><div style="font-size:12px;color:var(--ts);margin-bottom:8px;">PB on '+pb.date+'</div><div class="hist-sets">'+lines+'</div></div></div>';
     }).join('');
   }
@@ -1822,9 +1849,15 @@ async function renderFeed(){
     const ago = timeAgo(w.ts);
     var taggedStr = '';
     if(w.tagged && w.tagged.length){
-      taggedStr = ' with ' + w.tagged.map(function(t){
-        return '<span class="feed-link" onclick="viewUserProfile(\''+t.id+'\')">'+(t.username?'@'+t.username:t.name)+'</span>';
-      }).join(', ');
+      var tagLinks = w.tagged.map(function(t){
+        return '<span class="feed-link" data-uid="'+t.id+'" onclick="viewUserProfile(this.dataset.uid)" style="font-size:12px;">'+t.name+'</span>';
+      });
+      var tagList = tagLinks.length === 1
+        ? tagLinks[0]
+        : tagLinks.length === 2
+          ? tagLinks[0]+' <span style="font-size:12px;color:var(--ts);">and</span> '+tagLinks[1]
+          : tagLinks.slice(0,-1).join('<span style="font-size:12px;color:var(--ts);">,' + '</span> ')+' <span style="font-size:12px;color:var(--ts);">and</span> '+tagLinks[tagLinks.length-1];
+      taggedStr = tagList;
     }
     var durPhrase = '';
     if(w.duration_seconds && w.duration_seconds >= 10){
@@ -1843,7 +1876,7 @@ async function renderFeed(){
       ? 'You completed'+workoutPhrase+taggedStr
       : '<span class="feed-link" onclick="viewUserProfile(\''+w.user_id+'\')">'+pname+'</span> completed'+workoutPhrase+taggedStr;
     const wlabel = w.label ? '<div class="activity-workout-name">'+w.label+'</div>' : '';
-    const copyBtn = '<button class="icon-btn" style="font-size:12px;padding:4px 8px;" onclick="copyFeedWorkout('+i+')"><i class="ti ti-copy"></i> Copy Workout</button>';
+    const copyBtn = '<button class="icon-btn" style="font-size:12px;padding:6px 12px;width:100%;margin-top:10px;justify-content:center;" onclick="copyFeedWorkout('+i+')"><i class="ti ti-copy"></i> Copy Workout</button>';
     const likedClass = iLiked ? ' liked' : '';
     const likeIcon = iLiked ? 'ti ti-thumb-up-filled' : 'ti ti-thumb-up';
     const likeLabel = isMe
@@ -1852,15 +1885,41 @@ async function renderFeed(){
     const commentLabel = 'Comment' + (commentCount===1?'':'s');
     const commentNum = commentCount > 0 ? commentCount+' ' : '';
 
+    // Compute stats
+    var totalExercises = 0, totalSets = 0;
+    (w.blocks||[]).forEach(function(b){
+      b.exercises.forEach(function(ex){ totalExercises++; totalSets += ex.dropSets ? ex.dropSets.length : (ex.sets||[]).length; });
+    });
+    var durDisplay = w.duration_seconds && w.duration_seconds >= 10
+      ? (w.duration_seconds >= 3600 ? Math.floor(w.duration_seconds/3600)+'h '+Math.floor((w.duration_seconds%3600)/60)+'m' : Math.round(w.duration_seconds/60)+' min')
+      : '—';
+    var statCards = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:0 1rem 10px;">' +
+      '<div style="background:var(--bs);border-radius:var(--r2);border:0.5px solid var(--bo3);padding:8px;text-align:center;">' +
+        '<div style="font-size:14px;font-weight:700;color:var(--tp);">'+durDisplay+'</div>' +
+        '<div style="font-size:10px;color:var(--ts);text-transform:uppercase;letter-spacing:.04em;margin-top:2px;">Duration</div>' +
+      '</div>' +
+      '<div style="background:var(--bs);border-radius:var(--r2);border:0.5px solid var(--bo3);padding:8px;text-align:center;">' +
+        '<div style="font-size:14px;font-weight:700;color:var(--tp);">'+totalExercises+'</div>' +
+        '<div style="font-size:10px;color:var(--ts);text-transform:uppercase;letter-spacing:.04em;margin-top:2px;">Exercises</div>' +
+      '</div>' +
+      '<div style="background:var(--bs);border-radius:var(--r2);border:0.5px solid var(--bo3);padding:8px;text-align:center;">' +
+        '<div style="font-size:14px;font-weight:700;color:var(--tp);">'+totalSets+'</div>' +
+        '<div style="font-size:10px;color:var(--ts);text-transform:uppercase;letter-spacing:.04em;margin-top:2px;">Sets</div>' +
+      '</div>' +
+    '</div>';
+
+    // Simplified byLine — just the name, tagged handled separately
+    var nameLink = isMe ? 'You' : '<span class="feed-link" data-uid="'+w.user_id+'" onclick="viewUserProfile(this.dataset.uid)">'+pname+'</span>';
+
     return '<div class="activity-card" id="acard-'+i+'">' +
       '<div class="activity-hdr">' +
         getAvatarHtml(w.profile, 36) +
         '<div class="activity-meta">' +
-          '<div class="activity-name">'+byLine+'</div>' +
+          '<div class="activity-name">'+nameLink+(taggedStr ? ' <span style="font-size:12px;color:var(--ts);">with</span> '+taggedStr : '')+'</div>' +
           '<div class="activity-time">'+ago+'</div>' +
         '</div>' +
-        copyBtn +
       '</div>' +
+      statCards +
       '<div class="activity-preview">' +
         wlabel +
         (w.desc ? '<div class="activity-sets-preview">'+w.desc+'</div>' : '') +
@@ -1868,7 +1927,7 @@ async function renderFeed(){
       '<button class="activity-expand" onclick="toggleFeedDetail('+i+')">' +
         '<span id="aexpand-lbl-'+i+'">Show sets <i class="ti ti-chevron-down"></i></span>' +
       '</button>' +
-      '<div class="activity-detail" id="adetail-'+i+'">'+detailBlocks+'</div>' +
+      '<div class="activity-detail" id="adetail-'+i+'">'+detailBlocks+copyBtn+'</div>' +
       '<div class="activity-actions">' +
         '<button class="activity-action-btn'+likedClass+'" id="alike-btn-'+i+'" data-wid="'+w.id+'" data-idx="'+i+'" data-liked="'+(iLiked?1:0)+'" data-count="'+likeCount+'" data-own="'+(isMe?1:0)+'">' +
           '<i class="'+likeIcon+'"></i> '+likeLabel +
@@ -2156,6 +2215,17 @@ function syncThemeToggle(){
   if(cb) cb.checked = document.body.classList.contains('dark-mode');
 }
 
+function hideLoadingScreen(){
+  var el = document.getElementById('loading-screen');
+  if(!el) return;
+  var elapsed = Date.now() - window._loadStart;
+  var delay = Math.max(0, 2000 - elapsed);
+  setTimeout(function(){
+    el.classList.add('hidden');
+    setTimeout(function(){ if(el) el.remove(); }, 700);
+  }, delay);
+}
+
 function init(){
   initTheme();
   // Check existing session
@@ -2165,6 +2235,7 @@ function init(){
     } else {
       document.getElementById('auth-screen').classList.add('show');
       load(); // load local data as fallback
+      hideLoadingScreen();
     }
   });
   const d = new Date();
@@ -2989,6 +3060,7 @@ function renderHistory(){
       <div class="hist-body">
         ${entry.desc ? `<div style="font-size:13px;color:var(--ts);margin-bottom:10px;padding-bottom:10px;border-bottom:0.5px solid var(--bo3);">${entry.desc}</div>` : ''}
         ${bodyBlocks}
+        <button class="icon-btn" onclick="copyProfileWorkout(${idx})" style="width:100%;justify-content:center;margin-top:10px;font-size:12px;padding:6px 12px;"><i class="ti ti-copy"></i> Copy Workout</button>
       </div>
     </div>`;
   }).join('');
@@ -3742,11 +3814,10 @@ async function viewUserProfile(userId){
       '<div class="hist-hdr" onclick="this.closest(\'.hist-entry\').classList.toggle(\'open\')">' +
         '<div class="hist-hdr-left"><div class="hist-date">'+entry.date+(entry.duration_seconds && entry.duration_seconds >= 10 ? ' <span style="font-size:11px;color:var(--ts);font-weight:400;">· '+(entry.duration_seconds >= 3600 ? Math.floor(entry.duration_seconds/3600)+'h '+Math.floor((entry.duration_seconds%3600)/60)+'m' : Math.round(entry.duration_seconds/60)+' min')+'</span>' : '')+'</div>'+wlabel+wdesc+'</div>' +
         '<div style="display:flex;align-items:center;gap:6px;">' +
-          '<button class="icon-btn" style="font-size:12px;padding:4px 8px;" onclick="event.stopPropagation();copyUPMWorkout('+idx+')"><i class="ti ti-copy"></i> Copy</button>' +
           '<i class="ti ti-chevron-down hist-chevron"></i>' +
         '</div>' +
       '</div>' +
-      '<div class="hist-body">'+bodyBlocks+'</div>' +
+      '<div class="hist-body">'+bodyBlocks+'<button class="icon-btn" onclick="copyUPMWorkout('+idx+')" style="width:100%;justify-content:center;margin-top:10px;font-size:12px;padding:6px 12px;"><i class="ti ti-copy"></i> Copy Workout</button></div>' +
     '</div>';
   }).join('');
 
@@ -3778,7 +3849,7 @@ async function viewUserProfile(userId){
     var pb = pbMap[name];
     var assistedBadge = pb.assisted ? ' <span class="ex-assisted-badge"><i class="ti ti-arrow-down-right"></i> Assisted</span>' : '';
     var bestLabel = pb.assisted ? 'Best (lowest assist): '+fw(String(pb.bestW))+' &times; '+fr(String(pb.bestR))+' reps' : 'Best: '+fw(String(pb.bestW))+' &times; '+fr(String(pb.bestR))+' reps';
-    var lines = pb.bestSets.map(function(s,i){return 'Set '+(i+1)+': '+fw(s.w)+' x '+fr(s.r)+' reps';}).join('<br>');
+    var lines = pb.bestSets.map(function(s,i){return 'Set '+(i+1)+': '+fw(s.w)+' x '+fr(s.r)+' reps'+(s.warmup?' <span class="ex-warmup-badge">Warm-up</span>':'');}).join('<br>');
     return '<div class="hist-entry" id="upm-pb-'+pi+'">' +
       '<div class="hist-hdr" onclick="this.closest(\'.hist-entry\').classList.toggle(\'open\')">' +
         '<div class="hist-hdr-left">' +
@@ -4103,7 +4174,7 @@ function switchTab(tab){
   if(tab==='profile') renderProfileTab();
 }
 
-document.addEventListener('DOMContentLoaded', function(){ init(); });
+document.addEventListener('DOMContentLoaded', function(){ window._loadStart = Date.now(); init(); });
 </script>
 <!-- Delete workout confirm -->
 <div class="modal-bg" id="del-workout-modal"><div class="modal">
