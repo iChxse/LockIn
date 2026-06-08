@@ -293,9 +293,7 @@ input, select, button, textarea { font-family: var(--font); }
   margin-bottom: 0;
   box-shadow: var(--card-shadow);
 }
-.picker-sec { padding: 0.75rem 1rem; }
-.picker-area > div > div:last-child { padding-bottom: 0; }
-#picker-exp > .picker-sec:last-child { padding-bottom: 0; }
+.picker-sec { padding: 0.75rem 1rem 1rem; }
 .picker-sec + .picker-sec { border-top: 1px solid var(--bo3); }
 .sec-lbl { font-size: 11px; font-weight: 700; color: var(--ts); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 10px; }
 .add-trigger { display: flex; align-items: center; gap: 12px; padding: 0.65rem 1.1rem; cursor: pointer; transition: background 0.15s; }
@@ -909,9 +907,7 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
         </div>
       </div>
     </div>
-    <div style="margin:0;padding:0;">
-      <button class="save-btn" id="save-btn" onclick="openSaveModal()"><i class="ti ti-device-floppy"></i> Save workout</button>
-    </div>
+    <button class="save-btn" id="save-btn" onclick="openSaveModal()"><i class="ti ti-device-floppy"></i> Save workout</button>
   </div>
 
   <div id="tab-lookup" style="display:none;">
