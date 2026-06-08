@@ -868,7 +868,7 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
         </div>
       </div>
     </div>
-    <div style="margin-bottom:14px;">
+    <div style="margin-top:32px;margin-bottom:14px;">
       <button class="save-btn" id="save-btn" onclick="openSaveModal()"><i class="ti ti-device-floppy"></i> Save workout</button>
     </div>
   </div>
@@ -3489,6 +3489,19 @@ function calcStreak(h){
   return streak;
 }
 
+function calcMaxStreak(h){
+  if(!h.length) return 0;
+  var dateSet = new Set(h.map(function(e){ return new Date(e.ts).toDateString(); }));
+  var dates = Array.from(dateSet).map(function(d){ return new Date(d); }).sort(function(a,b){ return a-b; });
+  var maxStreak = 1, cur = 1;
+  for(var i=1; i<dates.length; i++){
+    var diff = (dates[i] - dates[i-1]) / 86400000;
+    if(diff === 1){ cur++; if(cur > maxStreak) maxStreak = cur; }
+    else cur = 1;
+  }
+  return maxStreak;
+}
+
 function countTotalSets(h){
   var total = 0;
   h.forEach(function(e){
@@ -3585,7 +3598,7 @@ var STAT_OPTIONS = {
     var h2 = Math.floor(mins/60), m2 = mins%60;
     return m2 > 0 ? h2+'h '+m2+'m' : h2+'h';
   }},
-  streak:    { label: 'Highest streak', fn: function(h){ return calcStreak(h)+'d'; } },
+  streak:    { label: 'Highest streak', fn: function(h){ return calcMaxStreak(h)+'d'; } },
   exercises: { label: 'Exercises',      fn: function(h){
     var exNames = new Set();
     h.forEach(function(e){ e.blocks.forEach(function(b){ b.exercises.forEach(function(ex){ exNames.add(ex.name); }); }); });
@@ -3917,10 +3930,16 @@ async function searchEditTagFriends(){
   var el = document.getElementById('edit-tag-results');
   if(!q || !currentUser){ el.innerHTML=''; return; }
   var uq = q.startsWith('@') ? q.slice(1) : q;
+  var { data: efships } = await sb.from('friendships')
+    .select('requester_id,addressee_id')
+    .or('requester_id.eq.'+currentUser.id+',addressee_id.eq.'+currentUser.id)
+    .eq('status','accepted');
+  var efriendIds = (efships||[]).map(function(f){ return f.requester_id===currentUser.id ? f.addressee_id : f.requester_id; });
+  if(!efriendIds.length){ document.getElementById('edit-tag-results').innerHTML='<div style="font-size:13px;color:var(--ts);padding:4px 0;">No friends to tag yet.</div>'; return; }
   var { data } = await sb.from('profiles')
     .select('id,name,username,avatar_url')
+    .in('id', efriendIds)
     .or('username.ilike.'+uq+'%,name.ilike.%'+q+'%')
-    .neq('id', currentUser.id)
     .limit(5);
   if(!data || !data.length){ el.innerHTML='<div style="font-size:13px;color:var(--ts);padding:4px 0;">No users found.</div>'; return; }
   el.innerHTML = data.map(function(u){
@@ -3965,10 +3984,17 @@ async function searchTagFriends(){
   var el = document.getElementById('tag-results');
   if(!q || !currentUser){ el.innerHTML=''; return; }
   var uq = q.startsWith('@') ? q.slice(1) : q;
+  // Get accepted friend IDs first
+  var { data: fships } = await sb.from('friendships')
+    .select('requester_id,addressee_id')
+    .or('requester_id.eq.'+currentUser.id+',addressee_id.eq.'+currentUser.id)
+    .eq('status','accepted');
+  var friendIds = (fships||[]).map(function(f){ return f.requester_id===currentUser.id ? f.addressee_id : f.requester_id; });
+  if(!friendIds.length){ el.innerHTML='<div style="font-size:13px;color:var(--ts);padding:4px 0;">No friends to tag yet.</div>'; return; }
   var { data } = await sb.from('profiles')
     .select('id,name,username,avatar_url')
+    .in('id', friendIds)
     .or('username.ilike.'+uq+'%,name.ilike.%'+q+'%')
-    .neq('id', currentUser.id)
     .limit(5);
   if(!data || !data.length){ el.innerHTML='<div style="font-size:13px;color:var(--ts);padding:4px 0;">No users found.</div>'; return; }
   el.innerHTML = data.map(function(u){
