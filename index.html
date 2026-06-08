@@ -663,7 +663,7 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
 .activity-meta { flex: 1; min-width: 0; }
 .activity-name { font-size: 14px; font-weight: 700; color: var(--tp); }
 .activity-time { font-size: 12px; color: var(--ts); font-weight: 500; }
-.activity-preview { padding: 0 1rem 10px; font-size: 13px; color: var(--ts); line-height: 1.45; }
+.activity-preview { padding: 10px 1rem 10px; font-size: 13px; color: var(--ts); line-height: 1.45; }
 .activity-workout-name { font-size: 14px; font-weight: 700; color: var(--tp); margin-bottom: 2px; }
 .activity-sets-preview { font-size: 13px; color: var(--ts); }
 .activity-expand { width: 100%; background: none; border: none; border-top: 1px solid var(--bo3); padding: 10px; font-size: 12px; font-weight: 600; color: var(--ts); cursor: pointer; text-align: center; }
@@ -1893,18 +1893,19 @@ async function renderFeed(){
     var durDisplay = w.duration_seconds && w.duration_seconds >= 10
       ? (w.duration_seconds >= 3600 ? Math.floor(w.duration_seconds/3600)+'h '+Math.floor((w.duration_seconds%3600)/60)+'m' : Math.round(w.duration_seconds/60)+' min')
       : '—';
-    var statCards = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:0 1rem 10px;">' +
-      '<div style="background:var(--bs);border-radius:var(--r2);border:0.5px solid var(--bo3);padding:8px;text-align:center;">' +
-        '<div style="font-size:14px;font-weight:700;color:var(--tp);">'+durDisplay+'</div>' +
-        '<div style="font-size:10px;color:var(--ts);text-transform:uppercase;letter-spacing:.04em;margin-top:2px;">Duration</div>' +
+    // Full-width segmented stat bar
+    var statLine = '<div style="display:flex;align-items:stretch;margin:0 1rem 2px;background:var(--bs);border:0.5px solid var(--bo3);border-radius:20px;overflow:hidden;">' +
+      '<div style="flex:1;display:flex;flex-direction:column;align-items:center;padding:7px 4px;border-right:0.5px solid var(--bo3);">' +
+        '<span style="font-size:13px;font-weight:600;color:var(--tp);">'+(durDisplay !== '—' ? durDisplay : '—')+'</span>' +
+        '<span style="font-size:9px;color:var(--ts);text-transform:uppercase;letter-spacing:.05em;margin-top:1px;">Duration</span>' +
       '</div>' +
-      '<div style="background:var(--bs);border-radius:var(--r2);border:0.5px solid var(--bo3);padding:8px;text-align:center;">' +
-        '<div style="font-size:14px;font-weight:700;color:var(--tp);">'+totalExercises+'</div>' +
-        '<div style="font-size:10px;color:var(--ts);text-transform:uppercase;letter-spacing:.04em;margin-top:2px;">Exercises</div>' +
+      '<div style="flex:1;display:flex;flex-direction:column;align-items:center;padding:7px 4px;border-right:0.5px solid var(--bo3);">' +
+        '<span style="font-size:13px;font-weight:600;color:var(--tp);">'+totalExercises+'</span>' +
+        '<span style="font-size:9px;color:var(--ts);text-transform:uppercase;letter-spacing:.05em;margin-top:1px;">Exercises</span>' +
       '</div>' +
-      '<div style="background:var(--bs);border-radius:var(--r2);border:0.5px solid var(--bo3);padding:8px;text-align:center;">' +
-        '<div style="font-size:14px;font-weight:700;color:var(--tp);">'+totalSets+'</div>' +
-        '<div style="font-size:10px;color:var(--ts);text-transform:uppercase;letter-spacing:.04em;margin-top:2px;">Sets</div>' +
+      '<div style="flex:1;display:flex;flex-direction:column;align-items:center;padding:7px 4px;">' +
+        '<span style="font-size:13px;font-weight:600;color:var(--tp);">'+totalSets+'</span>' +
+        '<span style="font-size:9px;color:var(--ts);text-transform:uppercase;letter-spacing:.05em;margin-top:1px;">Sets</span>' +
       '</div>' +
     '</div>';
 
@@ -1913,13 +1914,14 @@ async function renderFeed(){
 
     return '<div class="activity-card" id="acard-'+i+'">' +
       '<div class="activity-hdr">' +
-        getAvatarHtml(w.profile, 36) +
+        getAvatarHtml(w.profile, 52) +
         '<div class="activity-meta">' +
-          '<div class="activity-name">'+nameLink+(taggedStr ? ' <span style="font-size:12px;color:var(--ts);">with</span> '+taggedStr : '')+'</div>' +
-          '<div class="activity-time">'+ago+'</div>' +
+          '<div class="activity-name">'+nameLink+'</div>' +
+          (taggedStr ? '<div style="font-size:12px;color:var(--ts);margin-top:1px;"><span style="color:var(--ts);">w/</span> '+taggedStr+'</div>' : '') +
+          '<div class="activity-time" style="margin-top:2px;">'+ago+'</div>' +
         '</div>' +
       '</div>' +
-      statCards +
+      statLine +
       '<div class="activity-preview">' +
         wlabel +
         (w.desc ? '<div class="activity-sets-preview">'+w.desc+'</div>' : '') +
