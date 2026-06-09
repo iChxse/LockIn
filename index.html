@@ -1260,8 +1260,8 @@ async function renderProfileTab(){
       var days = calcConsistency(workouts||[]);
       var pct = Math.round((days/30)*100);
       var gColor = g==='S'?'#a855f7':g==='A+'?'#3b82f6':g==='A'?'#22c55e':g==='B'?'#eab308':g==='C'?'#f97316':'#6b7280';
-      var label = g==='S'?'Locked In':g==='A+'?'Absolute Unit':g==='A'?'Consistent':g==='B'?'Committed':g==='C'?'Building':'Starting Out';
-      return '<div style="background:var(--bs);border-radius:var(--r2);border:1.5px solid '+gColor+';padding:12px 14px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;">' +
+      var label = gradeLabel(g);
+      return '<div onclick="openConsistencyModal()" style="cursor:pointer;background:var(--bs);border-radius:var(--r2);border:1.5px solid '+gColor+';padding:12px 14px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;">' +
         '<div><div style="font-size:10px;font-weight:600;color:var(--ts);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px;">Consistency Rank</div>' +
         '<div style="font-size:13px;color:var(--ts);">'+days+'/30 active days &mdash; '+pct+'%</div></div>' +
         '<div style="font-size:22px;font-weight:800;color:'+gColor+';line-height:1;">'+label+'</div>' +
@@ -1701,9 +1701,10 @@ function renderStats(){
   history.forEach(function(e){ usedDates.add(new Date(e.ts).toDateString()); });
 
   // ── Consistency (last 30 days) ──
-  var consistencyDays = calcConsistency(history);
-  var consistencyPct = Math.round((consistencyDays / 30) * 100);
-  var grade = calcConsistencyGrade(history);
+  var _cObj = calcConsistencyGrade(history);
+  var grade = _cObj.grade;
+  var consistencyDays = _cObj.days;
+  var consistencyPct = _cObj.pct;
   var gradeColor = grade==='S'?'#a855f7':grade==='A+'?'#3b82f6':grade==='A'?'#22c55e':grade==='B'?'#eab308':grade==='C'?'#f97316':'#6b7280';
 
   // Build 30-day dot grid
@@ -1717,7 +1718,9 @@ function renderStats(){
   dots = dayDots.map(function(day){
     var mon = day.date.toLocaleString('en-US',{month:'short'});
     var dd = day.date.getDate();
-    return '<div title="'+mon+' '+dd+'" style="width:22px;height:22px;border-radius:4px;background:'+(day.worked?'var(--accent)':'var(--bs)')+';border:0.5px solid '+(day.worked?'var(--accent)':'var(--bo3)')+';"></div>';
+    return '<div title="'+mon+' '+dd+'" style="aspect-ratio:1;border-radius:5px;background:'+(day.worked?'var(--accent)':'var(--bs)')+';border:0.5px solid '+(day.worked?'var(--accent)':'var(--bo3)')+';">' +
+      '<div style="font-size:8px;color:'+(day.worked?'#fff':'var(--ts)')+';text-align:center;padding-top:3px;">'+dd+'</div>' +
+    '</div>';
   }).join('');
 
   // ── Weekly stats ──
@@ -1757,9 +1760,9 @@ function renderStats(){
     '<div class="stat-card">' +
       '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">' +
         '<div class="stat-card-title" style="margin:0;">Consistency — last 30 days</div>' +
-        '<div style="font-size:28px;font-weight:800;color:'+gradeColor+';">'+grade+'</div>' +
+        '<div style="font-size:22px;font-weight:800;color:'+gradeColor+';">'+gradeLabel(grade)+'</div>' +
       '</div>' +
-      '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px;">'+dots+'</div>' +
+      '<div style="display:grid;grid-template-columns:repeat(10,1fr);gap:5px;margin-bottom:10px;">'+dots+'</div>' +
       '<div style="font-size:12px;color:var(--ts);">'+consistencyDays+' of 30 days &mdash; '+consistencyPct+'%</div>' +
     '</div>' +
     // ── This week ──
@@ -1823,7 +1826,7 @@ function renderStats(){
 function renderHeaderStreak(streak){
   var el = document.getElementById('header-streak');
   if(!el) return;
-  var grade = calcConsistencyGrade(history);
+  var _hg = calcConsistencyGrade(history); var grade = _hg.grade;
   el.style.display = 'flex';
   el.innerHTML = '<strong>'+grade+'</strong>';
 }
@@ -3804,6 +3807,98 @@ var BADGE_CATEGORIES = [
     ]
   },
 ];
+
+function gradeLabel(g){
+  return g==='S'?'Locked In':g==='A+'?'Absolute Unit':g==='A'?'Consistent':g==='B'?'Committed':g==='C'?'Building':'Starting Out';
+}
+
+function gradeColor(g){
+  return g==='S'?'#a855f7':g==='A+'?'#3b82f6':g==='A'?'#22c55e':g==='B'?'#eab308':g==='C'?'#f97316':'#6b7280';
+}
+
+function nextGrade(g){
+  var order = ['D','C','B','A','A+','S'];
+  var i = order.indexOf(g);
+  return i < order.length-1 ? order[i+1] : null;
+}
+
+function nextGradeThreshold(g){
+  // pct needed for next grade
+  return g==='D'?40:g==='C'?60:g==='B'?73:g==='A'?83:g==='A+'?90:null;
+}
+
+function openConsistencyModal(workoutHistory){
+  var h = workoutHistory || history;
+  var days = calcConsistency(h);
+  var pct = Math.round((days/30)*100);
+  var grade = calcConsistencyGrade(h).grade;
+  var gColor = gradeColor(grade);
+  var label = gradeLabel(grade);
+  var next = nextGrade(grade);
+  var nextThresh = nextGradeThreshold(grade);
+
+  // Build heatmap
+  var dates = new Set(h.map(function(e){ return new Date(e.ts).toDateString(); }));
+  var dayDots = [];
+  var d = new Date(); d.setHours(0,0,0,0);
+  for(var i=0;i<30;i++){
+    dayDots.unshift({date:new Date(d), worked:dates.has(d.toDateString())});
+    d.setDate(d.getDate()-1);
+  }
+  var heatmap = '<div style="display:grid;grid-template-columns:repeat(10,1fr);gap:5px;margin-top:14px;">' +
+    dayDots.map(function(day){
+      var mon = day.date.toLocaleString('en-US',{month:'short'});
+      var dd = day.date.getDate();
+      return '<div title="'+mon+' '+dd+'" style="aspect-ratio:1;border-radius:5px;background:'+(day.worked?'var(--accent)':'var(--bs)')+';border:0.5px solid '+(day.worked?'var(--accent)':'var(--bo3)')+';">' +
+        '<div style="font-size:8px;color:'+(day.worked?'#fff':'var(--ts)')+';text-align:center;padding-top:3px;">'+dd+'</div>' +
+      '</div>';
+    }).join('') + '</div>';
+
+  // Progress bar to next rank
+  var progressBar = '';
+  if(next && nextThresh !== null){
+    var fromThresh = grade==='D'?0:grade==='C'?40:grade==='B'?60:grade==='A'?73:grade==='A+'?83:90;
+    var barPct = nextThresh > fromThresh ? Math.min(100, Math.round((pct - fromThresh) / (nextThresh - fromThresh) * 100)) : 100;
+    progressBar =
+      '<div style="margin-top:14px;">' +
+        '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--ts);margin-bottom:4px;">' +
+          '<span>'+gradeLabel(grade)+'</span><span style="color:'+gradeColor(next)+';">'+gradeLabel(next)+'</span>' +
+        '</div>' +
+        '<div style="height:6px;background:var(--bo3);border-radius:4px;overflow:hidden;">' +
+          '<div style="height:100%;width:'+barPct+'%;background:'+gColor+';border-radius:4px;transition:width .3s;"></div>' +
+        '</div>' +
+        '<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--ts);margin-top:4px;">' +
+          '<span>Start: <strong style="color:var(--tp);">'+Math.round(fromThresh*30/100)+'</strong></span>' +
+          '<span>Current: <strong style="color:var(--tp);">'+days+'</strong></span>' +
+          '<span>Goal: <strong style="color:var(--tp);">'+Math.round(nextThresh*30/100)+'</strong></span>' +
+        '</div>' +
+      '</div>';
+  } else {
+    progressBar = '<div style="margin-top:10px;font-size:12px;color:'+gColor+';">✦ Maximum rank achieved</div>';
+  }
+
+  showConfirm('Consistency', '', 'Close', function(){});
+  var modal = document.getElementById('confirm-modal');
+  var titleEl = modal ? modal.querySelector('.modal-title') : null;
+  var bodyEl = document.getElementById('confirm-modal-body');
+  var okBtn = document.getElementById('confirm-modal-ok');
+  if(titleEl) titleEl.textContent = '';
+  if(okBtn){ okBtn.textContent = 'Close'; okBtn.className = 'modal-btn'; }
+  var cancelBtn = modal ? modal.querySelector('.modal-btn:not(#confirm-modal-ok)') : null;
+  if(cancelBtn) cancelBtn.style.display = 'none';
+  // Restore cancel button when modal closes
+  if(okBtn){ var _origClick = okBtn.onclick; okBtn.onclick = function(){ closeModal('confirm-modal'); if(cancelBtn) cancelBtn.style.display = ''; }; }
+
+  if(bodyEl) bodyEl.innerHTML =
+    '<div style="text-align:center;margin-bottom:4px;">' +
+      '<div style="font-size:36px;font-weight:900;color:'+gColor+';">'+label+'</div>' +
+      '<div style="font-size:13px;color:var(--ts);margin-top:2px;">'+days+'/30 active days</div>' +
+    '</div>' +
+    progressBar +
+    '<div style="font-size:11px;color:var(--ts);text-transform:uppercase;letter-spacing:.05em;margin-top:16px;margin-bottom:6px;">Last 30 days</div>' +
+    heatmap;
+}
+
 function calcConsistency(h){
   var dates = new Set(h.map(function(e){ return new Date(e.ts).toDateString(); }));
   var count = 0;
@@ -3816,13 +3911,10 @@ function calcConsistency(h){
 }
 
 function calcConsistencyGrade(h){
-  var pct = Math.round((calcConsistency(h) / 30) * 100);
-  if(pct >= 90) return 'S';
-  if(pct >= 83) return 'A+';
-  if(pct >= 73) return 'A';
-  if(pct >= 60) return 'B';
-  if(pct >= 40) return 'C';
-  return 'D';
+  var days = calcConsistency(h);
+  var pct = Math.round((days / 30) * 100);
+  var grade = pct >= 90 ? 'S' : pct >= 83 ? 'A+' : pct >= 73 ? 'A' : pct >= 60 ? 'B' : pct >= 40 ? 'C' : 'D';
+  return {grade: grade, days: days, pct: pct};
 }
 
 function calcStreak(h){
@@ -4214,6 +4306,7 @@ async function viewUserProfile(userId){
       '<div class="hist-body"><div style="font-size:12px;color:var(--ts);margin-bottom:8px;">PB on '+pb.date+'</div><div class="hist-sets">'+lines+'</div></div>' +
     '</div>';
   }).join('') : '<div style="font-size:13px;color:var(--ts);text-align:center;padding:1rem;">No data yet.</div>';
+  window._upmWorkouts = workouts;
   document.getElementById('upm-badges').innerHTML = renderBadges(workouts);
   var upmStats = document.getElementById('upm-stats-row');
   if(upmStats){
@@ -4221,8 +4314,8 @@ async function viewUserProfile(userId){
     if(rawPrefs && rawPrefs.length && typeof rawPrefs[0] === 'string') rawPrefs = null;
     var ug = calcConsistencyGrade(workouts); var udays = calcConsistency(workouts); var upct = Math.round((udays/30)*100);
     var ugColor = ug==='S'?'#a855f7':ug==='A+'?'#3b82f6':ug==='A'?'#22c55e':ug==='B'?'#eab308':ug==='C'?'#f97316':'#6b7280';
-    var ulabel = ug==='S'?'Locked In':ug==='A+'?'Absolute Unit':ug==='A'?'Consistent':ug==='B'?'Committed':ug==='C'?'Building':'Starting Out';
-    var uConsCard = '<div style="background:var(--bs);border-radius:var(--r2);border:1.5px solid '+ugColor+';padding:12px 14px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;">' +
+    var ulabel = gradeLabel(ug);
+    var uConsCard = '<div onclick="openConsistencyModal(window._upmWorkouts)" style="cursor:pointer;background:var(--bs);border-radius:var(--r2);border:1.5px solid '+ugColor+';padding:12px 14px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;">' +
       '<div><div style="font-size:10px;font-weight:600;color:var(--ts);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px;">Consistency Rank</div>' +
       '<div style="font-size:13px;color:var(--ts);">'+udays+'/30 active days &mdash; '+upct+'%</div></div>' +
       '<div style="font-size:22px;font-weight:800;color:'+ugColor+';line-height:1;">'+ulabel+'</div>' +
