@@ -4109,8 +4109,10 @@ function switchUPMTab(tab){
   document.getElementById('upm-tab-workouts').classList.toggle('active', tab==='workouts');
   document.getElementById('upm-tab-pbs').classList.toggle('active', tab==='pbs');
   document.getElementById('upm-tab-friends').classList.toggle('active', tab==='friends');
-  document.getElementById('upm-badges').style.display = tab==='badges' ? '' : 'none';
   document.getElementById('upm-tab-badges').classList.toggle('active', tab==='badges');
+  // Hide stats row (consistency card + stat boxes) on badges tab
+  var statsRow = document.getElementById('upm-stats-row');
+  if(statsRow) statsRow.style.display = tab==='badges' ? 'none' : '';
 }
 
 async function viewUserProfile(userId){
