@@ -829,6 +829,26 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
 .comment-reply-input-row input:focus { outline:none; border-color:var(--accent); }
 .comment-reply-input-row button { font-size:12px; padding:7px 12px; border-radius:var(--r1); background:var(--accent); color:#fff; border:none; cursor:pointer; }
 
+/* ── Exercise info popup ── */
+.ex-info-btn { background: rgba(79,140,255,0.12); border: 1px solid rgba(79,140,255,0.3); color: var(--accent); cursor: pointer; padding: 3px 9px; font-size: 11px; font-weight: 700; line-height: 1.4; border-radius: var(--pill); font-family: var(--font); display: inline-flex; align-items: center; gap: 4px; letter-spacing: .02em; white-space: nowrap; }
+.ex-info-btn:active { background: rgba(79,140,255,0.22); }
+#ex-info-popup { z-index:400; }
+#ex-info-popup .modal { max-width:340px; padding:0; border-radius:var(--r3); overflow:hidden; }
+.ex-info-header { padding:14px 16px 12px; border-bottom:0.5px solid var(--bo3); display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.ex-info-title { font-size:15px; font-weight:700; color:var(--tp); letter-spacing:-.02em; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ex-info-body { padding:14px 16px; display:flex; flex-direction:column; gap:14px; }
+.ex-info-section-lbl { font-size:10px; font-weight:700; color:var(--ts); text-transform:uppercase; letter-spacing:.07em; margin-bottom:6px; }
+.ex-info-sets { display:flex; flex-direction:column; gap:4px; }
+.ex-info-set-row { display:flex; align-items:center; justify-content:space-between; font-size:13px; color:var(--tp); padding:5px 10px; background:var(--bs); border-radius:var(--r1); border:0.5px solid var(--bo3); }
+.ex-info-set-lbl { color:var(--ts); font-size:12px; }
+.ex-info-pb-row { display:flex; align-items:center; justify-content:space-between; font-size:13px; color:var(--tp); padding:8px 10px; background:var(--bs); border-radius:var(--r1); border:0.5px solid var(--bo3); }
+.ex-info-pb-val { font-weight:700; color:var(--accent); }
+.ex-info-empty { font-size:13px; color:var(--ts); font-style:italic; }
+.ex-info-footer { padding:4px 16px 14px; display:flex; gap:8px; }
+.ex-info-footer button { flex:1; padding:10px; border-radius:var(--r2); font-size:13px; font-weight:700; cursor:pointer; font-family:var(--font); border:none; }
+.ex-info-close-btn { background:var(--bs); color:var(--tp); border:0.5px solid var(--bo3) !important; }
+.ex-info-full-btn { background:var(--accent); color:#fff; }
+
 /* ── XP Modal ── */
 #xp-modal { z-index: 500; }
 #xp-modal .modal {
@@ -3010,7 +3030,8 @@ function renderBlocks(){
       return `<div class="exercise-card">
         <div class="ex-header">
           <span class="ex-name">${ex.name}${assistedBadge}</span>
-          <div style="display:flex;align-items:center;gap:4px;">
+          <div style="display:flex;align-items:center;gap:2px;">
+            <button class="ex-info-btn" onclick="openExInfo('${ex.name.replace(/'/g,"\\'")}')"><i class="ti ti-chart-bar"></i> Stats</button>
             <div class="ex-menu-wrap">
               <button class="ex-menu-btn" onclick="toggleExMenu(event,${bi})"><i class="ti ti-dots"></i></button>
               <div class="ex-menu-dropdown" id="ex-menu-${bi}" style="display:none;">
@@ -3034,9 +3055,9 @@ function renderBlocks(){
       return `<div class="superset-card">
         <div class="superset-label"><span><i class="ti ti-arrows-exchange"></i> Superset</span>
         <button class="remove-btn" onclick="confirmRemoveBlock(${bi})"><i class="ti ti-x"></i></button></div>
-        <div class="superset-ex"><div class="ex-header"><span class="ex-name">${e1.name}</span></div>${renderSetTable(e1,bi,0)}</div>
+        <div class="superset-ex"><div class="ex-header"><span class="ex-name">${e1.name}</span><button class="ex-info-btn" onclick="openExInfo('${e1.name.replace(/'/g,"\\'")}')"><i class="ti ti-chart-bar"></i> Stats</button></div>${renderSetTable(e1,bi,0)}</div>
         <div class="superset-divider">↕ paired with</div>
-        <div class="superset-ex"><div class="ex-header"><span class="ex-name">${e2.name}</span></div>${renderSetTable(e2,bi,1)}</div>
+        <div class="superset-ex"><div class="ex-header"><span class="ex-name">${e2.name}</span><button class="ex-info-btn" onclick="openExInfo('${e2.name.replace(/'/g,"\\'")}')"><i class="ti ti-chart-bar"></i> Stats</button></div>${renderSetTable(e2,bi,1)}</div>
       </div>`;
     }
     if(b.type === 'dropset'){
@@ -3048,7 +3069,8 @@ function renderBlocks(){
       return `<div class="dropset-card">
         <div class="ex-header">
           <span class="ex-name">${ex.name} <span class="ex-badge"><i class="ti ti-arrow-down"></i> Dropset</span>${assistedBadge}</span>
-          <div style="display:flex;align-items:center;gap:4px;">
+          <div style="display:flex;align-items:center;gap:2px;">
+            <button class="ex-info-btn" onclick="openExInfo('${ex.name.replace(/'/g,"\\'")}')"><i class="ti ti-chart-bar"></i> Stats</button>
             <div class="ex-menu-wrap">
               <button class="ex-menu-btn" onclick="toggleExMenu(event,${bi})"><i class="ti ti-dots"></i></button>
               <div class="ex-menu-dropdown" id="ex-menu-${bi}" style="display:none;">
@@ -5487,6 +5509,85 @@ async function showXpModal(entry, priorHistory){
   setTimeout(function(){ fill.style.width = newLevel.progress + '%'; }, 80);
 }
 
+var _exInfoCurrentName = null;
+
+function openExInfo(exName){
+  _exInfoCurrentName = exName;
+  document.getElementById('ex-info-name').textContent = exName;
+
+  // Build history data for this exercise
+  var sessions = [];
+  history.forEach(function(entry){
+    entry.blocks.forEach(function(b){
+      b.exercises.forEach(function(ex){
+        if(ex.name !== exName) return;
+        var sets = ex.dropSets ? [].concat.apply([], ex.dropSets) : (ex.sets || []);
+        var working = sets.filter(function(s){ return !s.warmup; });
+        if(working.length) sessions.push({ date: entry.date, sets: working, assisted: b.assisted || false });
+      });
+    });
+  });
+
+  // Most recent session (history is newest-first)
+  var last = sessions[0] || null;
+  // PB: best set by weight (then reps)
+  var pb = null;
+  sessions.forEach(function(sess){
+    sess.sets.forEach(function(s){
+      var w = parseFloat(s.w || s.weight) || 0;
+      var r = parseFloat(s.r || s.reps) || 0;
+      if(!pb || w > pb.w || (w === pb.w && r > pb.r)){
+        pb = { w: w, r: r, date: sess.date, assisted: sess.assisted };
+      }
+    });
+  });
+
+  function fw(v){ return (v === '' || v == null || v == 0) ? '—' : v + ' lbs'; }
+  function fr(v){ return (v === '' || v == null || v == 0) ? '—' : v + ' reps'; }
+
+  var html = '';
+
+  // Personal Best: label → date → set info
+  html += '<div>';
+  html += '<div class="ex-info-section-lbl">Personal Best</div>';
+  if(pb){
+    html += '<div style="font-size:11px;color:var(--ts);margin-bottom:6px;">' + pb.date + (pb.assisted ? ' · Assisted' : '') + '</div>';
+    html += '<div class="ex-info-pb-row"><span>🏆 Best set</span><span class="ex-info-pb-val">' + fw(pb.w) + ' × ' + fr(pb.r) + '</span></div>';
+  } else {
+    html += '<div class="ex-info-empty">No PB recorded yet.</div>';
+  }
+  html += '</div>';
+
+  // Last Session: label → date → set rows
+  html += '<div>';
+  html += '<div class="ex-info-section-lbl">Last Session</div>';
+  if(last){
+    html += '<div style="font-size:11px;color:var(--ts);margin-bottom:6px;">' + last.date + '</div>';
+    html += '<div class="ex-info-sets">' + last.sets.slice(0,5).map(function(s, i){
+      var w = parseFloat(s.w || s.weight) || 0;
+      var r = parseFloat(s.r || s.reps) || 0;
+      return '<div class="ex-info-set-row"><span class="ex-info-set-lbl">Set ' + (i+1) + '</span><span>' + fw(w) + ' × ' + fr(r) + '</span></div>';
+    }).join('') +
+    (last.sets.length > 5 ? '<div style="font-size:11px;color:var(--ts);text-align:center;padding-top:2px;">+' + (last.sets.length-5) + ' more sets</div>' : '') +
+    '</div>';
+  } else {
+    html += '<div class="ex-info-empty">No history yet.</div>';
+  }
+  html += '</div>';
+
+  document.getElementById('ex-info-body').innerHTML = html;
+  openModal('ex-info-popup');
+}
+
+function openFullExStats(){
+  var name = _exInfoCurrentName;
+  closeModal('ex-info-popup');
+  selEx = name;
+  switchTab('lookup');
+  switchProgressSub('exercises');
+  setTimeout(function(){ renderLookup(); }, 50);
+}
+
 function switchTab(tab){
   ['friends','log','lookup','history','profile'].forEach(t => document.getElementById('tab-'+t).style.display = t===tab?'':'none');
   const map = {friends:'btab-friends', lookup:'btab-lookup', history:'btab-history', profile:'btab-profile'};
@@ -5503,6 +5604,20 @@ function switchTab(tab){
 
 document.addEventListener('DOMContentLoaded', function(){ window._loadStart = Date.now(); localStorage.removeItem('wl_profile_stats'); init(); });
 </script>
+<!-- Exercise info quick-view popup -->
+<div class="modal-bg" id="ex-info-popup">
+  <div class="modal">
+    <div class="ex-info-header">
+      <span class="ex-info-title" id="ex-info-name"></span>
+      <button onclick="closeModal('ex-info-popup')" style="background:none;border:none;cursor:pointer;color:var(--ts);font-size:18px;line-height:1;padding:2px;"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="ex-info-body" id="ex-info-body"></div>
+    <div class="ex-info-footer">
+      <button class="ex-info-full-btn" id="ex-info-full-btn" onclick="openFullExStats()"><i class="ti ti-chart-line"></i> Full Stats</button>
+    </div>
+  </div>
+</div>
+
 <!-- Delete workout confirm -->
 <div class="modal-bg" id="del-workout-modal"><div class="modal">
   <div class="modal-title">Delete workout?</div>
