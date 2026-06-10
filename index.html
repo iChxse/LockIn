@@ -5138,11 +5138,14 @@ function getBadgeUpdates(snapBefore, snapAfter){
     updates.push({
       icon: after.icon,
       name: after.name,
+      nameBefore: before.earned > 0 ? before.name : null,
       valueBefore: before.value,
       valueAfter: after.value,
       nextThreshold: after.nextThreshold,
       unit: cat.unit || '',
-      tierUp: after.earned > before.earned
+      tierUp: after.earned > before.earned,
+      earnedBefore: before.earned,
+      earnedAfter: after.earned
     });
   });
   return updates;
@@ -5310,7 +5313,15 @@ function viewWorkoutReview(entry, priorHistory){
   var newTiers = badgeUpdates.filter(function(u){ return u.tierUp; });
   if(newTiers.length){
     breakdownHtml += newTiers.map(function(u){
-      return '<div class="xp-breakdown-row"><span>' + u.icon + ' ' + u.name + ' unlocked</span><span class="xp-breakdown-amt">+' + BADGE_TIER_XP + ' XP</span></div>';
+      var tiersGained = u.earnedAfter - u.earnedBefore;
+      var xpGained = tiersGained * BADGE_TIER_XP;
+      var beforeSuffix = u.nameBefore ? u.nameBefore.match(/([IVXLCDM]+)$/) : null;
+      var afterSuffix  = u.name.match(/([IVXLCDM]+)$/);
+      var label = u.earnedBefore === 0
+        ? u.icon + ' ' + u.name + ' unlocked'
+        : u.icon + ' ' + u.name.replace(/\s+[IVXLCDM]+$/, '') + ' ' +
+          (beforeSuffix ? beforeSuffix[1] : '') + ' → ' + (afterSuffix ? afterSuffix[1] : u.name);
+      return '<div class="xp-breakdown-row"><span>' + label + '</span><span class="xp-breakdown-amt">+' + xpGained + ' XP</span></div>';
     }).join('');
   }
   document.getElementById('xp-breakdown').innerHTML = breakdownHtml;
@@ -5320,8 +5331,12 @@ function viewWorkoutReview(entry, priorHistory){
     badgeSec.style.display = '';
     document.getElementById('xp-badge-updates').innerHTML = badgeUpdates.map(function(u){
       var prog = u.nextThreshold ? (u.valueAfter + ' / ' + u.nextThreshold + (u.unit ? ' ' + u.unit : '')) : 'Max!';
-      var tierTag = u.tierUp ? ' <span style="font-size:10px;background:var(--accent-soft);color:var(--accent);padding:1px 6px;border-radius:var(--pill);font-weight:700;">Tier Up!</span>' : '';
-      return '<div class="xp-badge-row"><span class="xp-badge-icon">' + u.icon + '</span><span class="xp-badge-name">' + u.name + tierTag + '</span><span class="xp-badge-prog">' + prog + '</span></div>';
+      var beforeSuffix = u.nameBefore ? u.nameBefore.match(/([IVXLCDM]+)$/) : null;
+      var afterSuffix  = u.name.match(/([IVXLCDM]+)$/);
+      var displayName = u.tierUp && beforeSuffix && afterSuffix
+        ? u.name.replace(/\s+[IVXLCDM]+$/, '') + ' ' + beforeSuffix[1] + ' → ' + afterSuffix[1]
+        : u.name;
+      return '<div class="xp-badge-row"><span class="xp-badge-icon">' + u.icon + '</span><span class="xp-badge-name">' + displayName + '</span><span class="xp-badge-prog">' + prog + '</span></div>';
     }).join('');
   } else {
     badgeSec.style.display = 'none';
@@ -5386,7 +5401,15 @@ async function showXpModal(entry, priorHistory){
   var newTiers = badgeUpdates.filter(function(u){ return u.tierUp; });
   if(newTiers.length){
     breakdownHtml += newTiers.map(function(u){
-      return '<div class="xp-breakdown-row"><span>' + u.icon + ' ' + u.name + ' unlocked</span><span class="xp-breakdown-amt">+' + BADGE_TIER_XP + ' XP</span></div>';
+      var tiersGained = u.earnedAfter - u.earnedBefore;
+      var xpGained = tiersGained * BADGE_TIER_XP;
+      var beforeSuffix = u.nameBefore ? u.nameBefore.match(/([IVXLCDM]+)$/) : null;
+      var afterSuffix  = u.name.match(/([IVXLCDM]+)$/);
+      var label = u.earnedBefore === 0
+        ? u.icon + ' ' + u.name + ' unlocked'
+        : u.icon + ' ' + u.name.replace(/\s+[IVXLCDM]+$/, '') + ' ' +
+          (beforeSuffix ? beforeSuffix[1] : '') + ' → ' + (afterSuffix ? afterSuffix[1] : u.name);
+      return '<div class="xp-breakdown-row"><span>' + label + '</span><span class="xp-breakdown-amt">+' + xpGained + ' XP</span></div>';
     }).join('');
   }
   document.getElementById('xp-breakdown').innerHTML = breakdownHtml;
@@ -5397,8 +5420,12 @@ async function showXpModal(entry, priorHistory){
     badgeSec.style.display = '';
     document.getElementById('xp-badge-updates').innerHTML = badgeUpdates.map(function(u){
       var prog = u.nextThreshold ? (u.valueAfter + ' / ' + u.nextThreshold + (u.unit ? ' ' + u.unit : '')) : 'Max!';
-      var tierTag = u.tierUp ? ' <span style="font-size:10px;background:var(--accent-soft);color:var(--accent);padding:1px 6px;border-radius:var(--pill);font-weight:700;">Tier Up!</span>' : '';
-      return '<div class="xp-badge-row"><span class="xp-badge-icon">' + u.icon + '</span><span class="xp-badge-name">' + u.name + tierTag + '</span><span class="xp-badge-prog">' + prog + '</span></div>';
+      var beforeSuffix = u.nameBefore ? u.nameBefore.match(/([IVXLCDM]+)$/) : null;
+      var afterSuffix  = u.name.match(/([IVXLCDM]+)$/);
+      var displayName = u.tierUp && beforeSuffix && afterSuffix
+        ? u.name.replace(/\s+[IVXLCDM]+$/, '') + ' ' + beforeSuffix[1] + ' → ' + afterSuffix[1]
+        : u.name;
+      return '<div class="xp-badge-row"><span class="xp-badge-icon">' + u.icon + '</span><span class="xp-badge-name">' + displayName + '</span><span class="xp-badge-prog">' + prog + '</span></div>';
     }).join('');
   } else {
     badgeSec.style.display = 'none';
