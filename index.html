@@ -787,9 +787,9 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
 .badge-next { font-size:11px; color:var(--ts); margin-top:3px; opacity:0.7; }
 
 .profile-stats-row { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:1.25rem; }
-.profile-stat-box { background:var(--bs); border-radius:var(--r2); border:0.5px solid var(--bo3); padding:10px 8px; text-align:center; cursor:pointer; }
+.profile-stat-box { background:var(--bs); border-radius:var(--r2); border:0.5px solid var(--bo3); padding:10px 8px; text-align:center; cursor:pointer; overflow:hidden; min-width:0; }
 .profile-stat-box:active { opacity:.7; }
-.profile-stat-val { font-size:18px; font-weight:700; color:var(--tp); line-height:1; margin-bottom:3px; }
+.profile-stat-val { font-size:18px; font-weight:700; color:var(--tp); line-height:1; margin-bottom:4px; }
 .profile-stat-lbl { font-size:10px; color:var(--ts); text-transform:uppercase; letter-spacing:.04em; font-weight:500; }
 .member-since { font-size:11px; color:var(--ts); margin-top:2px; }
 @media screen and (orientation: landscape) and (max-width: 900px) {
@@ -828,6 +828,166 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
 .comment-reply-input-row input { flex:1; font-size:12px; padding:7px 10px; border:1px solid var(--bo3); border-radius:var(--r1); background:var(--input-bg); color:var(--tp); }
 .comment-reply-input-row input:focus { outline:none; border-color:var(--accent); }
 .comment-reply-input-row button { font-size:12px; padding:7px 12px; border-radius:var(--r1); background:var(--accent); color:#fff; border:none; cursor:pointer; }
+
+/* ── XP Modal ── */
+#xp-modal { z-index: 500; }
+#xp-modal .modal {
+  max-width: 360px;
+  padding: 0;
+  overflow: hidden;
+  border-radius: var(--r3);
+}
+.xp-modal-header {
+  background: linear-gradient(135deg, #1a1f35 0%, #0f1220 100%);
+  border-bottom: 1px solid var(--bo3);
+  padding: 1.5rem 1.5rem 1.25rem;
+  text-align: center;
+}
+.xp-modal-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ts);
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  margin-bottom: 6px;
+}
+.xp-modal-total {
+  font-size: 42px;
+  font-weight: 900;
+  color: var(--accent);
+  letter-spacing: -0.03em;
+  line-height: 1;
+  margin-bottom: 2px;
+}
+.xp-modal-total-lbl {
+  font-size: 13px;
+  color: var(--ts);
+  font-weight: 500;
+}
+.xp-modal-body { padding: 1.25rem 1.5rem; }
+.xp-level-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.xp-level-badge {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--tp);
+}
+.xp-level-next {
+  font-size: 11px;
+  color: var(--ts);
+}
+.xp-bar-wrap {
+  height: 7px;
+  background: var(--bo3);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 5px;
+}
+.xp-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent-hover));
+  border-radius: 4px;
+  width: 0;
+  transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.xp-bar-numbers {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--ts);
+  margin-bottom: 1.25rem;
+}
+.xp-section-lbl {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--ts);
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  margin-bottom: 8px;
+}
+.xp-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 1rem;
+}
+.xp-breakdown-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  color: var(--tp);
+  padding: 7px 10px;
+  background: var(--bs);
+  border-radius: var(--r1);
+  border: 0.5px solid var(--bo3);
+}
+.xp-breakdown-amt {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+.xp-badge-updates {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 1rem;
+}
+.xp-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  background: var(--bs);
+  border-radius: var(--r1);
+  border: 0.5px solid var(--bo3);
+  font-size: 12px;
+  color: var(--ts);
+}
+.xp-badge-row .xp-badge-icon { font-size: 16px; flex-shrink: 0; }
+.xp-badge-row .xp-badge-name { font-weight: 600; color: var(--tp); flex: 1; min-width: 0; }
+.xp-badge-row .xp-badge-prog { flex-shrink: 0; font-size: 11px; color: var(--ts); white-space: nowrap; }
+.xp-levelup-banner {
+  background: linear-gradient(135deg, rgba(79,140,255,0.18), rgba(79,140,255,0.06));
+  border: 1px solid var(--accent);
+  border-radius: var(--r2);
+  padding: 12px 14px;
+  text-align: center;
+  margin-bottom: 1rem;
+}
+.xp-levelup-banner .xp-levelup-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--accent);
+  letter-spacing: .03em;
+}
+.xp-levelup-banner .xp-levelup-sub {
+  font-size: 12px;
+  color: var(--ts);
+  margin-top: 2px;
+}
+.xp-modal-footer {
+  padding: 0 1.5rem 1.5rem;
+}
+.xp-close-btn {
+  width: 100%;
+  padding: 13px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--r2);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: var(--font);
+  transition: background 0.15s;
+}
+.xp-close-btn:active { background: var(--accent-hover); }
 </style>
 <div id="rotate-overlay" style="display:none;position:fixed;inset:0;background:var(--bs);z-index:9999;flex-direction:column;align-items:center;justify-content:center;gap:16px;">
   <i class="ti ti-rotate" style="font-size:48px;color:var(--tp);"></i>
@@ -1187,14 +1347,49 @@ async function doForgotPassword(){
 
 async function doSignOut(){
   await sb.auth.signOut();
-  currentUser = null; currentProfile = null;
-  history = []; EX = JSON.parse(JSON.stringify(DEF));
-  renderBlocks(); renderDayChips();
+
+  // ── Clear all user state ──
+  currentUser = null;
+  currentProfile = null;
+  history = [];
+  blocks = [];
+  EX = JSON.parse(JSON.stringify(DEF));
+  selEx = null;
+  _profileTabSection = 'workouts';
+  _taggedFriends = [];
+  _editTaggedFriends = [];
+  window._feedWorkouts = [];
+  window._profileTabWorkouts = [];
+  window._friendWorkouts = [];
+  pendingDeleteWorkoutIdx = null;
+  pendingDeleteWorkoutTs = null;
+  pendingEditWorkoutIdx = null;
+
+  // ── Wipe all rendered tab content so previous account data isn't visible ──
+  var tabIds = ['tab-friends', 'tab-log', 'tab-lookup', 'tab-history', 'tab-profile'];
+  var clearIds = [
+    'friends-feed-content', 'hist-list', 'lookup-content',
+    'tab-profile', 'blocks-list'
+  ];
+  clearIds.forEach(function(id){
+    var el = document.getElementById(id);
+    if(el) el.innerHTML = '';
+  });
+
+  // ── Close any open modals ──
+  document.querySelectorAll('.modal-bg.open').forEach(function(m){
+    m.classList.remove('open');
+  });
+  document.body.style.overflow = '';
+
+  renderBlocks();
+  renderDayChips();
   closeModal('profile-modal');
   document.getElementById('auth-screen').classList.add('show');
-  var _g=document.getElementById('greeting'); if(_g) _g.textContent = '';
-  var _td=document.getElementById('today-date'); if(_td) _td.textContent = '';
-  setSS('ok','Signed out');
+  var _g = document.getElementById('greeting'); if(_g) _g.textContent = '';
+  var _td = document.getElementById('today-date'); if(_td) _td.textContent = '';
+  var hs = document.getElementById('header-streak'); if(hs) hs.innerHTML = '';
+  setSS('ok', 'Signed out');
 }
 
 async function onAuthSuccess(user){
@@ -1210,6 +1405,11 @@ async function onAuthSuccess(user){
   currentProfile = profile;
   updateGreeting();
   await loadFromSupabase();
+  // ── XP: always derive from history on login to stay in sync ──
+  // This is fast (pure JS, no extra network calls beyond the Supabase
+  // write) and ensures users coming from the old increment system, or
+  // who deleted/edited workouts while offline, are always correct.
+  await backfillXp();
   await restoreExercisesFromHistory();
   renderDayChips();
   renderFeed();
@@ -1255,6 +1455,29 @@ async function renderProfileTab(){
         (function(){ return ''; })() +
       '</div>' +
     '</div>' +
+    (function(){
+      var xpTotal = (currentProfile && currentProfile.xp) ? currentProfile.xp : 0;
+      var lvl = getLevelFromXp(xpTotal);
+      var barPct = lvl.progress;
+      var nextInfo = lvl.nextLevelXp !== null
+        ? '<span style="font-size:11px;color:var(--ts);">' + (lvl.nextLevelXp - xpTotal).toLocaleString() + ' XP to Level ' + (lvl.level+1) + '</span>'
+        : '<span style="font-size:11px;color:var(--accent);">Max Level</span>';
+      return '<div style="background:var(--bs);border-radius:var(--r2);border:0.5px solid var(--bo3);padding:12px 14px;margin-bottom:10px;">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">' +
+          '<div style="font-size:10px;font-weight:700;color:var(--ts);text-transform:uppercase;letter-spacing:.06em;">Level</div>' +
+          nextInfo +
+        '</div>' +
+        '<div style="display:flex;align-items:center;gap:10px;">' +
+          '<div style="font-size:28px;font-weight:900;color:var(--accent);letter-spacing:-0.03em;line-height:1;flex-shrink:0;">'+lvl.level+'</div>' +
+          '<div style="flex:1;">' +
+            '<div style="height:6px;background:var(--bo3);border-radius:4px;overflow:hidden;margin-bottom:4px;">' +
+              '<div style="height:100%;width:'+barPct+'%;background:linear-gradient(90deg,var(--accent),var(--accent-hover));border-radius:4px;"></div>' +
+            '</div>' +
+            '<div style="font-size:11px;color:var(--ts);">'+xpTotal.toLocaleString()+' total XP</div>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    })() +
     (function(){
       var g = calcConsistencyGrade(workouts||[]);
       var days = calcConsistency(workouts||[]);
@@ -1303,6 +1526,7 @@ function renderProfileTabBody(workouts, userId){
   if(!body) return;
 
   if(_profileTabSection === 'workouts'){
+    window._profileTabWorkouts = workouts;
     if(!workouts.length){ body.innerHTML='<div class="empty">No workouts yet.</div>'; return; }
     body.innerHTML = workouts.map(function(entry,idx){
       const exNames = entry.blocks.flatMap(function(b){return b.exercises.map(function(e){return e.name;});});
@@ -1328,7 +1552,7 @@ function renderProfileTabBody(workouts, userId){
           '<div class="hist-hdr-left"><div class="hist-date">'+entry.date+(entry.duration_seconds && entry.duration_seconds >= 10 ? ' <span style="font-size:11px;color:var(--ts);font-weight:400;">· '+(entry.duration_seconds >= 3600 ? Math.floor(entry.duration_seconds/3600)+'h '+Math.floor((entry.duration_seconds%3600)/60)+'m' : Math.round(entry.duration_seconds/60)+' min')+'</span>' : '')+'</div><div class="hist-label-row">'+wlabel+tagged+'</div></div>' +
           '<i class="ti ti-chevron-down hist-chevron"></i>' +
         '</div>' +
-        '<div class="hist-body">'+(wdesc||'')+bodyBlocks+'<button class="icon-btn" onclick="copyProfileWorkout('+idx+')" style="width:100%;justify-content:center;margin-top:10px;font-size:12px;padding:6px 12px;"><i class="ti ti-copy"></i> Copy Workout</button></div>' +
+        '<div class="hist-body">'+(wdesc||'')+bodyBlocks+'<button class="icon-btn" onclick="copyProfileWorkout('+idx+')" style="width:100%;justify-content:center;margin-top:10px;font-size:12px;padding:6px 12px;"><i class="ti ti-copy"></i> Copy Workout</button><button class="icon-btn" onclick="viewWorkoutReview(window._profileTabWorkouts['+idx+'],window._profileTabWorkouts.slice('+idx+'+1))" style="width:100%;justify-content:center;margin-top:6px;font-size:12px;padding:6px 12px;color:var(--accent);border-color:var(--accent);"><i class="ti ti-award"></i> Workout Review</button></div>' +
       '</div>';
     }).join('');
   }
@@ -2849,7 +3073,11 @@ function saveWorkout(){
   localStorage.removeItem('wl_timer');
 
   const d = new Date();
-  history.unshift({
+
+  // ── XP: snapshot prior history BEFORE new entry is added ──
+  var _priorHistoryForXp = history.slice();
+
+  const newEntry = {
     date: d.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'}),
     ts: d.toISOString(),
     label: label || null,
@@ -2857,13 +3085,18 @@ function saveWorkout(){
     tagged: _taggedFriends.length ? JSON.parse(JSON.stringify(_taggedFriends)) : null,
     duration_seconds: durationSeconds,
     blocks: JSON.parse(JSON.stringify(blocks))
-  });
+  };
+
+  history.unshift(newEntry);
   blocks=[]; renderBlocks(); renderExSelect(); closePicker();
   closeModal('save-workout-modal');
   document.getElementById('day-inp').value = '';
   if(document.getElementById('day-desc')) document.getElementById('day-desc').value = '';
   resetTaggedFriends();
   showMsg('Saving...'); saveToSupabase(history[0]); renderDayChips(); showMsg('Workout saved!');
+
+  // ── XP: show modal after save modal closes ──
+  setTimeout(function(){ showXpModal(newEntry, _priorHistoryForXp); }, 350);
 }
 
 function showMsg(m){
@@ -3255,6 +3488,7 @@ function renderHistory(){
         ${entry.desc ? `<div style="font-size:13px;color:var(--ts);margin-bottom:10px;padding-bottom:10px;border-bottom:0.5px solid var(--bo3);">${entry.desc}</div>` : ''}
         ${bodyBlocks}
         <button class="icon-btn" onclick="copyProfileWorkout(${idx})" style="width:100%;justify-content:center;margin-top:10px;font-size:12px;padding:6px 12px;"><i class="ti ti-copy"></i> Copy Workout</button>
+        <button class="icon-btn" onclick="viewWorkoutReview(history[${idx}], history.slice(${idx}+1))" style="width:100%;justify-content:center;margin-top:6px;font-size:12px;padding:6px 12px;color:var(--accent);border-color:var(--accent);"><i class="ti ti-award"></i> Workout Review</button>
       </div>
     </div>`;
   }).join('');
@@ -3469,6 +3703,8 @@ async function confirmDeleteWorkout(){
 
   renderHistory();
   renderFeed();
+  // XP is derived — recalculate now that a workout is gone
+  recalcAndSaveXp(history);
 
   if(currentUser && entry.id){
     const { error } = await sb.from('workouts').delete().eq('id', entry.id).eq('user_id', currentUser.id);
@@ -3645,6 +3881,8 @@ async function confirmEditWorkout(){
   pendingEditWorkoutIdx = null;
   closeModal('edit-workout-modal');
   renderHistory();
+  // XP is derived — recalculate in case PBs or tags changed
+  recalcAndSaveXp(history);
   // Reset progress tab so PBs recalculate with new data
   selEx = null;
   renderFeed();
@@ -4004,18 +4242,10 @@ function toRoman(n){
 function numberWithCommas(n){ return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g,','); }
 
 function renderBadges(workoutHistory){
-  // For each category, figure out earned tier and next tier
+  // For each category, figure out earned tier count using the same
+  // countEarnedTiersForCat used by calcBadgeXp — keeps display in sync with XP.
   var items = BADGE_CATEGORIES.map(function(cat){
-    var earned = -1;
-    cat.tiers.forEach(function(t,i){ if(t.check(workoutHistory)) earned = i; });
-    // Extend beyond defined tiers
-    if(earned === cat.tiers.length - 1 && cat.getValue && cat.tiers.length > 1){
-      var last = cat.tiers[cat.tiers.length-1];
-      var step = last.threshold - cat.tiers[cat.tiers.length-2].threshold;
-      var cur = cat.getValue(workoutHistory);
-      var extra = Math.floor((cur - last.threshold) / step);
-      if(extra > 0) earned += extra;
-    }
+    var earned = countDisplayTiersForCat(cat, workoutHistory) - 1; // convert to 0-based index (-1 = none)
     return {cat:cat, earned:earned};
   });
 
@@ -4108,16 +4338,8 @@ async function saveProfileStats(arr){
 }
 
 function getBadgeStat(cat, workoutHistory){
-  // Returns {icon, name, value, sublabel} for displaying a badge as a stat
-  var earned = -1;
-  cat.tiers.forEach(function(t,i){ if(t.check(workoutHistory)) earned = i; });
-  if(earned === cat.tiers.length - 1 && cat.getValue && cat.tiers.length > 1){
-    var last = cat.tiers[cat.tiers.length-1];
-    var step = last.threshold - cat.tiers[cat.tiers.length-2].threshold;
-    var cur = cat.getValue(workoutHistory);
-    var extra = Math.floor((cur - last.threshold) / step);
-    if(extra > 0) earned += extra;
-  }
+  var earnedCount = countDisplayTiersForCat(cat, workoutHistory); // total tiers cleared
+  var earned = earnedCount - 1; // 0-based index (-1 = none earned)
   var lastDef = cat.tiers.length - 1;
   var step2 = cat.tiers.length > 1 ? cat.tiers[lastDef].threshold - cat.tiers[lastDef-1].threshold : cat.tiers[0].threshold;
   var baseName = cat.tiers[lastDef].name.replace(/\s+[IVXLCDM]+$/, '');
@@ -4128,47 +4350,111 @@ function getBadgeStat(cat, workoutHistory){
     return { icon: cat.tiers[lastDef].icon, name: baseName + ' ' + toRoman(lastDef + 1 + over), threshold: cat.tiers[lastDef].threshold + over * step2 };
   }
   var cur2 = earned >= 0 ? getTier(earned) : null;
+  var fullName = cur2 ? cur2.name : cat.tiers[0].name;
+  var splitMatch = fullName.match(/^(.*?)\s+([IVXLCDM]+)$/);
+  var tierBaseName = splitMatch ? splitMatch[1] : fullName;
+  var tierSuffix   = splitMatch ? splitMatch[2] : '';
   return {
     icon: cat.tiers[Math.min(Math.max(earned,0), lastDef)].icon,
-    name: cur2 ? cur2.name : cat.tiers[0].name,
+    name: fullName,
+    baseName: tierBaseName,
+    tierSuffix: tierSuffix,
     value: cat.getValue ? (cat.getValue(workoutHistory) + (cat.unit||'')) : (earned >= 0 ? 'Earned' : '—'),
-    tier: cur2 ? cur2.name : '—'
+    tier: fullName
   };
 }
 
-function renderProfileStatsRow(workoutHistory, editable, prefs){
+// Badge display slots unlock at these levels
+var BADGE_SLOT_LEVELS = [5, 15, 30];
+
+function renderProfileStatsRow(workoutHistory, editable, prefs, userLevel){
   var chosen = prefs ? prefs : (editable ? getProfileStats() : [0,1,2]);
+  // userLevel: if not passed, derive from currentProfile.xp (own profile)
+  var level = userLevel != null ? userLevel : (function(){
+    var xp = (currentProfile && currentProfile.xp) ? currentProfile.xp : 0;
+    return getLevelFromXp(xp).level;
+  })();
+
+  // ── Deduplicate: each slot must show a unique category ──
+  var ranked = BADGE_CATEGORIES.map(function(cat, idx){
+    return { idx: idx, score: countDisplayTiersForCat(cat, workoutHistory) };
+  }).sort(function(a, b){ return b.score - a.score; });
+
+  var usedIndices = [];
+  var resolved = chosen.slice(0, 3).map(function(catIdx){
+    if(usedIndices.indexOf(catIdx) === -1){
+      usedIndices.push(catIdx);
+      return catIdx;
+    }
+    for(var i = 0; i < ranked.length; i++){
+      if(usedIndices.indexOf(ranked[i].idx) === -1){
+        usedIndices.push(ranked[i].idx);
+        return ranked[i].idx;
+      }
+    }
+    return catIdx;
+  });
+
+  var ordinals = ['1st', '2nd', '3rd'];
+
   return '<div class="profile-stats-row">' +
-    chosen.map(function(catIdx, slotIdx){
+    resolved.map(function(catIdx, slotIdx){
+      var requiredLevel = BADGE_SLOT_LEVELS[slotIdx];
+      var locked = level < requiredLevel;
+
+      if(locked){
+        return '<div class="profile-stat-box" style="opacity:0.4;cursor:default;pointer-events:none;justify-content:center;display:flex;flex-direction:column;align-items:center;">' +
+          '<div style="font-size:18px;margin-bottom:4px;">🔒</div>' +
+          '<div style="overflow:hidden;text-align:center;">' +
+            '<div style="font-size:10px;font-weight:600;color:var(--ts);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3;">' + ordinals[slotIdx] + ' Badge</div>' +
+            '<div style="font-size:10px;color:var(--ts);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3;">Level ' + requiredLevel + '</div>' +
+          '</div>' +
+        '</div>';
+      }
+
       var cat = BADGE_CATEGORIES[catIdx];
       if(!cat) return '';
       var stat = getBadgeStat(cat, workoutHistory);
       return '<div class="profile-stat-box"' + (editable ? ' onclick="openStatPicker('+slotIdx+')"' : '') + '>' +
         '<div class="profile-stat-val">' + stat.icon + '</div>' +
-        '<div class="profile-stat-lbl">' + stat.tier + (editable ? ' <i class="ti ti-chevron-down" style="font-size:9px;opacity:.5;"></i>' : '') + '</div>' +
+        '<div style="overflow:hidden;">' +
+          '<div style="font-size:11px;font-weight:600;color:var(--tp);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3;">' + stat.baseName + '</div>' +
+          '<div style="font-size:10px;color:var(--ts);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3;">' + (stat.tierSuffix || '—') + '</div>' +
+        '</div>' +
       '</div>';
     }).join('') +
   '</div>';
 }
 
 function openStatPicker(slotIdx){
+  // Check slot is unlocked for this user
+  var userLevel = (currentProfile && currentProfile.xp) ? getLevelFromXp(currentProfile.xp).level : 1;
+  if(userLevel < BADGE_SLOT_LEVELS[slotIdx]) return;
+
   var chosen = getProfileStats();
   document.querySelectorAll('.stat-picker-dropdown').forEach(function(el){ el.remove(); });
   var boxes = document.querySelectorAll('.profile-stat-box');
   var box = boxes[slotIdx];
   if(!box) return;
+  // Categories already used in OTHER slots (not this one)
+  var otherSlots = chosen.filter(function(_, i){ return i !== slotIdx; });
   var dropdown = document.createElement('div');
   dropdown.className = 'stat-picker-dropdown';
   dropdown.style.cssText = 'position:fixed;z-index:300;background:var(--bp);border:0.5px solid var(--bo3);border-radius:var(--r2);box-shadow:0 4px 16px rgba(0,0,0,.25);min-width:180px;overflow:hidden;';
   BADGE_CATEGORIES.forEach(function(cat, catIdx){
     var baseName = cat.tiers[cat.tiers.length-1].name.replace(/\s+[IVXLCDM]+$/, '');
+    var isActive = chosen[slotIdx] === catIdx;
+    var isTaken = otherSlots.indexOf(catIdx) !== -1;
     var item = document.createElement('div');
-    item.style.cssText = 'padding:11px 14px;font-size:13px;cursor:pointer;'+(chosen[slotIdx]===catIdx?'color:var(--tp);font-weight:600;background:var(--bs);':'color:var(--ts);');
-    item.textContent = cat.tiers[0].icon + ' ' + baseName;
-    item.addEventListener('click', function(e){
-      e.stopPropagation();
-      pickStat(slotIdx, catIdx);
-    });
+    item.style.cssText = 'padding:11px 14px;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;' +
+      (isActive ? 'color:var(--tp);font-weight:600;background:var(--bs);' : isTaken ? 'color:var(--bo3);pointer-events:none;' : 'color:var(--ts);');
+    item.innerHTML = cat.tiers[0].icon + ' ' + baseName + (isTaken ? ' <span style="font-size:10px;opacity:.5;">in use</span>' : '');
+    if(!isTaken){
+      item.addEventListener('click', function(e){
+        e.stopPropagation();
+        pickStat(slotIdx, catIdx);
+      });
+    }
     dropdown.appendChild(item);
   });
   var rect = box.getBoundingClientRect();
@@ -4312,6 +4598,31 @@ async function viewUserProfile(userId){
   if(upmStats){
     var rawPrefs = (profile && profile.stat_prefs) ? profile.stat_prefs : null;
     if(rawPrefs && rawPrefs.length && typeof rawPrefs[0] === 'string') rawPrefs = null;
+
+    // Level card
+    var uXp = (profile && profile.xp) ? profile.xp : 0;
+    var uLvl = getLevelFromXp(uXp);
+    var uBarPct = uLvl.progress;
+    var uNextInfo = uLvl.nextLevelXp !== null
+      ? (uLvl.nextLevelXp - uXp).toLocaleString() + ' XP to Level ' + (uLvl.level + 1)
+      : 'Max Level';
+    var uLevelCard = '<div style="background:var(--bs);border-radius:var(--r2);border:0.5px solid var(--bo3);padding:12px 14px;margin-bottom:10px;">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">' +
+        '<div style="font-size:10px;font-weight:700;color:var(--ts);text-transform:uppercase;letter-spacing:.06em;">Level</div>' +
+        '<span style="font-size:11px;color:var(--ts);">' + uNextInfo + '</span>' +
+      '</div>' +
+      '<div style="display:flex;align-items:center;gap:10px;">' +
+        '<div style="font-size:28px;font-weight:900;color:var(--accent);letter-spacing:-0.03em;line-height:1;flex-shrink:0;">' + uLvl.level + '</div>' +
+        '<div style="flex:1;">' +
+          '<div style="height:6px;background:var(--bo3);border-radius:4px;overflow:hidden;margin-bottom:4px;">' +
+            '<div style="height:100%;width:' + uBarPct + '%;background:linear-gradient(90deg,var(--accent),var(--accent-hover));border-radius:4px;"></div>' +
+          '</div>' +
+          '<div style="font-size:11px;color:var(--ts);">' + uXp.toLocaleString() + ' total XP</div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+
+    // Consistency card
     var ug = calcConsistencyGrade(workouts); var udays = calcConsistency(workouts); var upct = Math.round((udays/30)*100);
     var ugColor = ug==='S'?'#a855f7':ug==='A+'?'#3b82f6':ug==='A'?'#22c55e':ug==='B'?'#eab308':ug==='C'?'#f97316':'#6b7280';
     var ulabel = gradeLabel(ug);
@@ -4320,7 +4631,8 @@ async function viewUserProfile(userId){
       '<div style="font-size:13px;color:var(--ts);">'+udays+'/30 active days &mdash; '+upct+'%</div></div>' +
       '<div style="font-size:22px;font-weight:800;color:'+ugColor+';line-height:1;">'+ulabel+'</div>' +
     '</div>';
-    upmStats.innerHTML = uConsCard + renderProfileStatsRow(workouts, false, rawPrefs || [0,1,2]);
+
+    upmStats.innerHTML = uLevelCard + uConsCard + renderProfileStatsRow(workouts, false, rawPrefs || [0,1,2], uLvl.level);
   }
   } // end else (has workouts)
 
@@ -4615,6 +4927,483 @@ function renderProgressChart(sessions){
 }
 
 
+// ═══════════════════════════════════════════════════
+// XP & LEVEL SYSTEM
+// ═══════════════════════════════════════════════════
+
+// Level thresholds — XP required to REACH that level
+// Level 1 starts at 0. Each entry is cumulative total XP needed.
+var XP_LEVELS = (function(){
+  // Hand-crafted curve: fast early, slows down gradually
+  var thresholds = [0, 100, 250, 450, 700, 1000, 1350, 1750, 2200, 2700, 3250];
+  // After level 10, each level costs 600 more than the last step
+  // Last defined gap: 3250-2700 = 550. We increment by 50 each tier after that.
+  var lastGap = 550;
+  for(var i = 11; i <= 100; i++){
+    lastGap += 50;
+    thresholds.push(thresholds[thresholds.length-1] + lastGap);
+  }
+  return thresholds;
+})();
+
+function getLevelFromXp(totalXp){
+  var level = 1;
+  for(var i = 1; i < XP_LEVELS.length; i++){
+    if(totalXp >= XP_LEVELS[i]) level = i + 1;
+    else break;
+  }
+  level = Math.min(level, XP_LEVELS.length);
+  var levelIdx = level - 1; // 0-based index
+  var currentLevelXp = XP_LEVELS[levelIdx] || 0;
+  var nextLevelXp = XP_LEVELS[levelIdx + 1] || null;
+  var xpIntoLevel = totalXp - currentLevelXp;
+  var xpNeededForLevel = nextLevelXp !== null ? nextLevelXp - currentLevelXp : null;
+  var progress = xpNeededForLevel ? Math.min(100, Math.round((xpIntoLevel / xpNeededForLevel) * 100)) : 100;
+  return {
+    level: level,
+    totalXp: totalXp,
+    currentLevelXp: currentLevelXp,
+    nextLevelXp: nextLevelXp,
+    xpIntoLevel: xpIntoLevel,
+    xpNeededForLevel: xpNeededForLevel,
+    progress: progress
+  };
+}
+
+// Detect PBs for the NEW entry vs prior history (pass history WITHOUT the new entry)
+function detectNewPBs(newEntry, priorHistory){
+  var pbMap = {};
+  priorHistory.forEach(function(e){
+    e.blocks.forEach(function(b){
+      var assisted = b.assisted || false;
+      b.exercises.forEach(function(ex){
+        var sets = ex.dropSets ? [].concat.apply([], ex.dropSets) : (ex.sets || []);
+        sets.forEach(function(s){
+          var w = parseFloat(s.w || s.weight) || 0;
+          var r = parseFloat(s.r || s.reps) || 0;
+          if(!pbMap[ex.name]) pbMap[ex.name] = {bestW: assisted ? Infinity : -1, bestR: 0, assisted: assisted};
+          if(assisted){
+            if(w < pbMap[ex.name].bestW || (w === pbMap[ex.name].bestW && r > pbMap[ex.name].bestR)){
+              pbMap[ex.name].bestW = w; pbMap[ex.name].bestR = r;
+            }
+          } else {
+            if(w > pbMap[ex.name].bestW || (w === pbMap[ex.name].bestW && r > pbMap[ex.name].bestR)){
+              pbMap[ex.name].bestW = w; pbMap[ex.name].bestR = r;
+            }
+          }
+        });
+      });
+    });
+  });
+
+  var newPBs = [];
+  newEntry.blocks.forEach(function(b){
+    var assisted = b.assisted || false;
+    b.exercises.forEach(function(ex){
+      var sets = ex.dropSets ? [].concat.apply([], ex.dropSets) : (ex.sets || []);
+      sets.forEach(function(s){
+        var w = parseFloat(s.w || s.weight) || 0;
+        var r = parseFloat(s.r || s.reps) || 0;
+        var prior = pbMap[ex.name];
+        var isBetter = false;
+        if(!prior){
+          // First ever set for this exercise counts as a PB only if has data
+          if(w > 0 || r > 0) isBetter = true;
+        } else if(assisted){
+          isBetter = w < prior.bestW || (w === prior.bestW && r > prior.bestR);
+        } else {
+          isBetter = w > prior.bestW || (w === prior.bestW && r > prior.bestR);
+        }
+        if(isBetter && !newPBs.includes(ex.name)){
+          newPBs.push(ex.name);
+          // Update so we don't double-count multiple sets in same workout
+          if(!pbMap[ex.name]) pbMap[ex.name] = {bestW: w, bestR: r, assisted: assisted};
+          else { pbMap[ex.name].bestW = w; pbMap[ex.name].bestR = r; }
+        }
+      });
+    });
+  });
+  return newPBs; // array of exercise names
+}
+
+function calcXpForWorkout(entry, priorHistory){
+  var breakdown = [];
+  var total = 0;
+
+  // Base: logged a workout
+  breakdown.push({label: 'Workout Logged', xp: 100});
+  total += 100;
+
+  // Notes/description
+  if(entry.desc && entry.desc.trim().length > 0){
+    breakdown.push({label: 'Workout Notes', xp: 10});
+    total += 10;
+  }
+
+  // Tagged a friend
+  if(entry.tagged && entry.tagged.length > 0){
+    var tagXp = 25;
+    breakdown.push({label: 'Trained With Friend', xp: tagXp});
+    total += tagXp;
+  }
+
+  // Duration bonus
+  var secs = entry.duration_seconds || 0;
+  if(secs >= 90 * 60){
+    breakdown.push({label: '90+ Min Session', xp: 30});
+    total += 30;
+  } else if(secs >= 60 * 60){
+    breakdown.push({label: '60+ Min Session', xp: 20});
+    total += 20;
+  } else if(secs >= 30 * 60){
+    breakdown.push({label: '30+ Min Session', xp: 10});
+    total += 10;
+  }
+
+  // Personal bests — compare against priorHistory (does not include this entry yet)
+  var pbCount = detectNewPBs(entry, priorHistory).length;
+  if(pbCount > 0){
+    var pbXp = Math.min(pbCount, 3) * 50; // cap at 3 PBs worth per workout
+    breakdown.push({label: 'New Personal Best' + (pbCount > 1 ? ' ×'+pbCount : ''), xp: pbXp});
+    total += pbXp;
+  }
+
+  return {total: total, breakdown: breakdown};
+}
+
+// Get badge progress snapshot for a given history.
+// earnedCount uses countEarnedTiersForCat — the exact same function calcBadgeXp
+// uses — so tierUp detection and XP breakdown always agree with the actual XP awarded.
+function getBadgeSnapshot(workoutHistory){
+  var snap = {};
+  BADGE_CATEGORIES.forEach(function(cat){
+    var val = cat.getValue ? cat.getValue(workoutHistory) : null;
+    var lastDef = cat.tiers.length - 1;
+    var step = cat.tiers.length > 1
+      ? cat.tiers[lastDef].threshold - cat.tiers[lastDef - 1].threshold
+      : cat.tiers[0].threshold;
+
+    // earnedCount: total tiers cleared, including auto-generated ones beyond defined list.
+    // Identical to what calcBadgeXp uses — guarantees no divergence.
+    var earnedCount = countDisplayTiersForCat(cat, workoutHistory);
+
+    // earnedIdx: 0-based index into defined tiers array, used for icon/name lookup only.
+    var earnedIdx = Math.min(earnedCount - 1, lastDef); // -1 if none earned
+
+    // Next threshold: first uncrossed threshold
+    var nextThreshold;
+    if(earnedCount === 0){
+      nextThreshold = cat.tiers[0].threshold;
+    } else if(earnedCount <= lastDef){
+      nextThreshold = cat.tiers[earnedCount].threshold;
+    } else if(cat.getValue){
+      // Beyond defined tiers — auto-generated next threshold
+      nextThreshold = cat.tiers[lastDef].threshold + (earnedCount - lastDef) * step;
+    } else {
+      nextThreshold = null;
+    }
+
+    snap[cat.id] = {
+      value: val,
+      earned: earnedCount,   // ← total tiers cleared (same unit as calcBadgeXp)
+      nextThreshold: nextThreshold,
+      icon: cat.tiers[Math.max(0, earnedIdx)].icon,
+      name: (function(){
+        if(earnedCount <= 0) return cat.tiers[0].name;
+        if(earnedIdx <= lastDef && earnedCount - 1 <= lastDef) return cat.tiers[earnedCount - 1].name;
+        var baseName = cat.tiers[lastDef].name.replace(/\s+[IVXLCDM]+$/, '');
+        return baseName + ' ' + toRoman(earnedCount);
+      })()
+    };
+  });
+  return snap;
+}
+
+function getBadgeUpdates(snapBefore, snapAfter){
+  var updates = [];
+  BADGE_CATEGORIES.forEach(function(cat){
+    var before = snapBefore[cat.id];
+    var after = snapAfter[cat.id];
+    if(!before || !after) return;
+    // Only report if value changed and there's a next goal
+    if(before.value === null || after.value === null) return;
+    if(after.value === before.value) return;
+    if(after.nextThreshold === null) return;
+    updates.push({
+      icon: after.icon,
+      name: after.name,
+      valueBefore: before.value,
+      valueAfter: after.value,
+      nextThreshold: after.nextThreshold,
+      unit: cat.unit || '',
+      tierUp: after.earned > before.earned
+    });
+  });
+  return updates;
+}
+
+// ── XP source of truth: derived from history + badge tiers ──────────────────
+//
+// Total XP = Σ per-workout XP  +  Σ badge-tier XP
+//
+// calcBadgeXp counts every currently-earned tier across all categories,
+// multiplied by BADGE_TIER_XP. This is pure and idempotent — calling it
+// twice with the same history always returns the same number.
+//
+// Auto-tier counting only applies to categories where the metric is
+// cumulative (workouts, sets, social, exercises, time). Volume uses a
+// max-per-workout metric so auto-tiers beyond the defined list are not
+// extrapolated (the badge itself still renders correctly — we just don't
+// speculatively award XP for undefined tiers).
+
+var BADGE_TIER_XP = 75;
+
+function countEarnedTiersForCat(cat, workoutHistory){
+  var tiersEarned = 0;
+  cat.tiers.forEach(function(tier){
+    if(tier.check(workoutHistory)) tiersEarned++;
+  });
+  if(tiersEarned >= cat.tiers.length && cat.getValue){
+    var val = cat.getValue(workoutHistory);
+    var lastDef = cat.tiers.length - 1;
+    var step = cat.tiers.length > 1
+      ? cat.tiers[lastDef].threshold - cat.tiers[lastDef - 1].threshold
+      : cat.tiers[0].threshold;
+    var base = cat.tiers[lastDef].threshold;
+    var extra = 0;
+    while(val >= base + (extra + 1) * step) extra++;
+    tiersEarned = cat.tiers.length + extra;
+  }
+  return tiersEarned;
+}
+
+// Alias — display and XP use the same logic
+var countDisplayTiersForCat = countEarnedTiersForCat;
+
+function calcBadgeXp(workoutHistory){
+  var total = 0;
+  var breakdown = [];
+  BADGE_CATEGORIES.forEach(function(cat){
+    var n = countEarnedTiersForCat(cat, workoutHistory);
+    if(n > 0){
+      total += n * BADGE_TIER_XP;
+      breakdown.push({ id: cat.id, tiers: n, xp: n * BADGE_TIER_XP });
+    }
+  });
+  return { total: total, breakdown: breakdown };
+}
+
+// Full XP derivation from a complete workout history array (oldest→newest or any order)
+function calcTotalXpFromHistory(workoutHistory){
+  // Sort oldest first so per-workout PB detection is chronologically correct
+  var sorted = workoutHistory.slice().sort(function(a, b){
+    return new Date(a.ts) - new Date(b.ts);
+  });
+
+  var workoutXp = 0;
+  sorted.forEach(function(entry, i){
+    var prior = sorted.slice(0, i);
+    var result = calcXpForWorkout(entry, prior);
+    workoutXp += result.total;
+  });
+
+  var badgeXpResult = calcBadgeXp(workoutHistory);
+  return {
+    total: workoutXp + badgeXpResult.total,
+    workoutXp: workoutXp,
+    badgeXp: badgeXpResult.total,
+    badgeBreakdown: badgeXpResult.breakdown
+  };
+}
+
+// Recalculate total XP from current history and persist to Supabase + currentProfile
+async function recalcAndSaveXp(workoutHistory){
+  if(!currentUser) return 0;
+  var result = calcTotalXpFromHistory(workoutHistory || history);
+  var total = result.total;
+  try {
+    await sb.from('profiles').update({ xp: total }).eq('id', currentUser.id);
+    if(currentProfile) currentProfile.xp = total;
+  } catch(e){ console.error('XP save error:', e); }
+  return total;
+}
+
+// One-time backfill: fetch all workouts and derive XP from scratch
+async function backfillXp(){
+  if(!currentUser) return;
+  try {
+    var { data: allWorkouts } = await sb.from('workouts')
+      .select('*')
+      .eq('user_id', currentUser.id)
+      .order('ts', { ascending: true });
+
+    var result = calcTotalXpFromHistory(allWorkouts || []);
+    await sb.from('profiles').update({ xp: result.total }).eq('id', currentUser.id);
+    if(currentProfile) currentProfile.xp = result.total;
+    console.log('XP backfill:', result.total, 'XP (', result.workoutXp, 'workout +', result.badgeXp, 'badge)');
+  } catch(e){
+    console.error('XP backfill failed:', e);
+    await sb.from('profiles').update({ xp: 0 }).eq('id', currentUser.id);
+    if(currentProfile) currentProfile.xp = 0;
+  }
+}
+
+// Legacy stubs — no longer used for writes, kept so nothing breaks if called
+async function loadUserXp(){
+  if(!currentUser) return 0;
+  try {
+    var res = await sb.from('profiles').select('xp').eq('id', currentUser.id).single();
+    return (res.data && res.data.xp != null) ? res.data.xp : 0;
+  } catch(e){ return 0; }
+}
+
+
+function formatXp(n){ return n.toLocaleString(); }
+
+// Read-only replay of the XP modal for a past workout.
+// entry = the workout to review
+// priorHistory = all workouts that existed BEFORE this entry (chronologically older)
+// Both come from the global history array: entry = history[idx], prior = history.slice(idx+1)
+// (history is newest-first, so slice(idx+1) = everything older)
+function viewWorkoutReview(entry, priorHistory){
+  // Derive XP state exactly as it was at the moment this workout was saved
+  var xpResult   = calcXpForWorkout(entry, priorHistory);
+  var snapBefore = getBadgeSnapshot(priorHistory);
+  var histWithEntry = [entry].concat(priorHistory);
+  var snapAfter  = getBadgeSnapshot(histWithEntry);
+
+  // Historical total XP: what the user had before + what this workout added
+  var prevTotal = calcTotalXpFromHistory(priorHistory).total;
+  var afterTotal = calcTotalXpFromHistory(histWithEntry).total;
+  var gained = afterTotal - prevTotal;
+
+  var afterLevel = getLevelFromXp(afterTotal);
+
+  document.getElementById('xp-modal-total').textContent = '+' + gained + ' XP';
+  document.getElementById('xp-modal-total-lbl').textContent = 'Workout review · ' + (entry.label || entry.date);
+
+  document.getElementById('xp-levelup-banner').style.display = 'none';
+
+  document.getElementById('xp-level-badge').textContent = 'Level ' + afterLevel.level;
+  if(afterLevel.nextLevelXp !== null){
+    document.getElementById('xp-level-next').textContent =
+      afterLevel.xpNeededForLevel.toLocaleString() + ' XP to next level';
+    document.getElementById('xp-bar-current').textContent = afterLevel.xpIntoLevel.toLocaleString() + ' XP';
+    document.getElementById('xp-bar-needed').textContent  = afterLevel.xpNeededForLevel.toLocaleString() + ' XP';
+  } else {
+    document.getElementById('xp-level-next').textContent  = 'Max level!';
+    document.getElementById('xp-bar-current').textContent = afterTotal.toLocaleString() + ' XP';
+    document.getElementById('xp-bar-needed').textContent  = '';
+  }
+
+  // Breakdown: per-workout rows + any badge tiers newly unlocked by this workout
+  var breakdownHtml = xpResult.breakdown.map(function(row){
+    return '<div class="xp-breakdown-row"><span>' + row.label + '</span><span class="xp-breakdown-amt">+' + row.xp + ' XP</span></div>';
+  }).join('');
+  var badgeUpdates = getBadgeUpdates(snapBefore, snapAfter);
+  var newTiers = badgeUpdates.filter(function(u){ return u.tierUp; });
+  if(newTiers.length){
+    breakdownHtml += newTiers.map(function(u){
+      return '<div class="xp-breakdown-row"><span>' + u.icon + ' ' + u.name + ' unlocked</span><span class="xp-breakdown-amt">+' + BADGE_TIER_XP + ' XP</span></div>';
+    }).join('');
+  }
+  document.getElementById('xp-breakdown').innerHTML = breakdownHtml;
+
+  var badgeSec = document.getElementById('xp-badge-section');
+  if(badgeUpdates.length){
+    badgeSec.style.display = '';
+    document.getElementById('xp-badge-updates').innerHTML = badgeUpdates.map(function(u){
+      var prog = u.nextThreshold ? (u.valueAfter + ' / ' + u.nextThreshold + (u.unit ? ' ' + u.unit : '')) : 'Max!';
+      var tierTag = u.tierUp ? ' <span style="font-size:10px;background:var(--accent-soft);color:var(--accent);padding:1px 6px;border-radius:var(--pill);font-weight:700;">Tier Up!</span>' : '';
+      return '<div class="xp-badge-row"><span class="xp-badge-icon">' + u.icon + '</span><span class="xp-badge-name">' + u.name + tierTag + '</span><span class="xp-badge-prog">' + prog + '</span></div>';
+    }).join('');
+  } else {
+    badgeSec.style.display = 'none';
+  }
+
+  openModal('xp-modal');
+  var fill = document.getElementById('xp-bar-fill');
+  fill.style.width = '0%';
+  setTimeout(function(){ fill.style.width = afterLevel.progress + '%'; }, 80);
+}
+
+async function showXpModal(entry, priorHistory){
+  var snapBefore = getBadgeSnapshot(priorHistory);
+  var histWithNew = [entry].concat(priorHistory);
+  var snapAfter = getBadgeSnapshot(histWithNew);
+
+  var xpResult = calcXpForWorkout(entry, priorHistory);
+
+  // XP before this workout
+  var prevTotal = calcTotalXpFromHistory(priorHistory).total;
+  // XP after (full rederive including badge tiers with new workout)
+  var newTotal = await recalcAndSaveXp(histWithNew);
+
+  var prevLevel = getLevelFromXp(prevTotal);
+  var newLevel  = getLevelFromXp(newTotal);
+  var leveledUp = newLevel.level > prevLevel.level;
+
+  // Show total XP gained this workout (workout XP + any newly earned badge tiers)
+  var gained = newTotal - prevTotal;
+
+  document.getElementById('xp-modal-total').textContent = '+' + gained + ' XP';
+  document.getElementById('xp-modal-total-lbl').textContent = formatXp(newTotal) + ' total XP';
+
+  var banner = document.getElementById('xp-levelup-banner');
+  if(leveledUp){
+    banner.style.display = '';
+    document.getElementById('xp-levelup-title').textContent = '⚡ Level Up!';
+    document.getElementById('xp-levelup-sub').textContent = 'You reached Level ' + newLevel.level + '!';
+  } else {
+    banner.style.display = 'none';
+  }
+
+  document.getElementById('xp-level-badge').textContent = 'Level ' + newLevel.level;
+  if(newLevel.nextLevelXp !== null){
+    document.getElementById('xp-level-next').textContent =
+      formatXp(newLevel.nextLevelXp - newTotal) + ' XP until Level ' + (newLevel.level + 1);
+    document.getElementById('xp-bar-current').textContent = formatXp(newLevel.xpIntoLevel) + ' XP';
+    document.getElementById('xp-bar-needed').textContent = formatXp(newLevel.xpNeededForLevel) + ' XP';
+  } else {
+    document.getElementById('xp-level-next').textContent = 'Max level!';
+    document.getElementById('xp-bar-current').textContent = formatXp(newTotal) + ' XP';
+    document.getElementById('xp-bar-needed').textContent = '';
+  }
+
+  // Breakdown: per-workout XP rows
+  var breakdownHtml = xpResult.breakdown.map(function(row){
+    return '<div class="xp-breakdown-row"><span>' + row.label + '</span><span class="xp-breakdown-amt">+' + row.xp + ' XP</span></div>';
+  }).join('');
+
+  // Add badge tier XP rows if any new tiers were earned
+  var badgeUpdates = getBadgeUpdates(snapBefore, snapAfter);
+  var newTiers = badgeUpdates.filter(function(u){ return u.tierUp; });
+  if(newTiers.length){
+    breakdownHtml += newTiers.map(function(u){
+      return '<div class="xp-breakdown-row"><span>' + u.icon + ' ' + u.name + ' unlocked</span><span class="xp-breakdown-amt">+' + BADGE_TIER_XP + ' XP</span></div>';
+    }).join('');
+  }
+  document.getElementById('xp-breakdown').innerHTML = breakdownHtml;
+
+  // Badge progress section
+  var badgeSec = document.getElementById('xp-badge-section');
+  if(badgeUpdates.length){
+    badgeSec.style.display = '';
+    document.getElementById('xp-badge-updates').innerHTML = badgeUpdates.map(function(u){
+      var prog = u.nextThreshold ? (u.valueAfter + ' / ' + u.nextThreshold + (u.unit ? ' ' + u.unit : '')) : 'Max!';
+      var tierTag = u.tierUp ? ' <span style="font-size:10px;background:var(--accent-soft);color:var(--accent);padding:1px 6px;border-radius:var(--pill);font-weight:700;">Tier Up!</span>' : '';
+      return '<div class="xp-badge-row"><span class="xp-badge-icon">' + u.icon + '</span><span class="xp-badge-name">' + u.name + tierTag + '</span><span class="xp-badge-prog">' + prog + '</span></div>';
+    }).join('');
+  } else {
+    badgeSec.style.display = 'none';
+  }
+
+  openModal('xp-modal');
+  var fill = document.getElementById('xp-bar-fill');
+  fill.style.width = '0%';
+  setTimeout(function(){ fill.style.width = newLevel.progress + '%'; }, 80);
+}
+
 function switchTab(tab){
   ['friends','log','lookup','history','profile'].forEach(t => document.getElementById('tab-'+t).style.display = t===tab?'':'none');
   const map = {friends:'btab-friends', lookup:'btab-lookup', history:'btab-history', profile:'btab-profile'};
@@ -4723,6 +5512,39 @@ document.addEventListener('DOMContentLoaded', function(){ window._loadStart = Da
   <div class="modal-actions">
     <button class="modal-btn" onclick="closeModal('save-workout-modal')">Cancel</button>
     <button class="modal-btn primary" onclick="saveWorkout()"><i class="ti ti-device-floppy"></i> Save</button>
+  </div>
+</div></div>
+
+<!-- XP / Level Up modal -->
+<div class="modal-bg" id="xp-modal"><div class="modal">
+  <div class="xp-modal-header">
+    <div class="xp-modal-title">Workout Complete</div>
+    <div class="xp-modal-total" id="xp-modal-total">+0 XP</div>
+    <div class="xp-modal-total-lbl" id="xp-modal-total-lbl"></div>
+  </div>
+  <div class="xp-modal-body">
+    <div id="xp-levelup-banner" style="display:none;" class="xp-levelup-banner">
+      <div class="xp-levelup-title" id="xp-levelup-title">⚡ Level Up!</div>
+      <div class="xp-levelup-sub" id="xp-levelup-sub"></div>
+    </div>
+    <div class="xp-level-row">
+      <span class="xp-level-badge" id="xp-level-badge">Level 1</span>
+      <span class="xp-level-next" id="xp-level-next"></span>
+    </div>
+    <div class="xp-bar-wrap"><div class="xp-bar-fill" id="xp-bar-fill"></div></div>
+    <div class="xp-bar-numbers">
+      <span id="xp-bar-current"></span>
+      <span id="xp-bar-needed"></span>
+    </div>
+    <div class="xp-section-lbl">Progress Earned</div>
+    <div class="xp-breakdown" id="xp-breakdown"></div>
+    <div id="xp-badge-section" style="display:none;">
+      <div class="xp-section-lbl">Badge Progress</div>
+      <div class="xp-badge-updates" id="xp-badge-updates"></div>
+    </div>
+  </div>
+  <div class="xp-modal-footer">
+    <button class="xp-close-btn" onclick="closeModal('xp-modal')">Continue</button>
   </div>
 </div></div>
 
