@@ -2828,6 +2828,13 @@ document.addEventListener('click', function(e){
   }
 });
 
+// Close menus when user starts scrolling (prevents stuck menus on mobile)
+function closeAllExMenus(){
+  document.querySelectorAll('.ex-menu-dropdown').forEach(function(m){ m.style.display='none'; });
+}
+window.addEventListener('scroll', closeAllExMenus, true);
+document.addEventListener('touchmove', closeAllExMenus, { passive: true });
+
 function toggleWarmup(bi, ei, si){
   blocks[bi].exercises[ei].sets[si].warmup = !blocks[bi].exercises[ei].sets[si].warmup;
   renderBlocks();
