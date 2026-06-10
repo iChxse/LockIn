@@ -829,6 +829,10 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
 .comment-reply-input-row input:focus { outline:none; border-color:var(--accent); }
 .comment-reply-input-row button { font-size:12px; padding:7px 12px; border-radius:var(--r1); background:var(--accent); color:#fff; border:none; cursor:pointer; }
 
+/* ── Tab loading spinner (matches launch screen) ── */
+.tab-loader { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; padding:48px 0; }
+.tab-loader-ring { width:40px; height:40px; border-radius:50%; border:2.5px solid rgba(255,255,255,0.08); border-top-color:var(--accent); animation:spin 0.9s linear infinite; }
+
 /* ── Exercise info popup ── */
 .ex-info-btn { background: rgba(79,140,255,0.12); border: 1px solid rgba(79,140,255,0.3); color: var(--accent); cursor: pointer; padding: 3px 9px; font-size: 11px; font-weight: 700; line-height: 1.4; border-radius: var(--pill); font-family: var(--font); display: inline-flex; align-items: center; gap: 4px; letter-spacing: .02em; white-space: nowrap; }
 .ex-info-btn:active { background: rgba(79,140,255,0.22); }
@@ -1452,7 +1456,7 @@ async function onAuthSuccess(user){
 async function renderProfileTab(){
   if(!currentUser){ return; }
   const el = document.getElementById('tab-profile');
-  el.innerHTML = '<div style="color:var(--ts);font-size:13px;padding:1rem 0;">Loading...</div>';
+  el.innerHTML = '<div class="tab-loader"><div class="tab-loader-ring"></div></div>';
 
   const { data: profile } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
   if(profile) currentProfile = profile;
@@ -1626,7 +1630,7 @@ function renderProfileTabBody(workouts, userId){
     return;
   }
   if(_profileTabSection === 'friends'){
-    body.innerHTML = '<div style="color:var(--ts);font-size:13px;padding:8px 0;">Loading...</div>';
+    body.innerHTML = '<div class="tab-loader"><div class="tab-loader-ring"></div></div>';
     loadProfileTabFriends(workouts, userId);
   }
 }
@@ -2088,7 +2092,7 @@ var _calViewMonth = new Date().getMonth();
 async function renderFeed(){
   const el = document.getElementById('friends-feed-content');
   if(!currentUser){ el.innerHTML='<div class="empty">Sign in to see activity.</div>'; return; }
-  el.innerHTML = '<div style="color:var(--ts);font-size:13px;padding:1rem 0;">Loading...</div>';
+  el.innerHTML = '<div class="tab-loader"><div class="tab-loader-ring"></div></div>';
   // Ensure the friends button is visible on the activity tab
   const afb = document.getElementById('add-friends-btn');
   if(afb) afb.style.display = 'flex';
@@ -2485,7 +2489,7 @@ async function renderFriendsTab(){
   const el = document.getElementById('friends-content');
   if(!el) return; // Friends tab removed from main nav, managed via profile
   if(!currentUser){ el.innerHTML='<div class="empty">Sign in to use Friends.</div>'; return; }
-  el.innerHTML = '<div style="color:var(--ts);font-size:13px;padding:1rem 0;">Loading...</div>';
+  el.innerHTML = '<div class="tab-loader"><div class="tab-loader-ring"></div></div>';
 
   const { data: friendships } = await sb.from('friendships')
     .select('*, requester:profiles!friendships_requester_id_fkey(id,name,username,avatar_url), addressee:profiles!friendships_addressee_id_fkey(id,name,username,avatar_url)')
@@ -3551,7 +3555,7 @@ function repeatWorkout(idx){
 async function openManageFriendsModal(){
   openModal('manage-friends-modal');
   const el = document.getElementById('manage-friends-content');
-  el.innerHTML = '<div style="color:var(--ts);font-size:13px;padding:.5rem 0;">Loading...</div>';
+  el.innerHTML = '<div class="tab-loader"><div class="tab-loader-ring"></div></div>';
 
   const { data: friendships } = await sb.from('friendships')
     .select('*, requester:profiles!friendships_requester_id_fkey(id,name,username,avatar_url), addressee:profiles!friendships_addressee_id_fkey(id,name,username,avatar_url)')
@@ -3627,7 +3631,7 @@ async function removeFriend(id){ await sb.from('friendships').delete().eq('id', 
 
 async function viewFriendWorkouts(userId, name){
   document.getElementById('friend-history-title').textContent = name + "'s Workouts";
-  document.getElementById('friend-history-list').innerHTML = '<div style="font-size:13px;color:var(--ts);padding:1rem 0;">Loading...</div>';
+  document.getElementById('friend-history-list').innerHTML = '<div class="tab-loader"><div class="tab-loader-ring"></div></div>';
   openModal('friend-history-modal');
   const { data } = await sb.from('workouts').select('*').eq('user_id', userId).order('ts',{ascending:false}).limit(50);
   if(!data || !data.length){
@@ -4021,37 +4025,33 @@ var BADGE_CATEGORIES = [
     id: 'volume',
     unit: ' lbs',
     getValue: function(h){
-      if(!h.length) return 0;
-      var best = 0;
+      // Lifetime total volume across all workouts
+      var total = 0;
       h.forEach(function(e){
-        var vol = 0;
         e.blocks.forEach(function(b){ b.exercises.forEach(function(ex){
           var sets = ex.dropSets ? [].concat.apply([],ex.dropSets) : (ex.sets||[]);
-          sets.forEach(function(s){ vol += (parseFloat(s.w||s.weight)||0) * (parseFloat(s.r||s.reps)||0); });
+          sets.forEach(function(s){ total += (parseFloat(s.w||s.weight)||0) * (parseFloat(s.r||s.reps)||0); });
         }); });
-        if(vol > best) best = vol;
       });
-      return Math.round(best);
+      return Math.round(total);
     },
-    // XP per tier scales up: I-V=25, VI-X=50, XI-XV=75, XVI-XX=100, XXI+=125
+    // XP per tier: I-V=50, VI-X=75, XI+=100
     getTierXp: function(tierIndex){ // 0-based
-      if(tierIndex < 5)  return 25;
-      if(tierIndex < 10) return 50;
-      if(tierIndex < 15) return 75;
-      if(tierIndex < 20) return 100;
-      return 125;
+      if(tierIndex < 5)  return 50;
+      if(tierIndex < 10) return 75;
+      return 100;
     },
     tiers: [
-      { icon:'💥', name:'Weight Mover I',   desc:'Move 1,000 lbs in one workout',  threshold:1000,  check: function(h){ return maxVolumeWorkout(h) >= 1000; } },
-      { icon:'💥', name:'Weight Mover II',  desc:'Move 2,000 lbs in one workout',  threshold:2000,  check: function(h){ return maxVolumeWorkout(h) >= 2000; } },
-      { icon:'💥', name:'Weight Mover III', desc:'Move 3,000 lbs in one workout',  threshold:3000,  check: function(h){ return maxVolumeWorkout(h) >= 3000; } },
-      { icon:'💥', name:'Weight Mover IV',  desc:'Move 4,000 lbs in one workout',  threshold:4000,  check: function(h){ return maxVolumeWorkout(h) >= 4000; } },
-      { icon:'💥', name:'Weight Mover V',   desc:'Move 5,000 lbs in one workout',  threshold:5000,  check: function(h){ return maxVolumeWorkout(h) >= 5000; } },
-      { icon:'💥', name:'Weight Mover VI',  desc:'Move 6,000 lbs in one workout',  threshold:6000,  check: function(h){ return maxVolumeWorkout(h) >= 6000; } },
-      { icon:'💥', name:'Weight Mover VII', desc:'Move 7,000 lbs in one workout',  threshold:7000,  check: function(h){ return maxVolumeWorkout(h) >= 7000; } },
-      { icon:'💥', name:'Weight Mover VIII',desc:'Move 8,000 lbs in one workout',  threshold:8000,  check: function(h){ return maxVolumeWorkout(h) >= 8000; } },
-      { icon:'💥', name:'Weight Mover IX',  desc:'Move 9,000 lbs in one workout',  threshold:9000,  check: function(h){ return maxVolumeWorkout(h) >= 9000; } },
-      { icon:'💥', name:'Weight Mover X',   desc:'Move 10,000 lbs in one workout', threshold:10000, check: function(h){ return maxVolumeWorkout(h) >= 10000; } },
+      { icon:'💥', name:'Weight Mover I',   desc:'Lift 10,000 lbs lifetime',       threshold:10000,    check: function(h){ return totalVolumeAll(h) >= 10000; } },
+      { icon:'💥', name:'Weight Mover II',  desc:'Lift 25,000 lbs lifetime',       threshold:25000,    check: function(h){ return totalVolumeAll(h) >= 25000; } },
+      { icon:'💥', name:'Weight Mover III', desc:'Lift 50,000 lbs lifetime',       threshold:50000,    check: function(h){ return totalVolumeAll(h) >= 50000; } },
+      { icon:'💥', name:'Weight Mover IV',  desc:'Lift 100,000 lbs lifetime',      threshold:100000,   check: function(h){ return totalVolumeAll(h) >= 100000; } },
+      { icon:'💥', name:'Weight Mover V',   desc:'Lift 250,000 lbs lifetime',      threshold:250000,   check: function(h){ return totalVolumeAll(h) >= 250000; } },
+      { icon:'💥', name:'Weight Mover VI',  desc:'Lift 500,000 lbs lifetime',      threshold:500000,   check: function(h){ return totalVolumeAll(h) >= 500000; } },
+      { icon:'💥', name:'Weight Mover VII', desc:'Lift 1,000,000 lbs lifetime',    threshold:1000000,  check: function(h){ return totalVolumeAll(h) >= 1000000; } },
+      { icon:'💥', name:'Weight Mover VIII',desc:'Lift 2,500,000 lbs lifetime',    threshold:2500000,  check: function(h){ return totalVolumeAll(h) >= 2500000; } },
+      { icon:'💥', name:'Weight Mover IX',  desc:'Lift 5,000,000 lbs lifetime',    threshold:5000000,  check: function(h){ return totalVolumeAll(h) >= 5000000; } },
+      { icon:'💥', name:'Weight Mover X',   desc:'Lift 10,000,000 lbs lifetime',   threshold:10000000, check: function(h){ return totalVolumeAll(h) >= 10000000; } },
     ]
   },
   {
@@ -4287,6 +4287,18 @@ function maxVolumeWorkout(h){
     if(vol > best) best = vol;
   });
   return Math.round(best);
+}
+
+function totalVolumeAll(h){
+  // Lifetime total volume across all workouts (weight × reps summed)
+  var total = 0;
+  h.forEach(function(e){
+    e.blocks.forEach(function(b){ b.exercises.forEach(function(ex){
+      var sets = ex.dropSets ? [].concat.apply([],ex.dropSets) : (ex.sets||[]);
+      sets.forEach(function(s){ total += (parseFloat(s.w||s.weight)||0) * (parseFloat(s.r||s.reps)||0); });
+    }); });
+  });
+  return Math.round(total);
 }
 
 function countTotalTags(h){
@@ -4564,7 +4576,7 @@ async function viewUserProfile(userId){
   document.getElementById('upm-name').textContent = 'Loading...';
   document.getElementById('upm-username').textContent = '';
   document.getElementById('upm-avatar').innerHTML = '';
-  document.getElementById('upm-workouts').innerHTML = '<div style="color:var(--ts);font-size:13px;padding:1rem 0;">Loading...</div>';
+  document.getElementById('upm-workouts').innerHTML = '<div class="tab-loader"><div class="tab-loader-ring"></div></div>';
   document.getElementById('upm-pbs').innerHTML = '';
   switchUPMTab('workouts');
 
@@ -4702,7 +4714,7 @@ async function viewUserProfile(userId){
   // ── Friends tab ──────────────────────────────────────────────────────────
   console.log('Friends section reached, userId:', userId);
   var friendsEl = document.getElementById('upm-friends');
-  friendsEl.innerHTML = '<div style="font-size:13px;color:var(--ts);padding:8px 0;">Loading...</div>';
+  friendsEl.innerHTML = '<div class="tab-loader"><div class="tab-loader-ring"></div></div>';
 
   // Fetch friends independently (don't rely on outer vars)
   var fRes = await sb.from('friendships')
@@ -4781,7 +4793,7 @@ function copyUPMWorkout(idx){
 async function showLikes(workoutId){
   openModal('likes-modal');
   const listEl = document.getElementById('likes-list');
-  listEl.innerHTML = '<div style="font-size:13px;color:var(--ts);padding:8px 0;">Loading...</div>';
+  listEl.innerHTML = '<div class="tab-loader"><div class="tab-loader-ring"></div></div>';
   const { data: likes } = await sb.from('workout_likes')
     .select('*, profile:profiles(id,name,username,avatar_url)')
     .eq('workout_id', workoutId)
@@ -5034,8 +5046,12 @@ function getLevelFromXp(totalXp){
 }
 
 // Detect PBs for the NEW entry vs prior history (pass history WITHOUT the new entry)
+// Returns { newPBs: [...exerciseNames], newExercises: [...exerciseNames] }
+// newPBs: exercises with prior history that were beaten this workout
+// newExercises: exercises seen for the first time (never in priorHistory)
+// Neither list double-counts within the same workout.
 function detectNewPBs(newEntry, priorHistory){
-  var pbMap = {};
+  var pbMap = {}; // exercises seen in prior history with their best set
   priorHistory.forEach(function(e){
     e.blocks.forEach(function(b){
       var assisted = b.assisted || false;
@@ -5059,34 +5075,52 @@ function detectNewPBs(newEntry, priorHistory){
     });
   });
 
-  var newPBs = [];
+  var newPBs = [];       // real PBs: exercise has prior history and was beaten
+  var newExercises = []; // first time logging this exercise
+
   newEntry.blocks.forEach(function(b){
     var assisted = b.assisted || false;
     b.exercises.forEach(function(ex){
+      if(newExercises.includes(ex.name) || newPBs.includes(ex.name)) return;
       var sets = ex.dropSets ? [].concat.apply([], ex.dropSets) : (ex.sets || []);
-      sets.forEach(function(s){
-        var w = parseFloat(s.w || s.weight) || 0;
-        var r = parseFloat(s.r || s.reps) || 0;
-        var prior = pbMap[ex.name];
+      var prior = pbMap[ex.name];
+
+      if(!prior){
+        // Never seen before — new exercise, not a PB
+        var hasData = sets.some(function(s){ return (parseFloat(s.w||s.weight)||0) > 0 || (parseFloat(s.r||s.reps)||0) > 0; });
+        if(hasData) newExercises.push(ex.name);
+        // Seed pbMap so multiple blocks of same new exercise in one workout don't double-count
+        sets.forEach(function(s){
+          var w = parseFloat(s.w||s.weight)||0, r = parseFloat(s.r||s.reps)||0;
+          if(!pbMap[ex.name]) pbMap[ex.name] = {bestW: assisted ? Infinity : -1, bestR: 0, assisted: assisted};
+        });
+      } else {
+        // Has prior history — check if any set in this workout beats it
         var isBetter = false;
-        if(!prior){
-          // First ever set for this exercise counts as a PB only if has data
-          if(w > 0 || r > 0) isBetter = true;
-        } else if(assisted){
-          isBetter = w < prior.bestW || (w === prior.bestW && r > prior.bestR);
-        } else {
-          isBetter = w > prior.bestW || (w === prior.bestW && r > prior.bestR);
-        }
-        if(isBetter && !newPBs.includes(ex.name)){
+        sets.forEach(function(s){
+          if(isBetter) return;
+          var w = parseFloat(s.w || s.weight) || 0;
+          var r = parseFloat(s.r || s.reps) || 0;
+          if(assisted){
+            if(w < prior.bestW || (w === prior.bestW && r > prior.bestR)) isBetter = true;
+          } else {
+            if(w > prior.bestW || (w === prior.bestW && r > prior.bestR)) isBetter = true;
+          }
+        });
+        if(isBetter){
           newPBs.push(ex.name);
-          // Update so we don't double-count multiple sets in same workout
-          if(!pbMap[ex.name]) pbMap[ex.name] = {bestW: w, bestR: r, assisted: assisted};
-          else { pbMap[ex.name].bestW = w; pbMap[ex.name].bestR = r; }
+          // Update pbMap so a second block of same exercise in same workout doesn't double-count
+          sets.forEach(function(s){
+            var w = parseFloat(s.w||s.weight)||0, r = parseFloat(s.r||s.reps)||0;
+            if(assisted){ if(w < prior.bestW || (w===prior.bestW && r>prior.bestR)){ prior.bestW=w; prior.bestR=r; } }
+            else { if(w > prior.bestW || (w===prior.bestW && r>prior.bestR)){ prior.bestW=w; prior.bestR=r; } }
+          });
         }
-      });
+      }
     });
   });
-  return newPBs; // array of exercise names
+
+  return { newPBs: newPBs, newExercises: newExercises };
 }
 
 function calcXpForWorkout(entry, priorHistory){
@@ -5123,8 +5157,18 @@ function calcXpForWorkout(entry, priorHistory){
     total += 10;
   }
 
-  // Personal bests — compare against priorHistory (does not include this entry yet)
-  var pbCount = detectNewPBs(entry, priorHistory).length;
+  // New exercises (+5 each) and real PBs (+50 each, capped at 3)
+  // Only exercises with prior history qualify for PB XP.
+  var detected = detectNewPBs(entry, priorHistory);
+  var pbCount = detected.newPBs.length;
+  var newExCount = detected.newExercises.length;
+
+  if(newExCount > 0){
+    var exXp = newExCount * 5;
+    breakdown.push({label: 'New Exercise Logged' + (newExCount > 1 ? ' ×'+newExCount : ''), xp: exXp});
+    total += exXp;
+  }
+
   if(pbCount > 0){
     var pbXp = Math.min(pbCount, 3) * 50; // cap at 3 PBs worth per workout
     breakdown.push({label: 'New Personal Best' + (pbCount > 1 ? ' ×'+pbCount : ''), xp: pbXp});
