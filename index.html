@@ -3945,17 +3945,18 @@ var BADGE_CATEGORIES = [
     id: 'workouts',
     getValue: function(h){ return h.length; },
     tiers: [
-      { icon:'🏋️', name:'Gym Goer I',   desc:'Log your first workout', threshold:1,  check: function(h){ return h.length >= 1; } },
-      { icon:'🏋️', name:'Gym Goer II',  desc:'Log 3 workouts',         threshold:3,  check: function(h){ return h.length >= 3; } },
-      { icon:'🏋️', name:'Gym Goer III', desc:'Log 5 workouts',         threshold:5,  check: function(h){ return h.length >= 5; } },
-      { icon:'🏋️', name:'Gym Goer IV',  desc:'Log 8 workouts',         threshold:8,  check: function(h){ return h.length >= 8; } },
-      { icon:'🏋️', name:'Gym Goer V',   desc:'Log 10 workouts',        threshold:10, check: function(h){ return h.length >= 10; } },
-      { icon:'🏋️', name:'Gym Goer VI',  desc:'Log 15 workouts',        threshold:15, check: function(h){ return h.length >= 15; } },
-      { icon:'🏋️', name:'Gym Goer VII', desc:'Log 20 workouts',        threshold:20, check: function(h){ return h.length >= 20; } },
-      { icon:'🏋️', name:'Gym Goer VIII',desc:'Log 25 workouts',        threshold:25, check: function(h){ return h.length >= 25; } },
-      { icon:'🏋️', name:'Gym Goer IX',  desc:'Log 30 workouts',        threshold:30, check: function(h){ return h.length >= 30; } },
-      { icon:'🏆', name:'Gym Goer X',   desc:'Log 35 workouts',        threshold:35, check: function(h){ return h.length >= 35; } },
+      { icon:'🏋️', name:'Gym Goer I',    desc:'Log your first workout', threshold:1,  check: function(h){ return h.length >= 1; } },
+      { icon:'🏋️', name:'Gym Goer II',   desc:'Log 3 workouts',         threshold:3,  check: function(h){ return h.length >= 3; } },
+      { icon:'🏋️', name:'Gym Goer III',  desc:'Log 5 workouts',         threshold:5,  check: function(h){ return h.length >= 5; } },
+      { icon:'🏋️', name:'Gym Goer IV',   desc:'Log 8 workouts',         threshold:8,  check: function(h){ return h.length >= 8; } },
+      { icon:'🏋️', name:'Gym Goer V',    desc:'Log 10 workouts',        threshold:10, check: function(h){ return h.length >= 10; } },
+      { icon:'🏋️', name:'Gym Goer VI',   desc:'Log 15 workouts',        threshold:15, check: function(h){ return h.length >= 15; } },
+      { icon:'🏋️', name:'Gym Goer VII',  desc:'Log 20 workouts',        threshold:20, check: function(h){ return h.length >= 20; } },
+      { icon:'🏋️', name:'Gym Goer VIII', desc:'Log 25 workouts',        threshold:25, check: function(h){ return h.length >= 25; } },
+      { icon:'🏋️', name:'Gym Goer IX',   desc:'Log 30 workouts',        threshold:30, check: function(h){ return h.length >= 30; } },
+      { icon:'🏆', name:'Gym Goer X',    desc:'Log 35 workouts',        threshold:35, check: function(h){ return h.length >= 35; } },
     ]
+    // XP: flat 75 per tier
   },
   {
     id: 'sets',
@@ -3970,6 +3971,7 @@ var BADGE_CATEGORIES = [
       { icon:'⚡', name:'Set Grinder VII',  desc:'Log 400 total sets', threshold:400, check: function(h){ return countTotalSets(h) >= 400; } },
       { icon:'⚡', name:'Set Grinder VIII', desc:'Log 500 total sets', threshold:500, check: function(h){ return countTotalSets(h) >= 500; } },
     ]
+    // XP: flat 75 per tier
   },
   {
     id: 'volume',
@@ -3986,6 +3988,14 @@ var BADGE_CATEGORIES = [
         if(vol > best) best = vol;
       });
       return Math.round(best);
+    },
+    // XP per tier scales up: I-V=25, VI-X=50, XI-XV=75, XVI-XX=100, XXI+=125
+    getTierXp: function(tierIndex){ // 0-based
+      if(tierIndex < 5)  return 25;
+      if(tierIndex < 10) return 50;
+      if(tierIndex < 15) return 75;
+      if(tierIndex < 20) return 100;
+      return 125;
     },
     tiers: [
       { icon:'💥', name:'Weight Mover I',   desc:'Move 1,000 lbs in one workout',  threshold:1000,  check: function(h){ return maxVolumeWorkout(h) >= 1000; } },
@@ -4004,19 +4014,20 @@ var BADGE_CATEGORIES = [
     id: 'social',
     getValue: function(h){ return countTotalTags(h); },
     tiers: [
-      { icon:'👥', name:'Tag Team I',   desc:'Tag a friend in a workout',    threshold:1,   check: function(h){ return countTotalTags(h) >= 1; } },
-      { icon:'👥', name:'Tag Team II',  desc:'Tag friends 3 times',          threshold:3,   check: function(h){ return countTotalTags(h) >= 3; } },
-      { icon:'👥', name:'Tag Team III', desc:'Tag friends 5 times',          threshold:5,   check: function(h){ return countTotalTags(h) >= 5; } },
-      { icon:'👥', name:'Tag Team IV',  desc:'Tag friends 8 times',          threshold:8,   check: function(h){ return countTotalTags(h) >= 8; } },
-      { icon:'👥', name:'Tag Team V',   desc:'Tag friends 10 times',         threshold:10,  check: function(h){ return countTotalTags(h) >= 10; } },
-      { icon:'👥', name:'Tag Team VI',  desc:'Tag friends 15 times',         threshold:15,  check: function(h){ return countTotalTags(h) >= 15; } },
-      { icon:'👥', name:'Tag Team VII', desc:'Tag friends 20 times',         threshold:20,  check: function(h){ return countTotalTags(h) >= 20; } },
-      { icon:'👥', name:'Tag Team VIII',desc:'Tag friends 25 times',         threshold:25,  check: function(h){ return countTotalTags(h) >= 25; } },
-      { icon:'👥', name:'Tag Team IX',  desc:'Tag friends 50 times',         threshold:50,  check: function(h){ return countTotalTags(h) >= 50; } },
-      { icon:'👥', name:'Tag Team X',   desc:'Tag friends 75 times',         threshold:75,  check: function(h){ return countTotalTags(h) >= 75; } },
-      { icon:'👥', name:'Tag Team XI',  desc:'Tag friends 100 times',        threshold:100, check: function(h){ return countTotalTags(h) >= 100; } },
-      { icon:'👥', name:'Tag Team XII', desc:'Tag friends 150 times',        threshold:150, check: function(h){ return countTotalTags(h) >= 150; } },
+      { icon:'👥', name:'Tag Team I',    desc:'Tag a friend in a workout', threshold:1,   check: function(h){ return countTotalTags(h) >= 1; } },
+      { icon:'👥', name:'Tag Team II',   desc:'Tag friends 3 times',       threshold:3,   check: function(h){ return countTotalTags(h) >= 3; } },
+      { icon:'👥', name:'Tag Team III',  desc:'Tag friends 5 times',       threshold:5,   check: function(h){ return countTotalTags(h) >= 5; } },
+      { icon:'👥', name:'Tag Team IV',   desc:'Tag friends 8 times',       threshold:8,   check: function(h){ return countTotalTags(h) >= 8; } },
+      { icon:'👥', name:'Tag Team V',    desc:'Tag friends 10 times',      threshold:10,  check: function(h){ return countTotalTags(h) >= 10; } },
+      { icon:'👥', name:'Tag Team VI',   desc:'Tag friends 15 times',      threshold:15,  check: function(h){ return countTotalTags(h) >= 15; } },
+      { icon:'👥', name:'Tag Team VII',  desc:'Tag friends 20 times',      threshold:20,  check: function(h){ return countTotalTags(h) >= 20; } },
+      { icon:'👥', name:'Tag Team VIII', desc:'Tag friends 25 times',      threshold:25,  check: function(h){ return countTotalTags(h) >= 25; } },
+      { icon:'👥', name:'Tag Team IX',   desc:'Tag friends 50 times',      threshold:50,  check: function(h){ return countTotalTags(h) >= 50; } },
+      { icon:'👥', name:'Tag Team X',    desc:'Tag friends 75 times',      threshold:75,  check: function(h){ return countTotalTags(h) >= 75; } },
+      { icon:'👥', name:'Tag Team XI',   desc:'Tag friends 100 times',     threshold:100, check: function(h){ return countTotalTags(h) >= 100; } },
+      { icon:'👥', name:'Tag Team XII',  desc:'Tag friends 150 times',     threshold:150, check: function(h){ return countTotalTags(h) >= 150; } },
     ]
+    // XP: flat 75 per tier
   },
   {
     id: 'exercises',
@@ -4026,13 +4037,14 @@ var BADGE_CATEGORIES = [
       return names.size;
     },
     tiers: [
-      { icon:'📋', name:'Exercise Log I',   desc:'Log 5 unique exercises',   threshold:5,   check: function(h){ var s=new Set(); h.forEach(function(e){ e.blocks.forEach(function(b){ b.exercises.forEach(function(ex){ s.add(ex.name); }); }); }); return s.size>=5; } },
-      { icon:'📋', name:'Exercise Log II',  desc:'Log 10 unique exercises',  threshold:10,  check: function(h){ var s=new Set(); h.forEach(function(e){ e.blocks.forEach(function(b){ b.exercises.forEach(function(ex){ s.add(ex.name); }); }); }); return s.size>=10; } },
-      { icon:'📋', name:'Exercise Log III', desc:'Log 25 unique exercises',  threshold:25,  check: function(h){ var s=new Set(); h.forEach(function(e){ e.blocks.forEach(function(b){ b.exercises.forEach(function(ex){ s.add(ex.name); }); }); }); return s.size>=25; } },
-      { icon:'📋', name:'Exercise Log IV',  desc:'Log 50 unique exercises',  threshold:50,  check: function(h){ var s=new Set(); h.forEach(function(e){ e.blocks.forEach(function(b){ b.exercises.forEach(function(ex){ s.add(ex.name); }); }); }); return s.size>=50; } },
-      { icon:'📋', name:'Exercise Log V',   desc:'Log 75 unique exercises',  threshold:75,  check: function(h){ var s=new Set(); h.forEach(function(e){ e.blocks.forEach(function(b){ b.exercises.forEach(function(ex){ s.add(ex.name); }); }); }); return s.size>=75; } },
-      { icon:'📋', name:'Exercise Log VI',  desc:'Log 100 unique exercises', threshold:100, check: function(h){ var s=new Set(); h.forEach(function(e){ e.blocks.forEach(function(b){ b.exercises.forEach(function(ex){ s.add(ex.name); }); }); }); return s.size>=100; } },
+      { icon:'📋', name:'Exercise Log I',   desc:'Log 10 unique exercises',  threshold:10,  check: function(h){ var s=new Set(); h.forEach(function(e){ e.blocks.forEach(function(b){ b.exercises.forEach(function(ex){ s.add(ex.name); }); }); }); return s.size>=10; } },
+      { icon:'📋', name:'Exercise Log II',  desc:'Log 25 unique exercises',  threshold:25,  check: function(h){ var s=new Set(); h.forEach(function(e){ e.blocks.forEach(function(b){ b.exercises.forEach(function(ex){ s.add(ex.name); }); }); }); return s.size>=25; } },
+      { icon:'📋', name:'Exercise Log III', desc:'Log 50 unique exercises',  threshold:50,  check: function(h){ var s=new Set(); h.forEach(function(e){ e.blocks.forEach(function(b){ b.exercises.forEach(function(ex){ s.add(ex.name); }); }); }); return s.size>=50; } },
+      { icon:'📋', name:'Exercise Log IV',  desc:'Log 75 unique exercises',  threshold:75,  check: function(h){ var s=new Set(); h.forEach(function(e){ e.blocks.forEach(function(b){ b.exercises.forEach(function(ex){ s.add(ex.name); }); }); }); return s.size>=75; } },
+      { icon:'📋', name:'Exercise Log V',   desc:'Log 100 unique exercises', threshold:100, check: function(h){ var s=new Set(); h.forEach(function(e){ e.blocks.forEach(function(b){ b.exercises.forEach(function(ex){ s.add(ex.name); }); }); }); return s.size>=100; } },
+      { icon:'📋', name:'Exercise Log VI',  desc:'Log 150 unique exercises', threshold:150, check: function(h){ var s=new Set(); h.forEach(function(e){ e.blocks.forEach(function(b){ b.exercises.forEach(function(ex){ s.add(ex.name); }); }); }); return s.size>=150; } },
     ]
+    // XP: flat 75 per tier
   },
   {
     id: 'time',
@@ -4042,13 +4054,14 @@ var BADGE_CATEGORIES = [
       return Math.floor(mins/60);
     },
     tiers: [
-      { icon:'⏱️', name:'Time Served I',   desc:'Log 1 hour in the gym',   threshold:1,  check: function(h){ var m=h.reduce(function(a,e){return a+(e.duration_seconds?Math.round(e.duration_seconds/60):0);},0); return Math.floor(m/60)>=1; } },
-      { icon:'⏱️', name:'Time Served II',  desc:'Log 5 hours in the gym',  threshold:5,  check: function(h){ var m=h.reduce(function(a,e){return a+(e.duration_seconds?Math.round(e.duration_seconds/60):0);},0); return Math.floor(m/60)>=5; } },
-      { icon:'⏱️', name:'Time Served III', desc:'Log 10 hours in the gym', threshold:10, check: function(h){ var m=h.reduce(function(a,e){return a+(e.duration_seconds?Math.round(e.duration_seconds/60):0);},0); return Math.floor(m/60)>=10; } },
-      { icon:'⏱️', name:'Time Served IV',  desc:'Log 20 hours in the gym', threshold:20, check: function(h){ var m=h.reduce(function(a,e){return a+(e.duration_seconds?Math.round(e.duration_seconds/60):0);},0); return Math.floor(m/60)>=20; } },
-      { icon:'⏱️', name:'Time Served V',   desc:'Log 30 hours in the gym', threshold:30, check: function(h){ var m=h.reduce(function(a,e){return a+(e.duration_seconds?Math.round(e.duration_seconds/60):0);},0); return Math.floor(m/60)>=30; } },
-      { icon:'⏱️', name:'Time Served VI',  desc:'Log 50 hours in the gym', threshold:50, check: function(h){ var m=h.reduce(function(a,e){return a+(e.duration_seconds?Math.round(e.duration_seconds/60):0);},0); return Math.floor(m/60)>=50; } },
+      { icon:'⏱️', name:'Time Served I',   desc:'Log 5 hours in the gym',   threshold:5,   check: function(h){ var m=h.reduce(function(a,e){return a+(e.duration_seconds?Math.round(e.duration_seconds/60):0);},0); return Math.floor(m/60)>=5; } },
+      { icon:'⏱️', name:'Time Served II',  desc:'Log 10 hours in the gym',  threshold:10,  check: function(h){ var m=h.reduce(function(a,e){return a+(e.duration_seconds?Math.round(e.duration_seconds/60):0);},0); return Math.floor(m/60)>=10; } },
+      { icon:'⏱️', name:'Time Served III', desc:'Log 20 hours in the gym',  threshold:20,  check: function(h){ var m=h.reduce(function(a,e){return a+(e.duration_seconds?Math.round(e.duration_seconds/60):0);},0); return Math.floor(m/60)>=20; } },
+      { icon:'⏱️', name:'Time Served IV',  desc:'Log 40 hours in the gym',  threshold:40,  check: function(h){ var m=h.reduce(function(a,e){return a+(e.duration_seconds?Math.round(e.duration_seconds/60):0);},0); return Math.floor(m/60)>=40; } },
+      { icon:'⏱️', name:'Time Served V',   desc:'Log 75 hours in the gym',  threshold:75,  check: function(h){ var m=h.reduce(function(a,e){return a+(e.duration_seconds?Math.round(e.duration_seconds/60):0);},0); return Math.floor(m/60)>=75; } },
+      { icon:'⏱️', name:'Time Served VI',  desc:'Log 100 hours in the gym', threshold:100, check: function(h){ var m=h.reduce(function(a,e){return a+(e.duration_seconds?Math.round(e.duration_seconds/60):0);},0); return Math.floor(m/60)>=100; } },
     ]
+    // XP: flat 75 per tier
   },
 ];
 
@@ -5145,7 +5158,8 @@ function getBadgeUpdates(snapBefore, snapAfter){
       unit: cat.unit || '',
       tierUp: after.earned > before.earned,
       earnedBefore: before.earned,
-      earnedAfter: after.earned
+      earnedAfter: after.earned,
+      catRef: cat
     });
   });
   return updates;
@@ -5166,6 +5180,15 @@ function getBadgeUpdates(snapBefore, snapAfter){
 // speculatively award XP for undefined tiers).
 
 var BADGE_TIER_XP = 75;
+
+function calcTierRangeXp(cat, fromExclusive, toInclusive){
+  // Sum XP for tiers fromExclusive+1 through toInclusive (0-based indices)
+  var xp = 0;
+  for(var i = fromExclusive; i < toInclusive; i++){
+    xp += cat.getTierXp ? cat.getTierXp(i) : BADGE_TIER_XP;
+  }
+  return xp;
+}
 
 function countEarnedTiersForCat(cat, workoutHistory){
   var tiersEarned = 0;
@@ -5195,8 +5218,15 @@ function calcBadgeXp(workoutHistory){
   BADGE_CATEGORIES.forEach(function(cat){
     var n = countEarnedTiersForCat(cat, workoutHistory);
     if(n > 0){
-      total += n * BADGE_TIER_XP;
-      breakdown.push({ id: cat.id, tiers: n, xp: n * BADGE_TIER_XP });
+      var xp = 0;
+      if(cat.getTierXp){
+        // Per-tier XP scaling — sum each tier individually
+        for(var i = 0; i < n; i++) xp += cat.getTierXp(i);
+      } else {
+        xp = n * BADGE_TIER_XP;
+      }
+      total += xp;
+      breakdown.push({ id: cat.id, tiers: n, xp: xp });
     }
   });
   return { total: total, breakdown: breakdown };
@@ -5313,8 +5343,7 @@ function viewWorkoutReview(entry, priorHistory){
   var newTiers = badgeUpdates.filter(function(u){ return u.tierUp; });
   if(newTiers.length){
     breakdownHtml += newTiers.map(function(u){
-      var tiersGained = u.earnedAfter - u.earnedBefore;
-      var xpGained = tiersGained * BADGE_TIER_XP;
+      var xpGained = calcTierRangeXp(u.catRef, u.earnedBefore, u.earnedAfter);
       var beforeSuffix = u.nameBefore ? u.nameBefore.match(/([IVXLCDM]+)$/) : null;
       var afterSuffix  = u.name.match(/([IVXLCDM]+)$/);
       var label = u.earnedBefore === 0
@@ -5401,8 +5430,7 @@ async function showXpModal(entry, priorHistory){
   var newTiers = badgeUpdates.filter(function(u){ return u.tierUp; });
   if(newTiers.length){
     breakdownHtml += newTiers.map(function(u){
-      var tiersGained = u.earnedAfter - u.earnedBefore;
-      var xpGained = tiersGained * BADGE_TIER_XP;
+      var xpGained = calcTierRangeXp(u.catRef, u.earnedBefore, u.earnedAfter);
       var beforeSuffix = u.nameBefore ? u.nameBefore.match(/([IVXLCDM]+)$/) : null;
       var afterSuffix  = u.name.match(/([IVXLCDM]+)$/);
       var label = u.earnedBefore === 0
