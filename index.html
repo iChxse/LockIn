@@ -671,6 +671,11 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
 .activity-expand { width: 100%; background: none; border: none; border-top: 1px solid var(--bo3); padding: 10px; font-size: 12px; font-weight: 600; color: var(--ts); cursor: pointer; text-align: center; }
 .activity-detail { display: none; border-top: 1px solid var(--bo3); padding: 1rem; }
 .activity-detail.open { display: block; }
+.feed-pill-btn { background: var(--bs); border: 0.5px solid var(--bo3); color: var(--ts); font-size: 12px; font-weight: 600; padding: 5px 10px; border-radius: var(--pill); cursor: pointer; font-family: var(--font); display: inline-flex; align-items: center; gap: 4px; transition: background .15s, color .15s, border-color .15s; }
+.feed-pill-count { min-width: 12px; display: inline-block; }
+.feed-pill-btn:active, .feed-pill-btn.active { background: rgba(79,140,255,.12); color: var(--accent); border-color: var(--accent); }
+.feed-pill-btn.liked { color: var(--accent); border-color: var(--accent); background: rgba(79,140,255,.1); }
+.feed-prog-rows > div:last-child { border-bottom: none !important; }
 .activity-actions { display: flex; border-top: 1px solid var(--bo3); }
 .activity-action-btn { flex: 1; background: none; border: none; padding: 11px; font-size: 13px; font-weight: 600; color: var(--ts); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px; }
 .activity-action-btn:active { color: var(--tp); background: var(--bs-elevated); }
@@ -1653,25 +1658,34 @@ async function loadProfileTabFriends(workouts, userId){
   const allIds = [userId].concat(upmFriends.map(function(f){return f.id;}));
 
   // Fetch all workouts with tagged data involving userId or their friends
-  const tagRes = await sb.from('workouts').select('user_id,tagged').in('user_id', allIds).not('tagged','is',null);
+  const tagRes = await sb.from('workouts').select('user_id,tagged,ts').in('user_id', allIds).not('tagged','is',null);
   const taggedWkts = tagRes.data || [];
 
-  const togetherMap = {};
+  // Use a Set of session keys to deduplicate reciprocal tags.
+  // Session key = date + sorted pair of user IDs so A-B and B-A on same day = 1 session.
+  const togetherSessions = {}; // friendId → Set of session keys
   taggedWkts.forEach(function(w){
     if(!w.tagged || !Array.isArray(w.tagged)) return;
     const ownerId = String(w.user_id);
+    const dateStr = w.ts ? String(w.ts).slice(0, 10) : '';
     w.tagged.forEach(function(t){
       const taggedId = String(t.id);
       if(ownerId === taggedId) return;
-      // Case 1: userId owns it and tagged a friend
-      if(ownerId === userId && friendIdSet.has(taggedId)){
-        togetherMap[taggedId] = (togetherMap[taggedId]||0) + 1;
-      }
-      // Case 2: a friend owns it and tagged userId
-      if(taggedId === userId && friendIdSet.has(ownerId)){
-        togetherMap[ownerId] = (togetherMap[ownerId]||0) + 1;
-      }
+      var friendId = null;
+      if(ownerId === userId && friendIdSet.has(taggedId)) friendId = taggedId;
+      else if(taggedId === userId && friendIdSet.has(ownerId)) friendId = ownerId;
+      if(!friendId) return;
+      // Normalise pair so A-B and B-A produce the same key
+      var pair = [userId, friendId].sort().join('|');
+      var sessionKey = dateStr + '|' + pair;
+      if(!togetherSessions[friendId]) togetherSessions[friendId] = new Set();
+      togetherSessions[friendId].add(sessionKey);
     });
+  });
+
+  const togetherMap = {};
+  Object.keys(togetherSessions).forEach(function(fid){
+    togetherMap[fid] = togetherSessions[fid].size;
   });
 
   upmFriends.sort(function(a,b){ return (togetherMap[b.id]||0)-(togetherMap[a.id]||0); });
@@ -2121,6 +2135,16 @@ async function renderFeed(){
   const { data: allComments } = await sb.from('workout_comments').select('*,profile:profiles(id,name,username,avatar_url)').in('workout_id', wIds).order('created_at',{ascending:true});
 
   window._feedWorkouts = workouts;
+
+  // Pre-group workouts by user_id for per-user badge progress computation.
+  // Feed is newest-first; for each workout at position i within a user's own
+  // sorted list, everything after it is prior history for that user.
+  window._feedByUser = {};
+  workouts.forEach(function(w){
+    var uid = w.user_id;
+    if(!window._feedByUser[uid]) window._feedByUser[uid] = [];
+    window._feedByUser[uid].push(w);
+  });
   window._feedLikeCounts = {};
   workouts.forEach(function(w){
     window._feedLikeCounts[w.id] = (allLikes||[]).filter(function(l){return l.workout_id===w.id;}).length;
@@ -2251,6 +2275,88 @@ async function renderFeed(){
     // Simplified byLine — just the name, tagged handled separately
     var nameLink = isMe ? 'You' : '<span class="feed-link" data-uid="'+w.user_id+'" onclick="viewUserProfile(this.dataset.uid)">'+pname+'</span>';
 
+    // Build progress panel — PBs, new exercises, and badge progress for this workout
+    var priorForFeed = _feedWorkouts ? _feedWorkouts.slice(i+1) : [];
+
+    // Per-user prior history for badge computation (only that user's workouts before this one)
+    var userWorkouts = (window._feedByUser && window._feedByUser[w.user_id]) || [];
+    var userIdxInOwn = userWorkouts.indexOf(w);
+    var priorUserWorkouts = userIdxInOwn >= 0 ? userWorkouts.slice(userIdxInOwn + 1) : userWorkouts;
+
+    var feedDetected = detectNewPBs(w, priorForFeed);
+    var progRows = '';
+
+    // New exercises
+    if(feedDetected.newExercises.length){
+      progRows += '<div style="font-size:10px;font-weight:700;color:var(--ts);text-transform:uppercase;letter-spacing:.07em;padding:4px 0 6px;">New Exercises</div>';
+      feedDetected.newExercises.forEach(function(name){
+        progRows += '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:0.5px solid var(--bo3);">' +
+          '<span style="font-size:15px;">✨</span>' +
+          '<div><div style="font-size:12px;font-weight:600;color:var(--tp);">'+name+'</div>' +
+          '<div style="font-size:11px;color:var(--ts);">First time logged</div></div>' +
+        '</div>';
+      });
+    }
+
+    // Personal bests
+    if(feedDetected.newPBs.length){
+      progRows += '<div style="font-size:10px;font-weight:700;color:var(--ts);text-transform:uppercase;letter-spacing:.07em;padding:'+(feedDetected.newExercises.length ? '10px' : '4px')+' 0 6px;">Personal Bests</div>';
+      feedDetected.newPBs.forEach(function(name){
+        var bestW = 0, bestR = 0;
+        (w.blocks||[]).forEach(function(b){
+          b.exercises.forEach(function(ex){
+            if(ex.name !== name) return;
+            var sets = ex.dropSets ? [].concat.apply([],ex.dropSets) : (ex.sets||[]);
+            sets.forEach(function(s){
+              var sw = parseFloat(s.w||s.weight)||0, sr = parseFloat(s.r||s.reps)||0;
+              if(sw > bestW || (sw===bestW && sr>bestR)){ bestW=sw; bestR=sr; }
+            });
+          });
+        });
+        var pbVal = (bestW > 0 ? bestW+' lbs' : '') + (bestW > 0 && bestR > 0 ? ' × ' : '') + (bestR > 0 ? bestR+' reps' : '');
+        progRows += '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:0.5px solid var(--bo3);">' +
+          '<span style="font-size:15px;">🏆</span>' +
+          '<div><div style="font-size:12px;font-weight:600;color:var(--tp);">'+name+'</div>' +
+          '<div style="font-size:11px;color:var(--accent);">New PB — '+pbVal+'</div></div>' +
+        '</div>';
+      });
+    }
+
+    // Badge progress
+    var snapBefore = getBadgeSnapshot(priorUserWorkouts);
+    var snapAfter  = getBadgeSnapshot([w].concat(priorUserWorkouts));
+    var badgeUpdates = getBadgeUpdates(snapBefore, snapAfter);
+    if(badgeUpdates.length){
+      progRows += '<div style="font-size:10px;font-weight:700;color:var(--ts);text-transform:uppercase;letter-spacing:.07em;padding:'+(feedDetected.newPBs.length || feedDetected.newExercises.length ? '10px' : '4px')+' 0 6px;">Badge Progress</div>';
+      badgeUpdates.forEach(function(u){
+      var beforeSuffix = u.nameBefore ? u.nameBefore.match(/([IVXLCDM]+)$/) : null;
+      var afterSuffix  = u.name.match(/([IVXLCDM]+)$/);
+      var displayName = u.tierUp && beforeSuffix && afterSuffix
+        ? u.name.replace(/\s+[IVXLCDM]+$/, '') + ' ' + beforeSuffix[1] + ' → ' + afterSuffix[1]
+        : u.name;
+      var prog = u.nextThreshold
+        ? (u.valueAfter + ' / ' + u.nextThreshold + (u.unit ? u.unit : ''))
+        : 'Max!';
+      var tierChip = u.tierUp
+        ? '<span style="font-size:10px;background:rgba(79,140,255,.15);color:var(--accent);padding:1px 6px;border-radius:var(--pill);font-weight:700;margin-left:4px;">Tier Up!</span>'
+        : '';
+      progRows += '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:0.5px solid var(--bo3);">' +
+        '<span style="font-size:15px;">'+u.icon+'</span>' +
+        '<div style="flex:1;min-width:0;">' +
+          '<div style="font-size:12px;font-weight:600;color:var(--tp);">'+displayName+tierChip+'</div>' +
+          '<div style="font-size:11px;color:var(--ts);">'+prog+'</div>' +
+        '</div>' +
+      '</div>';
+    });
+    } // end if(badgeUpdates.length)
+
+    if(!progRows){
+      progRows = '<div style="font-size:12px;color:var(--ts);padding:6px 0;">No new progress this session.</div>';
+    }
+    var progressPanel = '<div class="activity-detail" id="aprog-'+i+'" style="padding:0.75rem 1rem 0;">' +
+      '<div class="feed-prog-rows">' + progRows + '</div>' +
+    '</div>';
+
     return '<div class="activity-card" id="acard-'+i+'">' +
       '<div class="activity-hdr">' +
         getAvatarHtml(w.profile, 52) +
@@ -2265,18 +2371,23 @@ async function renderFeed(){
         wlabel +
         (w.desc ? '<div class="activity-sets-preview">'+w.desc+'</div>' : '') +
       '</div>' +
-      '<button class="activity-expand" onclick="toggleFeedDetail('+i+')">' +
-        '<span id="aexpand-lbl-'+i+'">Show sets <i class="ti ti-chevron-down"></i></span>' +
-      '</button>' +
-      '<div class="activity-detail" id="adetail-'+i+'">'+detailBlocks+copyBtn+'</div>' +
-      '<div class="activity-actions">' +
-        '<button class="activity-action-btn'+likedClass+'" id="alike-btn-'+i+'" data-wid="'+w.id+'" data-idx="'+i+'" data-liked="'+(iLiked?1:0)+'" data-count="'+likeCount+'" data-own="'+(isMe?1:0)+'">' +
-          '<i class="'+likeIcon+'"></i> '+likeLabel +
+      '<div style="display:flex;gap:8px;padding:8px 1rem;border-top:0.5px solid var(--bo3);align-items:center;">' +
+        '<button class="feed-pill-btn" id="asets-pill-'+i+'" onclick="toggleFeedDetail('+i+')">' +
+          '<i class="ti ti-list"></i> Sets' +
         '</button>' +
-        '<button class="activity-action-btn" onclick="toggleComments('+i+')">' +
-          '<i class="ti ti-message"></i> '+commentNum+commentLabel +
+        '<button class="feed-pill-btn" id="aprog-pill-'+i+'" onclick="toggleFeedProgress('+i+')">' +
+          '<i class="ti ti-trending-up"></i> Progress' +
+        '</button>' +
+        '<div style="flex:1;"></div>' +
+        '<button class="feed-pill-btn feed-pill-action'+likedClass+'" id="alike-btn-'+i+'" data-wid="'+w.id+'" data-idx="'+i+'" data-liked="'+(iLiked?1:0)+'" data-count="'+likeCount+'" data-own="'+(isMe?1:0)+'">' +
+          '<i class="'+likeIcon+'"></i><span class="feed-pill-count">'+likeCount+'</span>' +
+        '</button>' +
+        '<button class="feed-pill-btn feed-pill-action" data-role="comment-btn" onclick="toggleComments('+i+')">' +
+          '<i class="ti ti-message"></i><span class="feed-pill-count">'+commentCount+'</span>' +
         '</button>' +
       '</div>' +
+      '<div class="activity-detail" id="adetail-'+i+'">'+detailBlocks+copyBtn+'</div>' +
+      progressPanel +
       '<div class="comments-section" id="acomments-'+i+'">' +
         '<div class="comments-scroll" id="acomments-scroll-'+i+'">' + commentsHtml + '</div>' +
         '<div class="comment-input-row">' +
@@ -2297,10 +2408,39 @@ function timeAgo(ts){
 }
 
 function toggleFeedDetail(i){
-  const el = document.getElementById('adetail-'+i);
-  const lbl = document.getElementById('aexpand-lbl-'+i);
-  el.classList.toggle('open');
-  lbl.innerHTML = el.classList.contains('open') ? 'Hide sets <i class="ti ti-chevron-up"></i>' : 'Show sets <i class="ti ti-chevron-down"></i>';
+  const setsEl = document.getElementById('adetail-'+i);
+  const progEl = document.getElementById('aprog-'+i);
+  const setsPill = document.getElementById('asets-pill-'+i);
+  const progPill = document.getElementById('aprog-pill-'+i);
+  const opening = !setsEl.classList.contains('open');
+  // Close both first
+  setsEl.classList.remove('open');
+  progEl.classList.remove('open');
+  if(setsPill) setsPill.classList.remove('active');
+  if(progPill) progPill.classList.remove('active');
+  // Open sets if it wasn't already open
+  if(opening){
+    setsEl.classList.add('open');
+    if(setsPill) setsPill.classList.add('active');
+  }
+}
+
+function toggleFeedProgress(i){
+  const setsEl = document.getElementById('adetail-'+i);
+  const progEl = document.getElementById('aprog-'+i);
+  const setsPill = document.getElementById('asets-pill-'+i);
+  const progPill = document.getElementById('aprog-pill-'+i);
+  const opening = !progEl.classList.contains('open');
+  // Close both first
+  setsEl.classList.remove('open');
+  progEl.classList.remove('open');
+  if(setsPill) setsPill.classList.remove('active');
+  if(progPill) progPill.classList.remove('active');
+  // Open progress if it wasn't already open
+  if(opening){
+    progEl.classList.add('open');
+    if(progPill) progPill.classList.add('active');
+  }
 }
 
 
@@ -2327,10 +2467,11 @@ async function deleteComment(commentId, workoutIdx){
     el.remove();
     var section = document.getElementById('acomments-'+workoutIdx);
     if(section){
-      var commentBtn = section.closest('.activity-card') && section.closest('.activity-card').querySelector('.activity-action-btn:not([data-wid])');
+      var commentBtn = section.closest('.activity-card') && section.closest('.activity-card').querySelector('.feed-pill-btn[data-role="comment-btn"]');
       if(commentBtn){
         var remaining = section.querySelectorAll('.comment-row').length;
-        commentBtn.innerHTML = '<i class="ti ti-message"></i> ' + (remaining > 0 ? remaining + ' ' : '') + 'Comment' + (remaining===1?'':'s');
+        var countEl = commentBtn.querySelector('.feed-pill-count');
+        if(countEl) countEl.textContent = remaining > 0 ? remaining : '';
       }
     }
   }, true);
@@ -2404,7 +2545,7 @@ function toggleComments(i){
 
 // Like button event delegation — one listener handles all cards
 document.addEventListener('click', function(e){
-  const btn = e.target.closest('#friends-feed-content .activity-action-btn[data-wid]');
+  const btn = e.target.closest('#friends-feed-content .feed-pill-btn[data-wid]');
   if(!btn) return;
   const workoutId = btn.dataset.wid;
   const i = parseInt(btn.dataset.idx);
@@ -2422,8 +2563,8 @@ async function doLike(btn, workoutId, i){
   const currentCount = parseInt(btn.dataset.count) || 0;
   const newCount = currentCount + 1;
 
-  btn.className = 'activity-action-btn liked';
-  btn.innerHTML = '<i class="ti ti-thumb-up-filled"></i> ' + newCount + ' Like' + (newCount===1?'':'s');
+  btn.className = 'feed-pill-btn liked';
+  btn.innerHTML = '<i class="ti ti-thumb-up-filled"></i><span class="feed-pill-count">' + newCount + '</span>';
   btn.dataset.liked = '1';
   btn.dataset.count = newCount;
 
@@ -2463,13 +2604,12 @@ async function postComment(workoutId, i){
   if(scrollDiv) scrollDiv.scrollTop = scrollDiv.scrollHeight;
 
   // Update comment count button
-  const commentBtn = section.closest('.activity-card').querySelector('.activity-action-btn:not([data-wid])');
+  const commentBtn = section.closest('.activity-card').querySelector('.feed-pill-btn[data-role="comment-btn"]');
   if(commentBtn){
-    const txt = commentBtn.textContent.trim();
-    const match = txt.match(/^(\d+)/);
-    const current = match ? parseInt(match[1]) : 0;
+    const countEl = commentBtn.querySelector('.feed-pill-count');
+    const current = countEl ? (parseInt(countEl.textContent) || 0) : 0;
     const newCount = current + 1;
-    commentBtn.innerHTML = '<i class="ti ti-message"></i> ' + newCount + ' Comment' + (newCount===1?'':'s');
+    if(countEl) countEl.textContent = newCount;
   }
 }
 
@@ -3972,7 +4112,6 @@ async function handleAvatarUpload(event){
       if(error){ alert('Upload failed: '+error.message); return; }
       var { data } = sb.storage.from('avatars').getPublicUrl(path);
       var avatar_url = data.publicUrl + '?t=' + Date.now();
-      console.log('Avatar URL:', avatar_url);
       await sb.from('profiles').update({ avatar_url }).eq('id', currentUser.id);
       currentProfile.avatar_url = avatar_url;
       var ppEl = document.getElementById('profile-pic-preview');
@@ -4058,18 +4197,18 @@ var BADGE_CATEGORIES = [
     id: 'social',
     getValue: function(h){ return countTotalTags(h); },
     tiers: [
-      { icon:'👥', name:'Tag Team I',    desc:'Tag a friend in a workout', threshold:1,   check: function(h){ return countTotalTags(h) >= 1; } },
-      { icon:'👥', name:'Tag Team II',   desc:'Tag friends 3 times',       threshold:3,   check: function(h){ return countTotalTags(h) >= 3; } },
-      { icon:'👥', name:'Tag Team III',  desc:'Tag friends 5 times',       threshold:5,   check: function(h){ return countTotalTags(h) >= 5; } },
-      { icon:'👥', name:'Tag Team IV',   desc:'Tag friends 8 times',       threshold:8,   check: function(h){ return countTotalTags(h) >= 8; } },
-      { icon:'👥', name:'Tag Team V',    desc:'Tag friends 10 times',      threshold:10,  check: function(h){ return countTotalTags(h) >= 10; } },
-      { icon:'👥', name:'Tag Team VI',   desc:'Tag friends 15 times',      threshold:15,  check: function(h){ return countTotalTags(h) >= 15; } },
-      { icon:'👥', name:'Tag Team VII',  desc:'Tag friends 20 times',      threshold:20,  check: function(h){ return countTotalTags(h) >= 20; } },
-      { icon:'👥', name:'Tag Team VIII', desc:'Tag friends 25 times',      threshold:25,  check: function(h){ return countTotalTags(h) >= 25; } },
-      { icon:'👥', name:'Tag Team IX',   desc:'Tag friends 50 times',      threshold:50,  check: function(h){ return countTotalTags(h) >= 50; } },
-      { icon:'👥', name:'Tag Team X',    desc:'Tag friends 75 times',      threshold:75,  check: function(h){ return countTotalTags(h) >= 75; } },
-      { icon:'👥', name:'Tag Team XI',   desc:'Tag friends 100 times',     threshold:100, check: function(h){ return countTotalTags(h) >= 100; } },
-      { icon:'👥', name:'Tag Team XII',  desc:'Tag friends 150 times',     threshold:150, check: function(h){ return countTotalTags(h) >= 150; } },
+      { icon:'👥', name:'Tag Team I',    desc:'Workout with friends 1 time',    threshold:1,   check: function(h){ return countTotalTags(h) >= 1; } },
+      { icon:'👥', name:'Tag Team II',   desc:'Workout with friends 3 times',   threshold:3,   check: function(h){ return countTotalTags(h) >= 3; } },
+      { icon:'👥', name:'Tag Team III',  desc:'Workout with friends 5 times',   threshold:5,   check: function(h){ return countTotalTags(h) >= 5; } },
+      { icon:'👥', name:'Tag Team IV',   desc:'Workout with friends 8 times',   threshold:8,   check: function(h){ return countTotalTags(h) >= 8; } },
+      { icon:'👥', name:'Tag Team V',    desc:'Workout with friends 10 times',  threshold:10,  check: function(h){ return countTotalTags(h) >= 10; } },
+      { icon:'👥', name:'Tag Team VI',   desc:'Workout with friends 15 times',  threshold:15,  check: function(h){ return countTotalTags(h) >= 15; } },
+      { icon:'👥', name:'Tag Team VII',  desc:'Workout with friends 20 times',  threshold:20,  check: function(h){ return countTotalTags(h) >= 20; } },
+      { icon:'👥', name:'Tag Team VIII', desc:'Workout with friends 25 times',  threshold:25,  check: function(h){ return countTotalTags(h) >= 25; } },
+      { icon:'👥', name:'Tag Team IX',   desc:'Workout with friends 50 times',  threshold:50,  check: function(h){ return countTotalTags(h) >= 50; } },
+      { icon:'👥', name:'Tag Team X',    desc:'Workout with friends 75 times',  threshold:75,  check: function(h){ return countTotalTags(h) >= 75; } },
+      { icon:'👥', name:'Tag Team XI',   desc:'Workout with friends 100 times', threshold:100, check: function(h){ return countTotalTags(h) >= 100; } },
+      { icon:'👥', name:'Tag Team XII',  desc:'Workout with friends 150 times', threshold:150, check: function(h){ return countTotalTags(h) >= 150; } },
     ]
     // XP: flat 75 per tier
   },
@@ -4302,9 +4441,17 @@ function totalVolumeAll(h){
 }
 
 function countTotalTags(h){
-  var total = 0;
-  h.forEach(function(e){ if(e.tagged) total += e.tagged.length; });
-  return total;
+  // Count unique workout sessions where at least one friend was tagged.
+  // Tagging 5 friends in one workout = 1 session, not 5.
+  // Dedup key = YYYY-MM-DD so same-day workouts (e.g. reciprocal tag on same day)
+  // only count once per calendar day from this user's perspective.
+  var sessionDates = new Set();
+  h.forEach(function(e){
+    if(!e.tagged || !e.tagged.length) return;
+    var dateStr = e.ts ? e.ts.slice(0, 10) : (e.date || '');
+    sessionDates.add(dateStr);
+  });
+  return sessionDates.size;
 }
 
 function toRoman(n){
@@ -4712,7 +4859,6 @@ async function viewUserProfile(userId){
   } // end else (has workouts)
 
   // ── Friends tab ──────────────────────────────────────────────────────────
-  console.log('Friends section reached, userId:', userId);
   var friendsEl = document.getElementById('upm-friends');
   friendsEl.innerHTML = '<div class="tab-loader"><div class="tab-loader-ring"></div></div>';
 
@@ -4721,7 +4867,6 @@ async function viewUserProfile(userId){
     .select('requester_id,addressee_id, requester:profiles!friendships_requester_id_fkey(id,name,username,avatar_url), addressee:profiles!friendships_addressee_id_fkey(id,name,username,avatar_url)')
     .or('requester_id.eq.'+userId+',addressee_id.eq.'+userId)
     .eq('status','accepted');
-  console.log('Friends query for userId:', userId, 'result:', fRes.data, 'error:', fRes.error);
   var upmFriendships = fRes.data || [];
 
   if(!upmFriendships.length){
@@ -4739,30 +4884,34 @@ async function viewUserProfile(userId){
   // Fetch all workouts with tagged data that involve userId or their friends
   var allIds = [userId].concat(upmFriends.map(function(f){ return f.id; }));
   var tagRes = await sb.from('workouts')
-    .select('user_id,tagged')
+    .select('user_id,tagged,ts')
     .in('user_id', allIds)
     .not('tagged','is',null);
-  console.log('Tagged workouts for allIds:', allIds, 'result:', tagRes.data, 'error:', tagRes.error);
   var taggedWkts = tagRes.data || [];
 
-  // Count workouts together for each friend
-  var togetherMap = {};
+  // Deduplicate reciprocal tags using session keys: date + sorted user pair
+  var togetherSessions2 = {};
   taggedWkts.forEach(function(w){
     if(!w.tagged || !Array.isArray(w.tagged)) return;
     var ownerId = String(w.user_id);
+    var dateStr = w.ts ? String(w.ts).slice(0, 10) : '';
     w.tagged.forEach(function(t){
       var taggedId = String(t.id);
-      // Skip if both are the same person
       if(ownerId === taggedId) return;
-      // Case 1: userId owns it and tagged a friend
-      if(ownerId === userId && upmFriendIdSet.has(taggedId)){
-        togetherMap[taggedId] = (togetherMap[taggedId]||0) + 1;
-      }
-      // Case 2: a friend owns it and tagged userId
-      if(taggedId === userId && upmFriendIdSet.has(ownerId)){
-        togetherMap[ownerId] = (togetherMap[ownerId]||0) + 1;
-      }
+      var friendId = null;
+      if(ownerId === userId && upmFriendIdSet.has(taggedId)) friendId = taggedId;
+      else if(taggedId === userId && upmFriendIdSet.has(ownerId)) friendId = ownerId;
+      if(!friendId) return;
+      var pair = [userId, friendId].sort().join('|');
+      var sessionKey = dateStr + '|' + pair;
+      if(!togetherSessions2[friendId]) togetherSessions2[friendId] = new Set();
+      togetherSessions2[friendId].add(sessionKey);
     });
+  });
+
+  var togetherMap = {};
+  Object.keys(togetherSessions2).forEach(function(fid){
+    togetherMap[fid] = togetherSessions2[fid].size;
   });
 
   upmFriends.sort(function(a,b){ return (togetherMap[b.id]||0)-(togetherMap[a.id]||0); });
@@ -5137,11 +5286,20 @@ function calcXpForWorkout(entry, priorHistory){
     total += 10;
   }
 
-  // Tagged a friend
+  // Tagged a friend — award +25 for the session if this date hasn't already
+  // been counted in priorHistory. One award per calendar day regardless of
+  // how many friends were tagged.
   if(entry.tagged && entry.tagged.length > 0){
-    var tagXp = 25;
-    breakdown.push({label: 'Trained With Friend', xp: tagXp});
-    total += tagXp;
+    var entryDate = entry.ts ? entry.ts.slice(0, 10) : (entry.date || '');
+    var alreadyTaggedToday = priorHistory.some(function(e){
+      if(!e.tagged || !e.tagged.length) return false;
+      var d = e.ts ? e.ts.slice(0, 10) : (e.date || '');
+      return d === entryDate;
+    });
+    if(!alreadyTaggedToday){
+      breakdown.push({label: 'Trained With Friend', xp: 25});
+      total += 25;
+    }
   }
 
   // Duration bonus
