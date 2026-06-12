@@ -13,3 +13,5 @@ npx cap open ios
 mkdir -p www
 cp ~/Desktop/Lockin/index.html www/index.html
 ls www/
+
+find ~ -name "index.html" 2>/dev/null
