@@ -1599,41 +1599,8 @@ function renderProfileTabBody(workouts, userId){
   }
 
   if(_profileTabSection === 'pbs'){
-    const pbMap = {};
-    workouts.forEach(function(entry){
-      entry.blocks.forEach(function(b){
-        const assisted = b.assisted || false;
-        b.exercises.forEach(function(ex){
-          if(!pbMap[ex.name]) pbMap[ex.name]={bestW:assisted?Infinity:0,bestR:0,bestSets:[],date:'',assisted:assisted};
-          var sets=ex.dropSets?[].concat.apply([],ex.dropSets):(ex.sets||[]);
-          if(!sets.length) return;
-          var bestSet = sets.reduce(function(best,s){
-            var w=parseFloat(s.w)||0,r=parseFloat(s.r)||0,bw=parseFloat(best.w)||0,br=parseFloat(best.r)||0;
-            if(assisted) return w<bw||(w===bw&&r>br)?s:best;
-            return w>bw||(w===bw&&r>br)?s:best;
-          }, sets[0]);
-          var compW = parseFloat(bestSet.w)||0;
-          var bestR = parseFloat(bestSet.r)||0;
-          var isBetter = assisted
-            ? (compW < pbMap[ex.name].bestW || (compW===pbMap[ex.name].bestW && bestR>pbMap[ex.name].bestR))
-            : (compW > pbMap[ex.name].bestW || (compW===pbMap[ex.name].bestW && bestR>pbMap[ex.name].bestR));
-          if(isBetter){
-            pbMap[ex.name].bestW=compW; pbMap[ex.name].bestR=bestR;
-            pbMap[ex.name].date=entry.date; pbMap[ex.name].bestSets=sets;
-            pbMap[ex.name].assisted=assisted;
-          }
-        });
-      });
-    });
-    const names = Object.keys(pbMap);
-    if(!names.length){body.innerHTML='<div class="empty">No data yet.</div>';return;}
-    body.innerHTML = names.map(function(name,pi){
-      var pb=pbMap[name];
-      var assistedBadge = pb.assisted ? ' <span class="ex-assisted-badge"><i class="ti ti-arrow-down-right"></i> Assisted</span>' : '';
-      var bestLabel = pb.assisted ? 'Best (lowest assist): '+fw(String(pb.bestW))+' × '+fr(String(pb.bestR))+' reps' : 'Best: '+fw(String(pb.bestW))+' × '+fr(String(pb.bestR))+' reps';
-      var lines=pb.bestSets.map(function(s,i){return 'Set '+(i+1)+': '+fw(s.w)+' x '+fr(s.r)+' reps'+(s.warmup?' <span class="ex-warmup-badge">Warm-up</span>':'');}).join('<br>');
-      return '<div class="hist-entry" id="ptab-pb-'+pi+'"><div class="hist-hdr" onclick="this.closest(\'.hist-entry\').classList.toggle(\'open\')"><div class="hist-hdr-left"><div class="hist-date" style="font-weight:500;color:var(--tp);">'+name+assistedBadge+'</div><div style="font-size:12px;color:var(--ts);">'+bestLabel+'</div></div><i class="ti ti-chevron-down hist-chevron"></i></div><div class="hist-body"><div style="font-size:12px;color:var(--ts);margin-bottom:8px;">PB on '+pb.date+'</div><div class="hist-sets">'+lines+'</div></div></div>';
-    }).join('');
+    if(!workouts.length){ body.innerHTML='<div class="empty">No data yet.</div>'; return; }
+    renderPBsIntoEl(workouts, body);
   }
 
   if(_profileTabSection === 'badges'){
@@ -2142,15 +2109,31 @@ async function renderFeed(){
 
   window._feedWorkouts = workouts;
 
-  // Pre-group workouts by user_id for per-user badge progress computation.
-  // Feed is newest-first; for each workout at position i within a user's own
-  // sorted list, everything after it is prior history for that user.
+  // Pre-group workouts by user_id for badge progress computation (feed window only).
   window._feedByUser = {};
   workouts.forEach(function(w){
     var uid = w.user_id;
     if(!window._feedByUser[uid]) window._feedByUser[uid] = [];
     window._feedByUser[uid].push(w);
   });
+
+  // Fetch FULL workout history per user for accurate PB detection.
+  // Own history is already in the global `history` array.
+  // Friends need a separate fetch so PBs outside the 40-entry feed window are included.
+  var friendUserIds = Object.keys(window._feedByUser).filter(function(uid){ return uid !== currentUser.id; });
+  window._fullHistoryByUser = {};
+  window._fullHistoryByUser[currentUser.id] = history.slice().sort(function(a,b){ return new Date(b.ts)-new Date(a.ts); });
+  if(friendUserIds.length){
+    var { data: friendWorkouts } = await sb.from('workouts')
+      .select('user_id,ts,blocks,tagged,duration_seconds,label,desc')
+      .in('user_id', friendUserIds)
+      .order('ts', {ascending: false});
+    (friendWorkouts||[]).forEach(function(w){
+      var uid = w.user_id;
+      if(!window._fullHistoryByUser[uid]) window._fullHistoryByUser[uid] = [];
+      window._fullHistoryByUser[uid].push(w);
+    });
+  }
   window._feedLikeCounts = {};
   workouts.forEach(function(w){
     window._feedLikeCounts[w.id] = (allLikes||[]).filter(function(l){return l.workout_id===w.id;}).length;
@@ -2284,12 +2267,12 @@ async function renderFeed(){
     // Build progress panel — PBs, new exercises, and badge progress for this workout
     var priorForFeed = _feedWorkouts ? _feedWorkouts.slice(i+1) : [];
 
-    // Per-user prior history for badge computation (only that user's workouts before this one)
-    var userWorkouts = (window._feedByUser && window._feedByUser[w.user_id]) || [];
-    var userIdxInOwn = userWorkouts.indexOf(w);
+    // Per-user full history for PB and badge computation
+    var userWorkouts = (window._fullHistoryByUser && window._fullHistoryByUser[w.user_id]) || [];
+    var userIdxInOwn = userWorkouts.findIndex(function(u){ return u.ts === w.ts; });
     var priorUserWorkouts = userIdxInOwn >= 0 ? userWorkouts.slice(userIdxInOwn + 1) : userWorkouts;
 
-    var feedDetected = detectNewPBs(w, priorForFeed);
+    var feedDetected = detectNewPBs(w, priorUserWorkouts);
     var progRows = '';
 
     // New exercises
@@ -2331,7 +2314,7 @@ async function renderFeed(){
     // Badge progress
     var snapBefore = getBadgeSnapshot(priorUserWorkouts);
     var snapAfter  = getBadgeSnapshot([w].concat(priorUserWorkouts));
-    var badgeUpdates = getBadgeUpdates(snapBefore, snapAfter);
+    var badgeUpdates = getBadgeUpdates(snapBefore, snapAfter, w, priorUserWorkouts);
     if(badgeUpdates.length){
       progRows += '<div style="font-size:10px;font-weight:700;color:var(--ts);text-transform:uppercase;letter-spacing:.07em;padding:'+(feedDetected.newPBs.length || feedDetected.newExercises.length ? '10px' : '4px')+' 0 6px;">Badge Progress</div>';
       badgeUpdates.forEach(function(u){
@@ -2341,7 +2324,7 @@ async function renderFeed(){
         ? u.name.replace(/\s+[IVXLCDM]+$/, '') + ' ' + beforeSuffix[1] + ' → ' + afterSuffix[1]
         : u.name;
       var prog = u.nextThreshold
-        ? (u.valueAfter + ' / ' + u.nextThreshold + (u.unit ? u.unit : ''))
+        ? (u.valueBefore + ' → ' + u.valueAfter + ' / ' + u.nextThreshold + (u.unit ? u.unit : ''))
         : 'Max!';
       var tierChip = u.tierUp
         ? '<span style="font-size:10px;background:rgba(79,140,255,.15);color:var(--accent);padding:1px 6px;border-radius:var(--pill);font-weight:700;margin-left:4px;">Tier Up!</span>'
@@ -2384,11 +2367,12 @@ async function renderFeed(){
       eventChips.push('<span class="feed-event-chip ev-badge">🏆 ' + tierUps.length + ' Badge Tiers Unlocked</span>');
     }
 
-    // ⭐ Level up — compare XP before/after this workout
-    var profileXp = (w.profile && w.profile.xp) ? w.profile.xp : 0;
-    var xpBeforeThis = calcTotalXpFromHistory(priorUserWorkouts).total;
-    var levelBefore = getLevelFromXp(xpBeforeThis).level;
-    var levelAfter  = getLevelFromXp(profileXp).level;
+    // ⭐ Level up — derive XP before and after this workout from feed history only.
+    // Never use profile.xp which reflects current total, not historical state.
+    var xpBefore = calcTotalXpFromHistory(priorUserWorkouts).total;
+    var xpAfter  = calcTotalXpFromHistory([w].concat(priorUserWorkouts)).total;
+    var levelBefore = getLevelFromXp(xpBefore).level;
+    var levelAfter  = getLevelFromXp(xpAfter).level;
     if(levelAfter > levelBefore){
       eventChips.push('<span class="feed-event-chip ev-level">⭐ Reached Level ' + levelAfter + '</span>');
     }
@@ -3556,6 +3540,86 @@ function getAllData(){
   return map;
 }
 
+// Shared PB renderer — used by both own profile tab and UPM.
+// Renders the category-grouped, searchable PB list into `el` (a DOM element).
+function renderPBsIntoEl(workouts, el){
+  var pbMap = {};
+  workouts.forEach(function(entry){
+    entry.blocks.forEach(function(b){
+      var assisted = b.assisted || false;
+      b.exercises.forEach(function(ex){
+        if(!pbMap[ex.name]) pbMap[ex.name]={bestW:assisted?Infinity:0,bestR:0,date:'',assisted:assisted};
+        var sets=ex.dropSets?[].concat.apply([],ex.dropSets):(ex.sets||[]);
+        if(!sets.length) return;
+        var bestSet=sets.reduce(function(best,s){
+          var w=parseFloat(s.w)||0,r=parseFloat(s.r)||0,bw=parseFloat(best.w)||0,br=parseFloat(best.r)||0;
+          if(assisted) return w<bw||(w===bw&&r>br)?s:best;
+          return w>bw||(w===bw&&r>br)?s:best;
+        }, sets[0]);
+        var compW=parseFloat(bestSet.w)||0, bestR=parseFloat(bestSet.r)||0;
+        var isBetter=assisted?(compW<pbMap[ex.name].bestW||(compW===pbMap[ex.name].bestW&&bestR>pbMap[ex.name].bestR)):(compW>pbMap[ex.name].bestW||(compW===pbMap[ex.name].bestW&&bestR>pbMap[ex.name].bestR));
+        if(isBetter){pbMap[ex.name].bestW=compW;pbMap[ex.name].bestR=bestR;pbMap[ex.name].date=entry.date;pbMap[ex.name].assisted=assisted;}
+      });
+    });
+  });
+  var allPbNames = Object.keys(pbMap);
+  if(!allPbNames.length){ el.innerHTML='<div class="empty">No data yet.</div>'; return; }
+
+  var uid = 'pb-search-'+Math.random().toString(36).slice(2,7);
+  var rid = 'pb-results-'+Math.random().toString(36).slice(2,7);
+
+  function buildList(q){
+    q=(q||'').toLowerCase().trim();
+    var catOrder=Object.keys(EX), catGroups={}, uncategorised=[];
+    allPbNames.forEach(function(name){
+      if(q&&!name.toLowerCase().includes(q)) return;
+      var found=false;
+      catOrder.forEach(function(cat){
+        if((EX[cat]||[]).includes(name)){if(!catGroups[cat])catGroups[cat]=[];catGroups[cat].push(name);found=true;}
+      });
+      if(!found) uncategorised.push(name);
+    });
+    if(uncategorised.length) catGroups['Other']=uncategorised;
+    var activeCats=catOrder.filter(function(c){return catGroups[c];});
+    if(catGroups['Other']) activeCats.push('Other');
+    if(!activeCats.length) return '<div class="empty">No results.</div>';
+    return activeCats.map(function(cat){
+      var exRows=catGroups[cat].map(function(name){
+        var pb=pbMap[name];
+        var pbVal=pb.bestW>0?fw(String(pb.bestW))+' × '+fr(String(pb.bestR))+' reps':fr(String(pb.bestR))+' reps';
+        return '<div class="ex-item" style="flex-direction:column;align-items:flex-start;gap:1px;padding:10px 14px;">'+
+          '<div style="display:flex;align-items:center;justify-content:space-between;width:100%;">'+
+            '<span class="ex-item-name">'+name+(pb.assisted?' <span class="ex-assisted-badge" style="font-size:10px;"><i class="ti ti-arrow-down-right"></i></span>':'')+'</span>'+
+            '<span style="font-size:12px;font-weight:700;color:var(--accent);">'+pbVal+'</span>'+
+          '</div>'+
+          '<span style="font-size:11px;color:var(--ts);">'+pb.date+'</span>'+
+        '</div>';
+      }).join('');
+      return '<div class="lookup-cat-section">'+
+        '<div class="lookup-cat-hdr" onclick="toggleLookupCat(this)">'+
+          '<span style="font-size:14px;font-weight:500;color:var(--tp);">'+cat+'</span>'+
+          '<div style="display:flex;align-items:center;gap:8px;">'+
+            '<span style="font-size:12px;color:var(--ts);">'+catGroups[cat].length+' exercises</span>'+
+            '<i class="ti ti-chevron-down" style="color:var(--ts);font-size:16px;transition:transform .2s;"></i>'+
+          '</div>'+
+        '</div>'+
+        '<div class="lookup-cat-body" style="display:none;">'+exRows+'</div>'+
+      '</div>';
+    }).join('');
+  }
+
+  el.innerHTML=
+    '<div style="padding-bottom:8px;">'+
+      '<div class="search-wrap"><i class="ti ti-search"></i>'+
+        '<input type="text" class="search-inp" id="'+uid+'" placeholder="Search exercises...">'+
+      '</div>'+
+    '</div>'+
+    '<div id="'+rid+'">'+buildList('')+'</div>';
+
+  var inp=document.getElementById(uid);
+  if(inp) inp.addEventListener('input',function(){document.getElementById(rid).innerHTML=buildList(this.value);});
+}
+
 function renderLookup(){
   const q = (document.getElementById('ex-search').value||'').toLowerCase();
   const data = getAllData();
@@ -4265,17 +4329,20 @@ var BADGE_CATEGORIES = [
   {
     id: 'exercises',
     getValue: function(h){
-      var names = new Set();
-      h.forEach(function(e){ e.blocks.forEach(function(b){ b.exercises.forEach(function(ex){ names.add(ex.name); }); }); });
-      return names.size;
+      var total = 0;
+      h.forEach(function(e){ e.blocks.forEach(function(b){ b.exercises.forEach(function(ex){
+        var sets = ex.dropSets ? ex.dropSets.length : (ex.sets||[]).length;
+        total += sets > 0 ? 1 : 0;
+      }); }); });
+      return total;
     },
     tiers: [
-      { icon:'📋', name:'Exercise Log I',   desc:'Log 10 unique exercises',  threshold:10,  check: function(h){ var s=new Set(); h.forEach(function(e){ e.blocks.forEach(function(b){ b.exercises.forEach(function(ex){ s.add(ex.name); }); }); }); return s.size>=10; } },
-      { icon:'📋', name:'Exercise Log II',  desc:'Log 25 unique exercises',  threshold:25,  check: function(h){ var s=new Set(); h.forEach(function(e){ e.blocks.forEach(function(b){ b.exercises.forEach(function(ex){ s.add(ex.name); }); }); }); return s.size>=25; } },
-      { icon:'📋', name:'Exercise Log III', desc:'Log 50 unique exercises',  threshold:50,  check: function(h){ var s=new Set(); h.forEach(function(e){ e.blocks.forEach(function(b){ b.exercises.forEach(function(ex){ s.add(ex.name); }); }); }); return s.size>=50; } },
-      { icon:'📋', name:'Exercise Log IV',  desc:'Log 75 unique exercises',  threshold:75,  check: function(h){ var s=new Set(); h.forEach(function(e){ e.blocks.forEach(function(b){ b.exercises.forEach(function(ex){ s.add(ex.name); }); }); }); return s.size>=75; } },
-      { icon:'📋', name:'Exercise Log V',   desc:'Log 100 unique exercises', threshold:100, check: function(h){ var s=new Set(); h.forEach(function(e){ e.blocks.forEach(function(b){ b.exercises.forEach(function(ex){ s.add(ex.name); }); }); }); return s.size>=100; } },
-      { icon:'📋', name:'Exercise Log VI',  desc:'Log 150 unique exercises', threshold:150, check: function(h){ var s=new Set(); h.forEach(function(e){ e.blocks.forEach(function(b){ b.exercises.forEach(function(ex){ s.add(ex.name); }); }); }); return s.size>=150; } },
+      { icon:'📋', name:'Exercise Log I',   desc:'Log 10 exercises',   threshold:10,  check: function(h){ var t=0; h.forEach(function(e){e.blocks.forEach(function(b){b.exercises.forEach(function(ex){var s=ex.dropSets?ex.dropSets.length:(ex.sets||[]).length;if(s>0)t++;});});}); return t>=10; } },
+      { icon:'📋', name:'Exercise Log II',  desc:'Log 25 exercises',   threshold:25,  check: function(h){ var t=0; h.forEach(function(e){e.blocks.forEach(function(b){b.exercises.forEach(function(ex){var s=ex.dropSets?ex.dropSets.length:(ex.sets||[]).length;if(s>0)t++;});});}); return t>=25; } },
+      { icon:'📋', name:'Exercise Log III', desc:'Log 50 exercises',   threshold:50,  check: function(h){ var t=0; h.forEach(function(e){e.blocks.forEach(function(b){b.exercises.forEach(function(ex){var s=ex.dropSets?ex.dropSets.length:(ex.sets||[]).length;if(s>0)t++;});});}); return t>=50; } },
+      { icon:'📋', name:'Exercise Log IV',  desc:'Log 75 exercises',   threshold:75,  check: function(h){ var t=0; h.forEach(function(e){e.blocks.forEach(function(b){b.exercises.forEach(function(ex){var s=ex.dropSets?ex.dropSets.length:(ex.sets||[]).length;if(s>0)t++;});});}); return t>=75; } },
+      { icon:'📋', name:'Exercise Log V',   desc:'Log 100 exercises',  threshold:100, check: function(h){ var t=0; h.forEach(function(e){e.blocks.forEach(function(b){b.exercises.forEach(function(ex){var s=ex.dropSets?ex.dropSets.length:(ex.sets||[]).length;if(s>0)t++;});});}); return t>=100; } },
+      { icon:'📋', name:'Exercise Log VI',  desc:'Log 150 exercises',  threshold:150, check: function(h){ var t=0; h.forEach(function(e){e.blocks.forEach(function(b){b.exercises.forEach(function(ex){var s=ex.dropSets?ex.dropSets.length:(ex.sets||[]).length;if(s>0)t++;});});}); return t>=150; } },
     ]
     // XP: flat 75 per tier
   },
@@ -4653,7 +4720,10 @@ function renderProfileStatsRow(workoutHistory, editable, prefs, userLevel){
   }).sort(function(a, b){ return b.score - a.score; });
 
   var usedIndices = [];
-  var resolved = chosen.slice(0, 3).map(function(catIdx){
+  var resolved = chosen.slice(0, 3).map(function(catIdx, slotIdx){
+    var locked = level < BADGE_SLOT_LEVELS[slotIdx];
+    // Locked slots show nothing — don't reserve their category index
+    if(locked) return catIdx;
     if(usedIndices.indexOf(catIdx) === -1){
       usedIndices.push(catIdx);
       return catIdx;
@@ -4699,7 +4769,6 @@ function renderProfileStatsRow(workoutHistory, editable, prefs, userLevel){
 }
 
 function openStatPicker(slotIdx){
-  // Check slot is unlocked for this user
   var userLevel = (currentProfile && currentProfile.xp) ? getLevelFromXp(currentProfile.xp).level : 1;
   if(userLevel < BADGE_SLOT_LEVELS[slotIdx]) return;
 
@@ -4708,8 +4777,11 @@ function openStatPicker(slotIdx){
   var boxes = document.querySelectorAll('.profile-stat-box');
   var box = boxes[slotIdx];
   if(!box) return;
-  // Categories already used in OTHER slots (not this one)
-  var otherSlots = chosen.filter(function(_, i){ return i !== slotIdx; });
+
+  // Only count other UNLOCKED slots as in-use — locked slots don't display anything
+  var otherSlots = chosen.filter(function(_, i){
+    return i !== slotIdx && userLevel >= BADGE_SLOT_LEVELS[i];
+  });
   var dropdown = document.createElement('div');
   dropdown.className = 'stat-picker-dropdown';
   dropdown.style.cssText = 'position:fixed;z-index:300;background:var(--bp);border:0.5px solid var(--bo3);border-radius:var(--r2);box-shadow:0 4px 16px rgba(0,0,0,.25);min-width:180px;overflow:hidden;';
@@ -4760,9 +4832,6 @@ function switchUPMTab(tab){
   document.getElementById('upm-tab-pbs').classList.toggle('active', tab==='pbs');
   document.getElementById('upm-tab-friends').classList.toggle('active', tab==='friends');
   document.getElementById('upm-tab-badges').classList.toggle('active', tab==='badges');
-  // Hide stats row (consistency card + stat boxes) on badges tab
-  var statsRow = document.getElementById('upm-stats-row');
-  if(statsRow) statsRow.style.display = tab==='badges' ? 'none' : '';
 }
 
 async function viewUserProfile(userId){
@@ -4820,50 +4889,9 @@ async function viewUserProfile(userId){
     '</div>';
   }).join('');
 
-  // PBs
-  var pbMap = {};
-  workouts.forEach(function(entry){
-    entry.blocks.forEach(function(b){
-      var assisted = b.assisted || false;
-      b.exercises.forEach(function(ex){
-        if(!pbMap[ex.name]) pbMap[ex.name] = {bestW:assisted?Infinity:0,bestR:0,bestSets:[],date:'',assisted:assisted};
-        var sets = ex.dropSets ? [].concat.apply([],ex.dropSets) : (ex.sets||[]);
-        if(!sets.length) return;
-        var bestSet = sets.reduce(function(best,s){
-          var w=parseFloat(s.w)||0,r=parseFloat(s.r)||0,bw=parseFloat(best.w)||0,br=parseFloat(best.r)||0;
-          if(assisted) return w<bw||(w===bw&&r>br)?s:best;
-          return w>bw||(w===bw&&r>br)?s:best;
-        }, sets[0]);
-        var compW = parseFloat(bestSet.w)||0;
-        var bestR = parseFloat(bestSet.r)||0;
-        var isBetter = assisted
-          ? (compW < pbMap[ex.name].bestW || (compW===pbMap[ex.name].bestW && bestR>pbMap[ex.name].bestR))
-          : (compW > pbMap[ex.name].bestW || (compW===pbMap[ex.name].bestW && bestR>pbMap[ex.name].bestR));
-        if(isBetter){
-          pbMap[ex.name].bestW=compW; pbMap[ex.name].bestR=bestR;
-          pbMap[ex.name].date=entry.date; pbMap[ex.name].bestSets=sets;
-          pbMap[ex.name].assisted=assisted;
-        }
-      });
-    });
-  });
-  var pbNames = Object.keys(pbMap);
-  document.getElementById('upm-pbs').innerHTML = pbNames.length ? pbNames.map(function(name, pi){
-    var pb = pbMap[name];
-    var assistedBadge = pb.assisted ? ' <span class="ex-assisted-badge"><i class="ti ti-arrow-down-right"></i> Assisted</span>' : '';
-    var bestLabel = pb.assisted ? 'Best (lowest assist): '+fw(String(pb.bestW))+' &times; '+fr(String(pb.bestR))+' reps' : 'Best: '+fw(String(pb.bestW))+' &times; '+fr(String(pb.bestR))+' reps';
-    var lines = pb.bestSets.map(function(s,i){return 'Set '+(i+1)+': '+fw(s.w)+' x '+fr(s.r)+' reps'+(s.warmup?' <span class="ex-warmup-badge">Warm-up</span>':'');}).join('<br>');
-    return '<div class="hist-entry" id="upm-pb-'+pi+'">' +
-      '<div class="hist-hdr" onclick="this.closest(\'.hist-entry\').classList.toggle(\'open\')">' +
-        '<div class="hist-hdr-left">' +
-          '<div class="hist-date" style="font-weight:500;color:var(--tp);">'+name+assistedBadge+'</div>' +
-          '<div style="font-size:12px;color:var(--ts);">'+bestLabel+'</div>' +
-        '</div>' +
-        '<i class="ti ti-chevron-down hist-chevron"></i>' +
-      '</div>' +
-      '<div class="hist-body"><div style="font-size:12px;color:var(--ts);margin-bottom:8px;">PB on '+pb.date+'</div><div class="hist-sets">'+lines+'</div></div>' +
-    '</div>';
-  }).join('') : '<div style="font-size:13px;color:var(--ts);text-align:center;padding:1rem;">No data yet.</div>';
+  // PBs — use shared renderer
+  renderPBsIntoEl(workouts, document.getElementById('upm-pbs'));
+
   window._upmWorkouts = workouts;
   document.getElementById('upm-badges').innerHTML = renderBadges(workouts);
   var upmStats = document.getElementById('upm-stats-row');
@@ -5434,16 +5462,16 @@ function getBadgeSnapshot(workoutHistory){
   return snap;
 }
 
-function getBadgeUpdates(snapBefore, snapAfter){
+function getBadgeUpdates(snapBefore, snapAfter, newEntry, priorHistory){
   var updates = [];
   BADGE_CATEGORIES.forEach(function(cat){
     var before = snapBefore[cat.id];
     var after = snapAfter[cat.id];
     if(!before || !after) return;
-    // Only report if value changed and there's a next goal
-    if(before.value === null || after.value === null) return;
-    if(after.value === before.value) return;
-    if(after.nextThreshold === null) return;
+    var valueChanged = before.value !== null && after.value !== null && after.value !== before.value;
+    var tierChanged = after.earned !== before.earned;
+    if(!valueChanged && !tierChanged) return;
+    if(after.nextThreshold === null && !tierChanged) return;
     updates.push({
       icon: after.icon,
       name: after.name,
@@ -5635,7 +5663,7 @@ function viewWorkoutReview(entry, priorHistory){
   var breakdownHtml = xpResult.breakdown.map(function(row){
     return '<div class="xp-breakdown-row"><span>' + row.label + '</span><span class="xp-breakdown-amt">+' + row.xp + ' XP</span></div>';
   }).join('');
-  var badgeUpdates = getBadgeUpdates(snapBefore, snapAfter);
+  var badgeUpdates = getBadgeUpdates(snapBefore, snapAfter, entry, priorHistory);
   var newTiers = badgeUpdates.filter(function(u){ return u.tierUp; });
   if(newTiers.length){
     breakdownHtml += newTiers.map(function(u){
@@ -5655,7 +5683,7 @@ function viewWorkoutReview(entry, priorHistory){
   if(badgeUpdates.length){
     badgeSec.style.display = '';
     document.getElementById('xp-badge-updates').innerHTML = badgeUpdates.map(function(u){
-      var prog = u.nextThreshold ? (u.valueAfter + ' / ' + u.nextThreshold + (u.unit ? ' ' + u.unit : '')) : 'Max!';
+      var prog = u.nextThreshold ? (u.valueBefore + ' → ' + u.valueAfter + ' / ' + u.nextThreshold + (u.unit ? ' ' + u.unit : '')) : 'Max!';
       var beforeSuffix = u.nameBefore ? u.nameBefore.match(/([IVXLCDM]+)$/) : null;
       var afterSuffix  = u.name.match(/([IVXLCDM]+)$/);
       var displayName = u.tierUp && beforeSuffix && afterSuffix
@@ -5722,7 +5750,7 @@ async function showXpModal(entry, priorHistory){
   }).join('');
 
   // Add badge tier XP rows if any new tiers were earned
-  var badgeUpdates = getBadgeUpdates(snapBefore, snapAfter);
+  var badgeUpdates = getBadgeUpdates(snapBefore, snapAfter, entry, priorHistory);
   var newTiers = badgeUpdates.filter(function(u){ return u.tierUp; });
   if(newTiers.length){
     breakdownHtml += newTiers.map(function(u){
@@ -5743,7 +5771,7 @@ async function showXpModal(entry, priorHistory){
   if(badgeUpdates.length){
     badgeSec.style.display = '';
     document.getElementById('xp-badge-updates').innerHTML = badgeUpdates.map(function(u){
-      var prog = u.nextThreshold ? (u.valueAfter + ' / ' + u.nextThreshold + (u.unit ? ' ' + u.unit : '')) : 'Max!';
+      var prog = u.nextThreshold ? (u.valueBefore + ' → ' + u.valueAfter + ' / ' + u.nextThreshold + (u.unit ? ' ' + u.unit : '')) : 'Max!';
       var beforeSuffix = u.nameBefore ? u.nameBefore.match(/([IVXLCDM]+)$/) : null;
       var afterSuffix  = u.name.match(/([IVXLCDM]+)$/);
       var displayName = u.tierUp && beforeSuffix && afterSuffix
@@ -5929,9 +5957,9 @@ document.addEventListener('DOMContentLoaded', function(){ window._loadStart = Da
     <button class="friends-subtab" onclick="switchUPMTab('friends')" id="upm-tab-friends">Friends</button>
     <button class="friends-subtab" onclick="switchUPMTab('badges')" id="upm-tab-badges">Badges</button>
   </div>
-  <div id="upm-workouts" style="flex:1;overflow-y:auto;min-height:0;"></div>
-  <div id="upm-pbs" style="display:none;flex:1;overflow-y:auto;min-height:0;"></div>
-  <div id="upm-friends" style="display:none;flex:1;overflow-y:auto;min-height:0;"></div>
+  <div id="upm-workouts" style="flex:1;overflow-y:auto;min-height:0;margin:0 -1.35rem;padding:0 1.35rem;"></div>
+  <div id="upm-pbs" style="display:none;flex:1;overflow-y:auto;min-height:0;margin:0 -1.35rem;padding:0 1.35rem;"></div>
+  <div id="upm-friends" style="display:none;flex:1;overflow-y:auto;min-height:0;margin:0 -1.35rem;padding:0 1.35rem;"></div>
   <div id="upm-badges" style="display:none;flex:1;overflow-y:auto;min-height:0;padding:4px 0;"></div>
   <div class="modal-actions" style="margin-top:1rem;flex-shrink:0;">
     <button class="modal-btn" onclick="closeModal('user-profile-modal')">Close</button>
