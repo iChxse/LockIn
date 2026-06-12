@@ -19,3 +19,11 @@ find ~ -name "index.html" 2>/dev/null
 rm -rf ~/Library/Developer/Xcode/DerivedData
 rm -rf ~/Library/Caches/com.apple.dt.Xcode
 rm -rf ~/Library/Saved\ Application\ State/com.apple.dt.Xcode.savedState
+
+killall Xcode
+
+rm -rf ~/Library/Application\ Support/Xcode
+rm -rf ~/Library/Caches/com.apple.dt.Xcode
+rm -rf ~/Library/Saved\ Application\ State/com.apple.dt.Xcode.savedState
+rm -rf ~/Library/Developer/Xcode/DerivedData
+rm -rf ~/Library/Developer/Xcode/UserData
