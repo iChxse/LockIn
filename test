@@ -1,0 +1,7 @@
+mkdir lockin-app
+cd lockin-app
+npm init -y
+npm install @capacitor/core @capacitor/cli @capacitor/ios @capacitor/android
+npx cap init "Lock In." "com.lockin.app" --web-dir www
+mkdir www
+cp "/Volumes/Macintosh HD/Users/user286429/Desktop/Lockin/index.html" www/index.html
