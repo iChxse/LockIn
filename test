@@ -9,3 +9,7 @@ cp "/Volumes/Macintosh HD/Users/user286429/Desktop/Lockin/index.html" www/index.
 npx cap add ios
 npx cap sync ios
 npx cap open ios
+
+mkdir -p www
+cp ~/Desktop/Lockin/index.html www/index.html
+ls www/
