@@ -676,6 +676,12 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
 .feed-pill-btn:active, .feed-pill-btn.active { background: rgba(79,140,255,.12); color: var(--accent); border-color: var(--accent); }
 .feed-pill-btn.liked { color: var(--accent); border-color: var(--accent); background: rgba(79,140,255,.1); }
 .feed-prog-rows > div:last-child { border-bottom: none !important; }
+.feed-events { display:flex; flex-wrap:wrap; gap:6px; padding:0 1rem 10px; }
+.feed-event-chip { display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:700; padding:4px 10px; border-radius:var(--pill); letter-spacing:.01em; }
+.feed-event-chip.ev-pb { background:rgba(239,68,68,.12); color:#ef4444; border:0.5px solid rgba(239,68,68,.25); }
+.feed-event-chip.ev-badge { background:rgba(234,179,8,.12); color:#ca8a04; border:0.5px solid rgba(234,179,8,.3); }
+.feed-event-chip.ev-level { background:rgba(79,140,255,.12); color:var(--accent); border:0.5px solid rgba(79,140,255,.3); }
+.feed-event-chip.ev-together { background:rgba(34,197,94,.1); color:#16a34a; border:0.5px solid rgba(34,197,94,.25); }
 .activity-actions { display: flex; border-top: 1px solid var(--bo3); }
 .activity-action-btn { flex: 1; background: none; border: none; padding: 11px; font-size: 13px; font-weight: 600; color: var(--ts); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px; }
 .activity-action-btn:active { color: var(--tp); background: var(--bs-elevated); }
@@ -2120,7 +2126,7 @@ async function renderFeed(){
   const allIds = [currentUser.id, ...friendIds];
 
   const { data: workouts } = await sb.from('workouts')
-    .select('*, profile:profiles(id,name,username,avatar_url)')
+    .select('*, profile:profiles(id,name,username,avatar_url,xp)')
     .in('user_id', allIds)
     .order('ts', {ascending:false})
     .limit(40);
@@ -2357,6 +2363,49 @@ async function renderFeed(){
       '<div class="feed-prog-rows">' + progRows + '</div>' +
     '</div>';
 
+    // ── Event chips — surface highlights on the collapsed card ──
+    var eventChips = [];
+
+    // 🔥 Personal bests
+    if(feedDetected.newPBs.length === 1){
+      eventChips.push('<span class="feed-event-chip ev-pb">🔥 New PB — ' + feedDetected.newPBs[0] + '</span>');
+    } else if(feedDetected.newPBs.length > 1){
+      eventChips.push('<span class="feed-event-chip ev-pb">🔥 ' + feedDetected.newPBs.length + ' New Personal Bests</span>');
+    }
+
+    // 🏆 Badge tier-ups
+    var tierUps = badgeUpdates.filter(function(u){ return u.tierUp; });
+    if(tierUps.length === 1){
+      var u = tierUps[0];
+      var afterSuffix = u.name.match(/([IVXLCDM]+)$/);
+      var baseName = u.name.replace(/\s+[IVXLCDM]+$/, '');
+      eventChips.push('<span class="feed-event-chip ev-badge">' + u.icon + ' ' + baseName + (afterSuffix ? ' ' + afterSuffix[1] : '') + ' Unlocked</span>');
+    } else if(tierUps.length > 1){
+      eventChips.push('<span class="feed-event-chip ev-badge">🏆 ' + tierUps.length + ' Badge Tiers Unlocked</span>');
+    }
+
+    // ⭐ Level up — compare XP before/after this workout
+    var profileXp = (w.profile && w.profile.xp) ? w.profile.xp : 0;
+    var xpBeforeThis = calcTotalXpFromHistory(priorUserWorkouts).total;
+    var levelBefore = getLevelFromXp(xpBeforeThis).level;
+    var levelAfter  = getLevelFromXp(profileXp).level;
+    if(levelAfter > levelBefore){
+      eventChips.push('<span class="feed-event-chip ev-level">⭐ Reached Level ' + levelAfter + '</span>');
+    }
+
+    // 👥 Worked out together (current user is tagged, or tagged the poster)
+    var trainedTogether = false;
+    if(!isMe){
+      if(w.tagged && w.tagged.some(function(t){ return String(t.id) === currentUser.id; })) trainedTogether = true;
+    }
+    if(trainedTogether){
+      eventChips.push('<span class="feed-event-chip ev-together">👥 You trained together</span>');
+    }
+
+    var eventStrip = eventChips.length
+      ? '<div class="feed-events">' + eventChips.join('') + '</div>'
+      : '';
+
     return '<div class="activity-card" id="acard-'+i+'">' +
       '<div class="activity-hdr">' +
         getAvatarHtml(w.profile, 52) +
@@ -2371,6 +2420,7 @@ async function renderFeed(){
         wlabel +
         (w.desc ? '<div class="activity-sets-preview">'+w.desc+'</div>' : '') +
       '</div>' +
+      eventStrip +
       '<div style="display:flex;gap:8px;padding:8px 1rem;border-top:0.5px solid var(--bo3);align-items:center;">' +
         '<button class="feed-pill-btn" id="asets-pill-'+i+'" onclick="toggleFeedDetail('+i+')">' +
           '<i class="ti ti-list"></i> Sets' +
