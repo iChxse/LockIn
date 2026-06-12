@@ -15,3 +15,7 @@ cp ~/Desktop/Lockin/index.html www/index.html
 ls www/
 
 find ~ -name "index.html" 2>/dev/null
+
+rm -rf ~/Library/Developer/Xcode/DerivedData
+rm -rf ~/Library/Caches/com.apple.dt.Xcode
+rm -rf ~/Library/Saved\ Application\ State/com.apple.dt.Xcode.savedState
