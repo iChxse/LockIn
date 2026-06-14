@@ -2104,12 +2104,21 @@ async function renderFeed(){
   }
 
   const wIds = workouts.map(w=>w.id);
-  const { data: allLikes } = await sb.from('workout_likes').select('workout_id,user_id').in('workout_id', wIds);
-  const { data: allComments } = await sb.from('workout_comments').select('*,profile:profiles(id,name,username,avatar_url)').in('workout_id', wIds).order('created_at',{ascending:true});
+  const friendUserIds2 = [...new Set(workouts.map(w=>w.user_id).filter(uid => uid !== currentUser.id))];
+
+  // Fetch all data in parallel before rendering anything
+  const [likesRes, commentsRes, friendHistRes] = await Promise.all([
+    sb.from('workout_likes').select('workout_id,user_id').in('workout_id', wIds),
+    sb.from('workout_comments').select('*,profile:profiles(id,name,username,avatar_url)').in('workout_id', wIds).order('created_at',{ascending:true}),
+    friendUserIds2.length
+      ? sb.from('workouts').select('id,user_id,ts,blocks,tagged,duration_seconds,label,desc').in('user_id', friendUserIds2).order('ts',{ascending:false})
+      : Promise.resolve({data:[]})
+  ]);
+
+  const allLikes = likesRes.data || [];
+  const allComments = commentsRes.data || [];
 
   window._feedWorkouts = workouts;
-
-  // Pre-group workouts by user_id for badge progress computation (feed window only).
   window._feedByUser = {};
   workouts.forEach(function(w){
     var uid = w.user_id;
@@ -2117,23 +2126,13 @@ async function renderFeed(){
     window._feedByUser[uid].push(w);
   });
 
-  // Fetch FULL workout history per user for accurate PB detection.
-  // Own history is already in the global `history` array.
-  // Friends need a separate fetch so PBs outside the 40-entry feed window are included.
-  var friendUserIds = Object.keys(window._feedByUser).filter(function(uid){ return uid !== currentUser.id; });
   window._fullHistoryByUser = {};
   window._fullHistoryByUser[currentUser.id] = history.slice().sort(function(a,b){ return new Date(b.ts)-new Date(a.ts); });
-  if(friendUserIds.length){
-    var { data: friendWorkouts } = await sb.from('workouts')
-      .select('user_id,ts,blocks,tagged,duration_seconds,label,desc')
-      .in('user_id', friendUserIds)
-      .order('ts', {ascending: false});
-    (friendWorkouts||[]).forEach(function(w){
-      var uid = w.user_id;
-      if(!window._fullHistoryByUser[uid]) window._fullHistoryByUser[uid] = [];
-      window._fullHistoryByUser[uid].push(w);
-    });
-  }
+  (friendHistRes.data||[]).forEach(function(w){
+    var uid = w.user_id;
+    if(!window._fullHistoryByUser[uid]) window._fullHistoryByUser[uid] = [];
+    window._fullHistoryByUser[uid].push(w);
+  });
   window._feedLikeCounts = {};
   workouts.forEach(function(w){
     window._feedLikeCounts[w.id] = (allLikes||[]).filter(function(l){return l.workout_id===w.id;}).length;
@@ -2269,27 +2268,29 @@ async function renderFeed(){
 
     // Per-user full history for PB and badge computation
     var userWorkouts = (window._fullHistoryByUser && window._fullHistoryByUser[w.user_id]) || [];
-    var userIdxInOwn = userWorkouts.findIndex(function(u){ return u.ts === w.ts; });
-    var priorUserWorkouts = userIdxInOwn >= 0 ? userWorkouts.slice(userIdxInOwn + 1) : userWorkouts;
+    var userIdxInOwn = userWorkouts.findIndex(function(u){
+      if(w.id && u.id) return u.id === w.id;
+      return u.ts && w.ts && u.ts.slice(0,19) === w.ts.slice(0,19);
+    });
+    var priorUserWorkouts;
+    if(userIdxInOwn >= 0){
+      priorUserWorkouts = userWorkouts.slice(userIdxInOwn + 1);
+    } else {
+      // Full history lookup failed — fall back to feed window slice for this user
+      var feedUserWorkouts = (window._feedByUser && window._feedByUser[w.user_id]) || [];
+      var feedIdx = feedUserWorkouts.findIndex(function(u){
+        if(w.id && u.id) return u.id === w.id;
+        return u.ts && w.ts && u.ts.slice(0,19) === w.ts.slice(0,19);
+      });
+      priorUserWorkouts = feedIdx >= 0 ? feedUserWorkouts.slice(feedIdx + 1) : [];
+    }
 
     var feedDetected = detectNewPBs(w, priorUserWorkouts);
     var progRows = '';
 
-    // New exercises
-    if(feedDetected.newExercises.length){
-      progRows += '<div style="font-size:10px;font-weight:700;color:var(--ts);text-transform:uppercase;letter-spacing:.07em;padding:4px 0 6px;">New Exercises</div>';
-      feedDetected.newExercises.forEach(function(name){
-        progRows += '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:0.5px solid var(--bo3);">' +
-          '<span style="font-size:15px;">✨</span>' +
-          '<div><div style="font-size:12px;font-weight:600;color:var(--tp);">'+name+'</div>' +
-          '<div style="font-size:11px;color:var(--ts);">First time logged</div></div>' +
-        '</div>';
-      });
-    }
-
-    // Personal bests
+    // Personal bests — shown first
     if(feedDetected.newPBs.length){
-      progRows += '<div style="font-size:10px;font-weight:700;color:var(--ts);text-transform:uppercase;letter-spacing:.07em;padding:'+(feedDetected.newExercises.length ? '10px' : '4px')+' 0 6px;">Personal Bests</div>';
+      progRows += '<div style="font-size:10px;font-weight:700;color:var(--ts);text-transform:uppercase;letter-spacing:.07em;padding:4px 0 6px;">Personal Bests</div>';
       feedDetected.newPBs.forEach(function(name){
         var bestW = 0, bestR = 0;
         (w.blocks||[]).forEach(function(b){
@@ -2311,6 +2312,18 @@ async function renderFeed(){
       });
     }
 
+    // New exercises — shown after PBs
+    if(feedDetected.newExercises.length){
+      progRows += '<div style="font-size:10px;font-weight:700;color:var(--ts);text-transform:uppercase;letter-spacing:.07em;padding:'+(feedDetected.newPBs.length ? '10px' : '4px')+' 0 6px;">New Exercises</div>';
+      feedDetected.newExercises.forEach(function(name){
+        progRows += '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:0.5px solid var(--bo3);">' +
+          '<span style="font-size:15px;">✨</span>' +
+          '<div><div style="font-size:12px;font-weight:600;color:var(--tp);">'+name+'</div>' +
+          '<div style="font-size:11px;color:var(--ts);">First time logged</div></div>' +
+        '</div>';
+      });
+    }
+
     // Badge progress
     var snapBefore = getBadgeSnapshot(priorUserWorkouts);
     var snapAfter  = getBadgeSnapshot([w].concat(priorUserWorkouts));
@@ -2323,9 +2336,7 @@ async function renderFeed(){
       var displayName = u.tierUp && beforeSuffix && afterSuffix
         ? u.name.replace(/\s+[IVXLCDM]+$/, '') + ' ' + beforeSuffix[1] + ' → ' + afterSuffix[1]
         : u.name;
-      var prog = u.nextThreshold
-        ? (u.valueBefore + ' → ' + u.valueAfter + ' / ' + u.nextThreshold + (u.unit ? u.unit : ''))
-        : 'Max!';
+      var prog = (function(){var _a=u.valueAfter,_b=u.valueBefore,_n=u.nextThreshold,_u=u.unit||'';if(!_n)return 'Max!';var _g=typeof _a==='number'&&typeof _b==='number'?_a-_b:null;var _f=function(v){return typeof v==='number'?v.toLocaleString():v;};return _f(_a)+' / '+_f(_n)+(_u?' '+_u:'')+(_g!==null&&_g>0?' (+'+_f(_g)+')':'');}());
       var tierChip = u.tierUp
         ? '<span style="font-size:10px;background:rgba(79,140,255,.15);color:var(--accent);padding:1px 6px;border-radius:var(--pill);font-weight:700;margin-left:4px;">Tier Up!</span>'
         : '';
@@ -2577,17 +2588,43 @@ function toggleComments(i){
   document.getElementById('acomments-'+i).classList.toggle('open');
 }
 
-// Like button event delegation — one listener handles all cards
+// Like button — click to like/unlike, long press (500ms) to view likers
+var _likeLongPressTimer = null;
+var _likeLongPressTriggered = false;
+
+document.addEventListener('pointerdown', function(e){
+  const btn = e.target.closest('#friends-feed-content .feed-pill-btn[data-wid]');
+  if(!btn) return;
+  _likeLongPressTriggered = false;
+  _likeLongPressTimer = setTimeout(function(){
+    _likeLongPressTriggered = true;
+    const workoutId = btn.dataset.wid;
+    const likeCount = parseInt(btn.dataset.count) || 0;
+    if(likeCount > 0) showLikes(workoutId);
+  }, 500);
+});
+
+document.addEventListener('pointerup', function(e){
+  clearTimeout(_likeLongPressTimer);
+  _likeLongPressTimer = null;
+});
+
+document.addEventListener('pointercancel', function(){
+  clearTimeout(_likeLongPressTimer);
+  _likeLongPressTimer = null;
+});
+
 document.addEventListener('click', function(e){
   const btn = e.target.closest('#friends-feed-content .feed-pill-btn[data-wid]');
   if(!btn) return;
+  if(_likeLongPressTriggered) return; // long press already handled
   const workoutId = btn.dataset.wid;
   const i = parseInt(btn.dataset.idx);
   const iLiked = btn.dataset.liked === '1';
-  const likeCount = parseInt(btn.dataset.count) || 0;
   const isOwn = btn.dataset.own === '1';
-  if(isOwn || iLiked){
-    if(likeCount > 0) showLikes(workoutId);
+  if(isOwn) return; // own post — no action on click (use long press to see likers)
+  if(iLiked){
+    doUnlike(btn, workoutId);
   } else {
     doLike(btn, workoutId, i);
   }
@@ -2596,13 +2633,23 @@ document.addEventListener('click', function(e){
 async function doLike(btn, workoutId, i){
   const currentCount = parseInt(btn.dataset.count) || 0;
   const newCount = currentCount + 1;
-
   btn.className = 'feed-pill-btn liked';
   btn.innerHTML = '<i class="ti ti-thumb-up-filled"></i><span class="feed-pill-count">' + newCount + '</span>';
   btn.dataset.liked = '1';
   btn.dataset.count = newCount;
-
   await sb.from('workout_likes').insert({workout_id: workoutId, user_id: currentUser.id});
+}
+
+async function doUnlike(btn, workoutId){
+  const currentCount = parseInt(btn.dataset.count) || 0;
+  const newCount = Math.max(0, currentCount - 1);
+  btn.className = 'feed-pill-btn';
+  btn.innerHTML = '<i class="ti ti-thumb-up"></i><span class="feed-pill-count">' + newCount + '</span>';
+  btn.dataset.liked = '0';
+  btn.dataset.count = newCount;
+  await sb.from('workout_likes').delete()
+    .eq('workout_id', workoutId)
+    .eq('user_id', currentUser.id);
 }
 
 async function postComment(workoutId, i){
@@ -2647,6 +2694,45 @@ async function postComment(workoutId, i){
   }
 }
 
+// When copying a workout, import any exercises not yet in the current user's EX map.
+// Looks up each exercise name in DEF first (preserves correct category), then falls
+// back to "Other" so nothing is lost. Saves to Supabase after any change.
+async function importExercisesIntoEX(blocks){
+  var changed = false;
+  // Build a lowercase reverse-lookup from DEF: name → category
+  var defLower = {};
+  Object.keys(DEF).forEach(function(cat){
+    (DEF[cat]||[]).forEach(function(name){ defLower[name.toLowerCase()] = { cat: cat, name: name }; });
+  });
+  // Also build one from current EX so we can skip already-known exercises
+  var exLower = {};
+  Object.keys(EX).forEach(function(cat){
+    (EX[cat]||[]).forEach(function(name){ exLower[name.toLowerCase()] = true; });
+  });
+
+  blocks.forEach(function(b){
+    b.exercises.forEach(function(ex){
+      var n = ex.name;
+      if(exLower[n.toLowerCase()]) return; // already in EX
+      // Find category from DEF (case-insensitive) or use Other
+      var defMatch = defLower[n.toLowerCase()];
+      var cat = defMatch ? defMatch.cat : 'Other';
+      var canonical = defMatch ? defMatch.name : n;
+      if(!EX[cat]) EX[cat] = [];
+      if(!EX[cat].includes(canonical)){
+        EX[cat].push(canonical);
+        exLower[canonical.toLowerCase()] = true;
+        changed = true;
+      }
+    });
+  });
+
+  if(changed){
+    localStorage.setItem('wl_exercises', JSON.stringify(EX));
+    await saveToSupabase(null); // persist EX to exercise_lists
+  }
+}
+
 function copyFeedWorkout(i){
   const entry = window._feedWorkouts[i];
   if(!entry) return;
@@ -2655,6 +2741,7 @@ function copyFeedWorkout(i){
     return {type:b.type, exercises:b.exercises.map(ex=>({name:ex.name, sets:(ex.sets||[]).map(()=>({w:'',r:''}))}))};
   });
   if(entry.label) document.getElementById('day-inp').value = entry.label;
+  importExercisesIntoEX(blocks);
   switchTab('log'); renderBlocks(); renderExSelect();
 }
 
@@ -3540,9 +3627,54 @@ function getAllData(){
   return map;
 }
 
+// Build a category→exercises map from a workout history array.
+// Exercises that match the current user's EX map get placed in their category.
+// Everything else goes into "Other". This way viewing another user's profile
+// correctly groups their exercises even if their EX map differs from ours.
+function buildExMapFromHistory(workouts){
+  var exerciseNames = new Set();
+  workouts.forEach(function(e){
+    e.blocks.forEach(function(b){
+      b.exercises.forEach(function(ex){ exerciseNames.add(ex.name); });
+    });
+  });
+  var catMap = {};
+  var placed = new Set();
+  // Use DEF (default categories shared by all users) as the categorisation source
+  // so viewing another user's profile groups their exercises correctly
+  var sourceMap = DEF;
+  Object.keys(sourceMap).forEach(function(cat){
+    (sourceMap[cat]||[]).forEach(function(name){
+      if(exerciseNames.has(name)){
+        if(!catMap[cat]) catMap[cat] = [];
+        catMap[cat].push(name);
+        placed.add(name);
+      }
+    });
+  });
+  // Then also check current user's custom exercises (any added beyond DEF)
+  Object.keys(EX).forEach(function(cat){
+    (EX[cat]||[]).forEach(function(name){
+      if(exerciseNames.has(name) && !placed.has(name)){
+        if(!catMap[cat]) catMap[cat] = [];
+        catMap[cat].push(name);
+        placed.add(name);
+      }
+    });
+  });
+  // Anything still unplaced goes to Other
+  exerciseNames.forEach(function(name){
+    if(!placed.has(name)){
+      if(!catMap['Other']) catMap['Other'] = [];
+      catMap['Other'].push(name);
+    }
+  });
+  return catMap;
+}
+
 // Shared PB renderer — used by both own profile tab and UPM.
-// Renders the category-grouped, searchable PB list into `el` (a DOM element).
-function renderPBsIntoEl(workouts, el){
+// exMap: optional category→exercises map. If not provided, uses current user's EX.
+function renderPBsIntoEl(workouts, el, exMap){
   var pbMap = {};
   workouts.forEach(function(entry){
     entry.blocks.forEach(function(b){
@@ -3570,16 +3702,40 @@ function renderPBsIntoEl(workouts, el){
 
   function buildList(q){
     q=(q||'').toLowerCase().trim();
-    var catOrder=Object.keys(EX), catGroups={}, uncategorised=[];
+    var exCatMap = exMap || buildExMapFromHistory(workouts);
+    var catOrder = Object.keys(exCatMap).filter(function(c){ return c !== 'Other'; });
+
+    // Build lowercase lookup for case-insensitive matching
+    var lowerCatMap = {};
+    catOrder.forEach(function(cat){
+      (exCatMap[cat]||[]).forEach(function(ex){
+        lowerCatMap[ex.toLowerCase()] = cat;
+      });
+    });
+
+    var catGroups={};
+    function fuzzyFindCat(name){
+      var n = name.toLowerCase();
+      // 1. Exact match
+      if(lowerCatMap[n]) return lowerCatMap[n];
+      // 2. The PB name contains a known exercise name as a substring
+      var keys = Object.keys(lowerCatMap);
+      for(var i=0;i<keys.length;i++){
+        if(n.includes(keys[i]) || keys[i].includes(n)) return lowerCatMap[keys[i]];
+      }
+      return null;
+    }
     allPbNames.forEach(function(name){
       if(q&&!name.toLowerCase().includes(q)) return;
-      var found=false;
-      catOrder.forEach(function(cat){
-        if((EX[cat]||[]).includes(name)){if(!catGroups[cat])catGroups[cat]=[];catGroups[cat].push(name);found=true;}
-      });
-      if(!found) uncategorised.push(name);
+      var cat = fuzzyFindCat(name);
+      if(cat){
+        if(!catGroups[cat]) catGroups[cat]=[];
+        catGroups[cat].push(name);
+      } else {
+        if(!catGroups['Other']) catGroups['Other']=[];
+        catGroups['Other'].push(name);
+      }
     });
-    if(uncategorised.length) catGroups['Other']=uncategorised;
     var activeCats=catOrder.filter(function(c){return catGroups[c];});
     if(catGroups['Other']) activeCats.push('Other');
     if(!activeCats.length) return '<div class="empty">No results.</div>';
@@ -4889,8 +5045,26 @@ async function viewUserProfile(userId){
     '</div>';
   }).join('');
 
-  // PBs — use shared renderer
-  renderPBsIntoEl(workouts, document.getElementById('upm-pbs'));
+  // PBs — fetch profile owner's exercise map, then render
+  (async function(){
+    var pbEl = document.getElementById('upm-pbs');
+    var ownerExMap = null;
+    function mergedFallback(){
+      var m = JSON.parse(JSON.stringify(DEF));
+      Object.keys(EX).forEach(function(cat){
+        if(!m[cat]) m[cat] = [];
+        (EX[cat]||[]).forEach(function(ex){ if(!m[cat].includes(ex)) m[cat].push(ex); });
+      });
+      return m;
+    }
+    try {
+      var exRes = await sb.from('exercise_lists').select('exercises').eq('user_id', userId).maybeSingle();
+      ownerExMap = (exRes.data && exRes.data.exercises) ? exRes.data.exercises : mergedFallback();
+    } catch(e){
+      ownerExMap = mergedFallback();
+    }
+    renderPBsIntoEl(workouts, pbEl, ownerExMap);
+  })();
 
   window._upmWorkouts = workouts;
   document.getElementById('upm-badges').innerHTML = renderBadges(workouts);
@@ -5014,7 +5188,21 @@ function copyUPMWorkout(idx){
     return {type:b.type,exercises:b.exercises.map(function(ex){return {name:ex.name,sets:(ex.sets||[]).map(function(){return {w:'',r:''};})};})};
   });
   if(entry.label) document.getElementById('day-inp').value = entry.label;
+  importExercisesIntoEX(blocks);
   closeModal('user-profile-modal'); switchTab('log'); renderBlocks(); renderExSelect();
+}
+
+function copyProfileWorkout(idx){
+  // Used by own profile Workouts tab and History tab — reads from _profileTabWorkouts or history
+  var entry = (window._profileTabWorkouts && window._profileTabWorkouts[idx]) || history[idx];
+  if(!entry) return;
+  blocks = entry.blocks.map(function(b){
+    if(b.type==='dropset') return {type:'dropset',exercises:[{name:b.exercises[0].name,dropSets:b.exercises[0].dropSets.map(function(ds){return ds.map(function(){return {w:'',r:''};});})}]};
+    return {type:b.type,exercises:b.exercises.map(function(ex){return {name:ex.name,sets:(ex.sets||[]).map(function(){return {w:'',r:''};})};})};
+  });
+  if(entry.label) document.getElementById('day-inp').value = entry.label;
+  importExercisesIntoEX(blocks);
+  switchTab('log'); renderBlocks(); renderExSelect();
 }
 
 async function showLikes(workoutId){
@@ -5683,7 +5871,7 @@ function viewWorkoutReview(entry, priorHistory){
   if(badgeUpdates.length){
     badgeSec.style.display = '';
     document.getElementById('xp-badge-updates').innerHTML = badgeUpdates.map(function(u){
-      var prog = u.nextThreshold ? (u.valueBefore + ' → ' + u.valueAfter + ' / ' + u.nextThreshold + (u.unit ? ' ' + u.unit : '')) : 'Max!';
+      var prog = (function(){var _a=u.valueAfter,_b=u.valueBefore,_n=u.nextThreshold,_u=u.unit||'';if(!_n)return 'Max!';var _g=typeof _a==='number'&&typeof _b==='number'?_a-_b:null;var _f=function(v){return typeof v==='number'?v.toLocaleString():v;};return _f(_a)+' / '+_f(_n)+(_u?' '+_u:'')+(_g!==null&&_g>0?' (+'+_f(_g)+')':'');}());
       var beforeSuffix = u.nameBefore ? u.nameBefore.match(/([IVXLCDM]+)$/) : null;
       var afterSuffix  = u.name.match(/([IVXLCDM]+)$/);
       var displayName = u.tierUp && beforeSuffix && afterSuffix
@@ -5771,7 +5959,7 @@ async function showXpModal(entry, priorHistory){
   if(badgeUpdates.length){
     badgeSec.style.display = '';
     document.getElementById('xp-badge-updates').innerHTML = badgeUpdates.map(function(u){
-      var prog = u.nextThreshold ? (u.valueBefore + ' → ' + u.valueAfter + ' / ' + u.nextThreshold + (u.unit ? ' ' + u.unit : '')) : 'Max!';
+      var prog = (function(){var _a=u.valueAfter,_b=u.valueBefore,_n=u.nextThreshold,_u=u.unit||'';if(!_n)return 'Max!';var _g=typeof _a==='number'&&typeof _b==='number'?_a-_b:null;var _f=function(v){return typeof v==='number'?v.toLocaleString():v;};return _f(_a)+' / '+_f(_n)+(_u?' '+_u:'')+(_g!==null&&_g>0?' (+'+_f(_g)+')':'');}());
       var beforeSuffix = u.nameBefore ? u.nameBefore.match(/([IVXLCDM]+)$/) : null;
       var afterSuffix  = u.name.match(/([IVXLCDM]+)$/);
       var displayName = u.tierUp && beforeSuffix && afterSuffix
