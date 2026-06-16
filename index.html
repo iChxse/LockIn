@@ -840,6 +840,27 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
 .comment-reply-input-row input:focus { outline:none; border-color:var(--accent); }
 .comment-reply-input-row button { font-size:12px; padding:7px 12px; border-radius:var(--r1); background:var(--accent); color:#fff; border:none; cursor:pointer; }
 
+/* ── Leaderboard ── */
+.lb-row { display:flex; align-items:center; gap:12px; padding:11px 0; border-bottom:0.5px solid var(--bo3); }
+.lb-row:last-child { border-bottom:none; }
+.lb-rank { font-size:15px; font-weight:800; color:var(--ts); width:28px; flex-shrink:0; text-align:center; }
+.lb-rank.gold { color:#f59e0b; }
+.lb-rank.silver { color:#9ca3af; }
+.lb-rank.bronze { color:#b45309; }
+.lb-avatar { width:38px; height:38px; border-radius:50%; background:var(--bs); border:1.5px solid var(--bo3); object-fit:cover; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700; color:var(--ts); flex-shrink:0; overflow:hidden; }
+.lb-avatar img { width:100%; height:100%; object-fit:cover; }
+.lb-info { flex:1; min-width:0; }
+.lb-name { font-size:13px; font-weight:700; color:var(--tp); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.lb-sub { font-size:11px; color:var(--ts); margin-top:1px; }
+.lb-value { font-size:13px; font-weight:700; color:var(--accent); flex-shrink:0; text-align:right; }
+.lb-value .lb-value-sub { font-size:10px; font-weight:400; color:var(--ts); display:block; }
+.lb-you .lb-name::after { content:' (You)'; font-weight:400; color:var(--ts); font-size:11px; }
+.lb-badge-grid { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
+.lb-badge-chip { background:var(--bs); border:0.5px solid var(--bo3); border-radius:var(--pill); padding:6px 14px; font-size:12px; font-weight:600; color:var(--ts); cursor:pointer; }
+.lb-badge-chip.active { background:rgba(79,140,255,.12); color:var(--accent); border-color:var(--accent); }
+.lb-pill { flex:1; background:none; border:none; border-radius:var(--pill); padding:7px 4px; font-size:12px; font-weight:600; color:var(--ts); cursor:pointer; font-family:var(--font); transition:background .15s, color .15s; white-space:nowrap; }
+.lb-pill.active { background:var(--bp); color:var(--tp); box-shadow:0 1px 4px rgba(0,0,0,.25); }
+
 /* ── Tab loading spinner (matches launch screen) ── */
 .tab-loader { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; padding:48px 0; }
 .tab-loader-ring { width:40px; height:40px; border-radius:50%; border:2.5px solid rgba(255,255,255,0.08); border-top-color:var(--accent); animation:spin 0.9s linear infinite; }
@@ -1123,7 +1144,15 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
     <div id="progress-stats-content" style="display:none;"></div>
   </div>
 
-  <div id="tab-history" style="display:none;"><div id="hist-list"></div></div>
+  <div id="tab-history" style="display:none;">
+    <div style="display:flex;background:var(--bs);border-radius:var(--pill);padding:3px;gap:2px;margin-bottom:14px;border:0.5px solid var(--bo3);">
+      <button class="lb-pill active" id="lbtab-consistency" onclick="switchLBTab('consistency')">Consistency</button>
+      <button class="lb-pill" id="lbtab-xp" onclick="switchLBTab('xp')">Levels</button>
+      <button class="lb-pill" id="lbtab-workouts" onclick="switchLBTab('workouts')">Workouts</button>
+      <button class="lb-pill" id="lbtab-badges" onclick="switchLBTab('badges')">Badges</button>
+    </div>
+    <div id="lb-content"></div>
+  </div>
   <div id="tab-friends">
     <div id="pull-to-refresh" style="text-align:center;font-size:12px;color:var(--ts);height:0;overflow:hidden;transition:height .2s;">↓ Release to refresh</div>
     <div id="friends-feed-content"></div>
@@ -1147,8 +1176,8 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
     <span>Workout</span>
   </button>
   <button class="btab" id="btab-history" onclick="switchTab('history')">
-    <i class="ti ti-history"></i>
-    <span>History</span>
+    <i class="ti ti-trophy"></i>
+    <span>Leaderboard</span>
   </button>
   <button class="btab" id="btab-profile" onclick="switchTab('profile')">
     <i class="ti ti-user-circle"></i>
@@ -1394,6 +1423,7 @@ async function doSignOut(){
   currentProfile = null;
   history = [];
   blocks = [];
+  invalidateExUsageCache();
   EX = JSON.parse(JSON.stringify(DEF));
   selEx = null;
   _profileTabSection = 'workouts';
@@ -1548,6 +1578,7 @@ function renderProfileTabContent(workouts, userId){
     '<div class="friends-subtabs">' +
       '<button class="friends-subtab '+(_profileTabSection==='workouts'?'active':'')+'" onclick="setProfileTabSection(\'workouts\')">Workouts</button>' +
       '<button class="friends-subtab '+(_profileTabSection==='pbs'?'active':'')+'" onclick="setProfileTabSection(\'pbs\')">Personal Bests</button>' +
+      '<button class="friends-subtab '+(_profileTabSection==='history'?'active':'')+'" onclick="setProfileTabSection(\'history\')">History</button>' +
       '<button class="friends-subtab '+(_profileTabSection==='friends'?'active':'')+'" onclick="setProfileTabSection(\'friends\')">Friends</button>' +
       '<button class="friends-subtab '+(_profileTabSection==='badges'?'active':'')+'" onclick="setProfileTabSection(\'badges\')">Badges</button>' +
     '</div>' +
@@ -1591,11 +1622,24 @@ function renderProfileTabBody(workouts, userId){
       return '<div class="hist-entry" id="ptab-w-'+idx+'">' +
         '<div class="hist-hdr" onclick="this.closest(\'.hist-entry\').classList.toggle(\'open\')">' +
           '<div class="hist-hdr-left"><div class="hist-date">'+entry.date+(entry.duration_seconds && entry.duration_seconds >= 10 ? ' <span style="font-size:11px;color:var(--ts);font-weight:400;">· '+(entry.duration_seconds >= 3600 ? Math.floor(entry.duration_seconds/3600)+'h '+Math.floor((entry.duration_seconds%3600)/60)+'m' : Math.round(entry.duration_seconds/60)+' min')+'</span>' : '')+'</div><div class="hist-label-row">'+wlabel+tagged+'</div></div>' +
-          '<i class="ti ti-chevron-down hist-chevron"></i>' +
+          '<div style="display:flex;gap:4px;align-items:center;">' +
+            '<button class="icon-btn" style="padding:5px 7px;" title="Edit" onclick="event.stopPropagation();openEditWorkoutByTs(\''+entry.ts+'\')"><i class="ti ti-pencil"></i></button>' +
+            '<button class="icon-btn" style="padding:5px 7px;color:#E24B4A;border-color:#E24B4A;" title="Delete" onclick="event.stopPropagation();openDeleteWorkoutByTs(\''+entry.ts+'\')"><i class="ti ti-trash"></i></button>' +
+            '<i class="ti ti-chevron-down hist-chevron"></i>' +
+          '</div>' +
         '</div>' +
-        '<div class="hist-body">'+(wdesc||'')+bodyBlocks+'<button class="icon-btn" onclick="copyProfileWorkout('+idx+')" style="width:100%;justify-content:center;margin-top:10px;font-size:12px;padding:6px 12px;"><i class="ti ti-copy"></i> Copy Workout</button><button class="icon-btn" onclick="viewWorkoutReview(window._profileTabWorkouts['+idx+'],window._profileTabWorkouts.slice('+idx+'+1))" style="width:100%;justify-content:center;margin-top:6px;font-size:12px;padding:6px 12px;color:var(--accent);border-color:var(--accent);"><i class="ti ti-award"></i> Workout Review</button></div>' +
+        '<div class="hist-body">'+(wdesc||'')+bodyBlocks+
+          '<button class="icon-btn" onclick="copyProfileWorkout('+idx+')" style="width:100%;justify-content:center;margin-top:10px;font-size:12px;padding:6px 12px;"><i class="ti ti-copy"></i> Copy Workout</button>' +
+          '<button class="icon-btn" onclick="viewWorkoutReview(window._profileTabWorkouts['+idx+'],window._profileTabWorkouts.slice('+idx+'+1))" style="width:100%;justify-content:center;margin-top:6px;font-size:12px;padding:6px 12px;color:var(--accent);border-color:var(--accent);"><i class="ti ti-award"></i> Workout Review</button>' +
+        '</div>' +
       '</div>';
     }).join('');
+  }
+
+  if(_profileTabSection === 'history'){
+    body.innerHTML = '<div id="hist-list"></div>';
+    renderHistory();
+    return;
   }
 
   if(_profileTabSection === 'pbs'){
@@ -1726,21 +1770,9 @@ async function loadFromSupabase(){
     ]);
     if(wRes.data) history = wRes.data.map(r => ({ date:r.date, ts:r.ts, label:r.label, desc:r.desc||null, tagged:r.tagged||null, duration_seconds:r.duration_seconds||null, blocks:r.blocks, id:r.id }));
     if(eRes.data?.exercises){
-      // Merge: server is source of truth but keep any local additions not yet synced
-      const serverEX = eRes.data.exercises;
-      const localEX = JSON.parse(localStorage.getItem('wl_exercises') || 'null');
-      if(localEX){
-        // Add any local exercises/categories not in server version
-        Object.keys(localEX).forEach(function(cat){
-          if(!serverEX[cat]) serverEX[cat] = localEX[cat];
-          else {
-            localEX[cat].forEach(function(ex){
-              if(!serverEX[cat].includes(ex)) serverEX[cat].push(ex);
-            });
-          }
-        });
-      }
-      EX = serverEX;
+      // Server is the sole source of truth — never merge stale localStorage on top.
+      // localStorage is only used as a fallback when offline.
+      EX = eRes.data.exercises;
     }
     localStorage.setItem('wl_history', JSON.stringify(history.slice(0,100)));
     localStorage.setItem('wl_exercises', JSON.stringify(EX));
@@ -2695,16 +2727,23 @@ async function postComment(workoutId, i){
 }
 
 // When copying a workout, import any exercises not yet in the current user's EX map.
-// Looks up each exercise name in DEF first (preserves correct category), then falls
-// back to "Other" so nothing is lost. Saves to Supabase after any change.
-async function importExercisesIntoEX(blocks){
+// sourceExMap: optional exercise map from the user being copied from — used to preserve
+// their category assignments rather than falling back to DEF or Other.
+async function importExercisesIntoEX(blocks, sourceExMap){
   var changed = false;
-  // Build a lowercase reverse-lookup from DEF: name → category
-  var defLower = {};
-  Object.keys(DEF).forEach(function(cat){
-    (DEF[cat]||[]).forEach(function(name){ defLower[name.toLowerCase()] = { cat: cat, name: name }; });
-  });
-  // Also build one from current EX so we can skip already-known exercises
+
+  // Build lowercase lookups from DEF, current EX, and source user's map
+  function buildLower(map){
+    var lower = {};
+    Object.keys(map).forEach(function(cat){
+      (map[cat]||[]).forEach(function(name){ lower[name.toLowerCase()] = { cat: cat, name: name }; });
+    });
+    return lower;
+  }
+  var defLower = buildLower(DEF);
+  var sourceLower = sourceExMap ? buildLower(sourceExMap) : {};
+
+  // Build set of already-known exercises in current user's EX
   var exLower = {};
   Object.keys(EX).forEach(function(cat){
     (EX[cat]||[]).forEach(function(name){ exLower[name.toLowerCase()] = true; });
@@ -2713,11 +2752,14 @@ async function importExercisesIntoEX(blocks){
   blocks.forEach(function(b){
     b.exercises.forEach(function(ex){
       var n = ex.name;
-      if(exLower[n.toLowerCase()]) return; // already in EX
-      // Find category from DEF (case-insensitive) or use Other
-      var defMatch = defLower[n.toLowerCase()];
-      var cat = defMatch ? defMatch.cat : 'Other';
-      var canonical = defMatch ? defMatch.name : n;
+      var nLower = n.toLowerCase();
+      if(exLower[nLower]) return; // already in EX
+
+      // Priority: 1) source user's map, 2) DEF, 3) Other
+      var match = sourceLower[nLower] || defLower[nLower];
+      var cat = match ? match.cat : 'Other';
+      var canonical = match ? match.name : n;
+
       if(!EX[cat]) EX[cat] = [];
       if(!EX[cat].includes(canonical)){
         EX[cat].push(canonical);
@@ -2729,7 +2771,7 @@ async function importExercisesIntoEX(blocks){
 
   if(changed){
     localStorage.setItem('wl_exercises', JSON.stringify(EX));
-    await saveToSupabase(null); // persist EX to exercise_lists
+    await saveToSupabase(null);
   }
 }
 
@@ -2741,7 +2783,16 @@ function copyFeedWorkout(i){
     return {type:b.type, exercises:b.exercises.map(ex=>({name:ex.name, sets:(ex.sets||[]).map(()=>({w:'',r:''}))}))};
   });
   if(entry.label) document.getElementById('day-inp').value = entry.label;
-  importExercisesIntoEX(blocks);
+  // Fetch source user's exercise map for correct category import
+  const sourceUserId = entry.user_id;
+  (async function(){
+    var sourceExMap = null;
+    if(sourceUserId && sourceUserId !== currentUser.id){
+      var res = await sb.from('exercise_lists').select('exercises').eq('user_id', sourceUserId).maybeSingle();
+      if(res.data && res.data.exercises) sourceExMap = res.data.exercises;
+    }
+    importExercisesIntoEX(blocks, sourceExMap);
+  })();
   switchTab('log'); renderBlocks(); renderExSelect();
 }
 
@@ -3008,8 +3059,38 @@ function setCatFromSelect(){
   renderExSelect();
 }
 
+// Build exercise usage stats from history: { name: { count, lastTs } }
+// Cached per render — rebuilt whenever renderExSelect is called.
+var _exUsageCache = null;
+function getExUsageMap(){
+  if(_exUsageCache) return _exUsageCache;
+  var map = {};
+  history.forEach(function(entry){
+    entry.blocks.forEach(function(b){
+      b.exercises.forEach(function(ex){
+        if(!map[ex.name]) map[ex.name] = { count: 0, lastTs: '' };
+        map[ex.name].count++;
+        if(!map[ex.name].lastTs || entry.ts > map[ex.name].lastTs) map[ex.name].lastTs = entry.ts;
+      });
+    });
+  });
+  _exUsageCache = map;
+  return map;
+}
+// Invalidate cache whenever history changes
+function invalidateExUsageCache(){ _exUsageCache = null; }
+
 function renderExSelect(){
-  const list = EX[activeCat] || [];
+  const list = (EX[activeCat] || []).slice(); // copy, don't mutate EX
+  const usage = getExUsageMap();
+  // Sort by count desc, then by lastTs desc (most recent tiebreaker), then alphabetical
+  list.sort(function(a, b){
+    var ca = (usage[a]||{}).count||0, cb = (usage[b]||{}).count||0;
+    if(cb !== ca) return cb - ca;
+    var ta = (usage[a]||{}).lastTs||'', tb = (usage[b]||{}).lastTs||'';
+    if(tb !== ta) return tb > ta ? 1 : -1;
+    return a.localeCompare(b);
+  });
   const added = new Set(blocks.flatMap(b => b.exercises.map(e => e.name)));
   const sel = document.getElementById('ex-select');
   sel.innerHTML = list.map(ex =>
@@ -3401,6 +3482,7 @@ function saveWorkout(){
   if(document.getElementById('day-desc')) document.getElementById('day-desc').value = '';
   resetTaggedFriends();
   showMsg('Saving...'); saveToSupabase(history[0]); renderDayChips(); showMsg('Workout saved!');
+  invalidateExUsageCache();
 
   // ── XP: show modal after save modal closes ──
   setTimeout(function(){ showXpModal(newEntry, _priorHistoryForXp); }, 350);
@@ -3885,6 +3967,7 @@ function toggleHistEntry(idx){
 
 function renderHistory(){
   const el = document.getElementById('hist-list');
+  if(!el) return; // hist-list only exists when Profile → History sub-tab is active
   if(!history.length){
     el.innerHTML = '<div class="empty"><i class="ti ti-history" style="font-size:32px;display:block;margin-bottom:8px"></i>No workouts saved yet</div>';
     return;
@@ -4132,6 +4215,15 @@ let pendingDeleteWorkoutIdx = null;
 let pendingDeleteWorkoutTs = null;
 let pendingEditWorkoutIdx = null;
 
+function openEditWorkoutByTs(ts){
+  var idx = history.findIndex(function(e){ return e.ts === ts; });
+  if(idx >= 0) openEditWorkout(idx);
+}
+function openDeleteWorkoutByTs(ts){
+  var idx = history.findIndex(function(e){ return e.ts === ts; });
+  if(idx >= 0) openDeleteWorkout(idx);
+}
+
 function openDeleteWorkout(idx){
   pendingDeleteWorkoutIdx = idx;
   pendingDeleteWorkoutTs = history[idx] ? history[idx].ts : null;
@@ -4157,27 +4249,23 @@ async function confirmDeleteWorkout(){
   const pending = JSON.parse(localStorage.getItem('wl_pending') || '[]');
   localStorage.setItem('wl_pending', JSON.stringify(pending.filter(function(p){ return p.id !== entry.id && p.ts !== entry.ts; })));
 
-  renderHistory();
+  // Immediately re-render from in-memory history — no need to wait for Supabase
+  if(_profileTabSection === 'history'){
+    var histBody = document.getElementById('profile-tab-body');
+    if(histBody){ histBody.innerHTML = '<div id="hist-list"></div>'; renderHistory(); }
+  }
   renderFeed();
-  // XP is derived — recalculate now that a workout is gone
   recalcAndSaveXp(history);
 
   if(currentUser && entry.id){
     const { error } = await sb.from('workouts').delete().eq('id', entry.id).eq('user_id', currentUser.id);
-    if(error)
-    await loadFromSupabase();
-    renderHistory();
+    if(error) await loadFromSupabase();
   } else if(entry.id) {
-    // currentUser not ready yet — wait and retry
     setTimeout(async function(){
       if(currentUser){
         await sb.from('workouts').delete().eq('id', entry.id).eq('user_id', currentUser.id);
-        await loadFromSupabase();
-        renderHistory();
-      } else {
       }
     }, 1000);
-  } else {
   }
 }
 
@@ -4347,6 +4435,8 @@ async function confirmEditWorkout(){
   renderHistory();
   // XP is derived — recalculate in case PBs or tags changed
   recalcAndSaveXp(history);
+  // If viewing Profile → History sub-tab, refresh it
+  if(_profileTabSection === 'history') setProfileTabSection('history');
   // Reset progress tab so PBs recalculate with new data
   selEx = null;
   renderFeed();
@@ -5022,6 +5112,7 @@ async function viewUserProfile(userId){
     // Don't return — still need to load friends tab
   } else {
   window._upmWorkouts = workouts;
+  window._upmUserId = userId;
 
   document.getElementById('upm-workouts').innerHTML = workouts.map(function(entry,idx){
     var bodyBlocks = entry.blocks.map(function(b){
@@ -5188,7 +5279,16 @@ function copyUPMWorkout(idx){
     return {type:b.type,exercises:b.exercises.map(function(ex){return {name:ex.name,sets:(ex.sets||[]).map(function(){return {w:'',r:''};})};})};
   });
   if(entry.label) document.getElementById('day-inp').value = entry.label;
-  importExercisesIntoEX(blocks);
+  // Fetch source user's exercise map for correct category import
+  (async function(){
+    var sourceExMap = null;
+    var sourceId = window._upmUserId;
+    if(sourceId && sourceId !== currentUser.id){
+      var res = await sb.from('exercise_lists').select('exercises').eq('user_id', sourceId).maybeSingle();
+      if(res.data && res.data.exercises) sourceExMap = res.data.exercises;
+    }
+    importExercisesIntoEX(blocks, sourceExMap);
+  })();
   closeModal('user-profile-modal'); switchTab('log'); renderBlocks(); renderExSelect();
 }
 
@@ -6056,6 +6156,232 @@ function openFullExStats(){
   setTimeout(function(){ renderLookup(); }, 50);
 }
 
+// ═══════════════════════════════════════════════════
+// LEADERBOARD
+// ═══════════════════════════════════════════════════
+
+var _lbTab = 'consistency';
+var _lbBadgeCat = 0; // index into BADGE_CATEGORIES
+var _lbData = null; // cached friend data
+
+function switchLBTab(tab){
+  _lbTab = tab;
+  ['consistency','xp','workouts','badges'].forEach(function(t){
+    document.getElementById('lbtab-'+t).classList.toggle('active', t === tab);
+  });
+  renderLBContent();
+}
+
+async function renderLeaderboard(){
+  var el = document.getElementById('lb-content');
+  if(!el) return;
+  el.innerHTML = '<div class="tab-loader"><div class="tab-loader-ring"></div></div>';
+  // Reset active pill
+  ['consistency','xp','workouts','badges'].forEach(function(t){
+    var btn = document.getElementById('lbtab-'+t);
+    if(btn) btn.classList.toggle('active', t === _lbTab);
+  });
+  await loadLBData();
+  renderLBContent();
+}
+
+async function loadLBData(){
+  if(!currentUser) return;
+  // Fetch friends
+  var { data: friendships } = await sb.from('friendships')
+    .select('requester_id,addressee_id')
+    .or('requester_id.eq.'+currentUser.id+',addressee_id.eq.'+currentUser.id)
+    .eq('status','accepted');
+  var friendIds = (friendships||[]).map(function(f){
+    return f.requester_id === currentUser.id ? f.addressee_id : f.requester_id;
+  });
+  var allIds = [currentUser.id].concat(friendIds);
+
+  // Fetch profiles + workouts for all users in parallel
+  var [profilesRes, workoutsRes] = await Promise.all([
+    sb.from('profiles').select('id,name,username,avatar_url,xp').in('id', allIds),
+    sb.from('workouts').select('user_id,ts,blocks,tagged,duration_seconds').in('user_id', allIds).order('ts',{ascending:false})
+  ]);
+
+  var profiles = profilesRes.data || [];
+  var allWorkouts = workoutsRes.data || [];
+
+  // Group workouts by user
+  var workoutsByUser = {};
+  allWorkouts.forEach(function(w){
+    if(!workoutsByUser[w.user_id]) workoutsByUser[w.user_id] = [];
+    workoutsByUser[w.user_id].push(w);
+  });
+
+  _lbData = profiles.map(function(p){
+    var wks = workoutsByUser[p.id] || [];
+    return {
+      id: p.id,
+      name: p.name || p.username || 'User',
+      username: p.username,
+      avatar: p.avatar_url,
+      xp: p.xp || 0,
+      workouts: wks,
+      isMe: p.id === currentUser.id
+    };
+  });
+}
+
+function lbAvatarHtml(user){
+  if(user.avatar){
+    return '<div class="lb-avatar"><img src="'+user.avatar+'" onerror="this.parentNode.innerHTML=\''+user.name.charAt(0).toUpperCase()+'\'"></div>';
+  }
+  return '<div class="lb-avatar">'+user.name.charAt(0).toUpperCase()+'</div>';
+}
+
+function rankMedal(i){
+  if(i===0) return '<span class="lb-rank gold">🥇</span>';
+  if(i===1) return '<span class="lb-rank silver">🥈</span>';
+  if(i===2) return '<span class="lb-rank bronze">🥉</span>';
+  return '<span class="lb-rank">#'+(i+1)+'</span>';
+}
+
+function renderLBContent(){
+  var el = document.getElementById('lb-content');
+  if(!el || !_lbData) return;
+  if(_lbTab === 'consistency') renderLBConsistency(el);
+  else if(_lbTab === 'xp') renderLBXP(el);
+  else if(_lbTab === 'workouts') renderLBWorkouts(el);
+  else if(_lbTab === 'badges') renderLBBadges(el);
+}
+
+function renderLBConsistency(el){
+  var sorted = _lbData.slice().map(function(u){
+    var days = calcConsistency(u.workouts);
+    var grade = calcConsistencyGrade(u.workouts);
+    var lastTs = u.workouts.length ? u.workouts[0].ts : '';
+    return Object.assign({}, u, { days: days, grade: grade, lastTs: lastTs });
+  }).filter(function(u){ return u.days > 0 || u.isMe; })
+    .sort(function(a,b){
+    if(b.days !== a.days) return b.days - a.days;
+    return b.lastTs > a.lastTs ? 1 : -1;
+  });
+
+  el.innerHTML = '<div style="background:var(--bs);border-radius:var(--r2);border:0.5px solid var(--bo3);padding:0 12px;">' +
+    sorted.map(function(u, i){
+      var gColor = u.grade==='S'?'#a855f7':u.grade==='A+'?'#3b82f6':u.grade==='A'?'#22c55e':u.grade==='B'?'#eab308':u.grade==='C'?'#f97316':'#6b7280';
+      var label = gradeLabel(u.grade);
+      return '<div class="lb-row'+(u.isMe?' lb-you':'')+'">'+
+        rankMedal(i)+
+        lbAvatarHtml(u)+
+        '<div class="lb-info">'+
+          '<div class="lb-name">'+(u.username?'@'+u.username:u.name)+'</div>'+
+          '<div class="lb-sub" style="color:'+gColor+';">'+label+'</div>'+
+        '</div>'+
+        '<div class="lb-value">'+u.days+' / 30<span class="lb-value-sub">active days</span></div>'+
+      '</div>';
+    }).join('')+
+  '</div>';
+}
+
+function renderLBXP(el){
+  var sorted = _lbData.slice().map(function(u){
+    var lvl = getLevelFromXp(u.xp);
+    return Object.assign({}, u, { level: lvl.level, progress: lvl.xpIntoLevel, needed: lvl.xpNeededForLevel });
+  }).filter(function(u){ return u.xp > 0 || u.isMe; })
+    .sort(function(a,b){
+      if(b.xp !== a.xp) return b.xp - a.xp;
+      return 0;
+    });
+  el.innerHTML = '<div style="background:var(--bs);border-radius:var(--r2);border:0.5px solid var(--bo3);padding:0 12px;">'+
+    sorted.map(function(u, i){
+      return '<div class="lb-row'+(u.isMe?' lb-you':'')+'">'+
+        rankMedal(i)+
+        lbAvatarHtml(u)+
+        '<div class="lb-info">'+
+          '<div class="lb-name">'+(u.username?'@'+u.username:u.name)+'</div>'+
+          '<div class="lb-sub">'+u.xp.toLocaleString()+' XP</div>'+
+        '</div>'+
+        '<div class="lb-value">Lvl '+u.level+'</div>'+
+      '</div>';
+    }).join('')+
+  '</div>';
+}
+
+function renderLBWorkouts(el){
+  var sorted = _lbData.slice().map(function(u){
+    var totalSets = countTotalSets(u.workouts);
+    return Object.assign({}, u, { totalSets: totalSets });
+  }).filter(function(u){ return u.workouts.length > 0 || u.isMe; })
+    .sort(function(a,b){ return b.workouts.length - a.workouts.length; });
+
+  el.innerHTML = '<div style="background:var(--bs);border-radius:var(--r2);border:0.5px solid var(--bo3);padding:0 12px;">'+
+    sorted.map(function(u, i){
+      return '<div class="lb-row'+(u.isMe?' lb-you':'')+'">'+
+        rankMedal(i)+
+        lbAvatarHtml(u)+
+        '<div class="lb-info">'+
+          '<div class="lb-name">'+(u.username?'@'+u.username:u.name)+'</div>'+
+          '<div class="lb-sub">'+u.totalSets.toLocaleString()+' total sets</div>'+
+        '</div>'+
+        '<div class="lb-value">'+u.workouts.length+'<span class="lb-value-sub">workouts</span></div>'+
+      '</div>';
+    }).join('')+
+  '</div>';
+}
+
+function renderLBBadges(el){
+  var cat = BADGE_CATEGORIES[_lbBadgeCat];
+
+  var dropdown = '<div style="margin-bottom:14px;">'+
+    '<select class="picker-select" style="width:100%;" onchange="selectLBBadge(parseInt(this.value))">'+
+      BADGE_CATEGORIES.map(function(c, idx){
+        var baseName = c.tiers[c.tiers.length-1].name.replace(/\s+[IVXLCDM]+$/,'');
+        return '<option value="'+idx+'"'+(idx===_lbBadgeCat?' selected':'')+'>'+c.tiers[0].icon+' '+baseName+'</option>';
+      }).join('')+
+    '</select>'+
+  '</div>';
+
+  var lastDef = cat.tiers.length - 1;
+
+  var sorted = _lbData.slice().map(function(u){
+    var tierCount = countDisplayTiersForCat(cat, u.workouts);
+    var val = cat.getValue ? cat.getValue(u.workouts) : 0;
+    var lastTs = u.workouts.length ? u.workouts[0].ts : '';
+    return Object.assign({}, u, { tierCount: tierCount, val: val, lastTs: lastTs });
+  }).filter(function(u){ return u.tierCount > 0 || u.val > 0 || u.isMe; })
+    .sort(function(a,b){
+      if(b.tierCount !== a.tierCount) return b.tierCount - a.tierCount;
+      if(b.val !== a.val) return b.val - a.val;
+      return b.lastTs > a.lastTs ? 1 : -1;
+    });
+
+  var rows = sorted.map(function(u, i){
+    var tierName = (function(){
+      if(u.tierCount <= 0) return 'Not started';
+      var idx = u.tierCount - 1;
+      if(idx <= lastDef) return cat.tiers[idx].name;
+      var base = cat.tiers[lastDef].name.replace(/\s+[IVXLCDM]+$/,'');
+      return base + ' ' + toRoman(u.tierCount);
+    })();
+    var valDisplay = cat.getValue
+      ? (u.val.toLocaleString() + (cat.unit ? ' '+cat.unit : ''))
+      : (u.tierCount > 0 ? u.tierCount + ' tier'+(u.tierCount!==1?'s':'') : '\u2014');
+    return '<div class="lb-row'+(u.isMe?' lb-you':'')+'">'+
+      rankMedal(i)+
+      lbAvatarHtml(u)+
+      '<div class="lb-info">'+
+        '<div class="lb-name">'+(u.username?'@'+u.username:u.name)+'</div>'+
+        '<div class="lb-sub">'+tierName+'</div>'+
+      '</div>'+
+      '<div class="lb-value">'+valDisplay+'</div>'+
+    '</div>';
+  }).join('');
+
+  if(!rows) rows = '<div class="empty">No progress on this badge yet.</div>';
+  el.innerHTML = dropdown + '<div style="background:var(--bs);border-radius:var(--r2);border:0.5px solid var(--bo3);padding:0 12px;">'+rows+'</div>';
+}
+
+function selectLBBadge(idx){
+  _lbBadgeCat = idx;
+  renderLBContent();
+}
+
 function switchTab(tab){
   ['friends','log','lookup','history','profile'].forEach(t => document.getElementById('tab-'+t).style.display = t===tab?'':'none');
   const map = {friends:'btab-friends', lookup:'btab-lookup', history:'btab-history', profile:'btab-profile'};
@@ -6065,7 +6391,7 @@ function switchTab(tab){
   const afb = document.getElementById('add-friends-btn');
   if(afb) afb.style.display = tab==='friends' ? 'flex' : 'none';
   if(tab==='lookup') renderLookup();
-  if(tab==='history'){ renderHistory(); renderWeeklySummary(); }
+  if(tab==='history'){ renderLeaderboard(); }
   if(tab==='friends') renderFeed();
   if(tab==='profile') renderProfileTab();
 }
