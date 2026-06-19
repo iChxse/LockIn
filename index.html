@@ -1494,6 +1494,27 @@ async function onAuthSuccess(user){
 }
 
 // ── Profile modal ──
+function updateProfileConsistencyCard(){
+  // Find the consistency card on the profile tab and update it in-place.
+  // Uses the global history array so it's always current.
+  var tabEl = document.getElementById('tab-profile');
+  if(!tabEl || tabEl.style.display === 'none') return;
+  var g = calcConsistencyGrade(history);
+  var days = calcConsistency(history);
+  var pct = Math.round((days/30)*100);
+  var gColor = g==='S'?'#a855f7':g==='A+'?'#3b82f6':g==='A'?'#22c55e':g==='B'?'#eab308':g==='C'?'#f97316':'#6b7280';
+  var label = gradeLabel(g);
+  // Find consistency card div by its known inner text structure and replace it
+  var cards = tabEl.querySelectorAll('[onclick="openConsistencyModal()"]');
+  cards.forEach(function(card){
+    card.style.borderColor = gColor;
+    var grade = card.querySelector('[style*="font-weight:800"]');
+    if(grade){ grade.style.color = gColor; grade.textContent = label; }
+    var sub = card.querySelector('[style*="font-size:13px"]');
+    if(sub) sub.textContent = days+'/30 active days \u2014 '+pct+'%';
+  });
+}
+
 async function renderProfileTab(){
   if(!currentUser){ return; }
   const el = document.getElementById('tab-profile');
@@ -1550,8 +1571,9 @@ async function renderProfileTab(){
       '</div>';
     })() +
     (function(){
-      var g = calcConsistencyGrade(workouts||[]);
-      var days = calcConsistency(workouts||[]);
+      var result = calcConsistencyGrade(history);
+      var g = result.grade || result;
+      var days = calcConsistency(history);
       var pct = Math.round((days/30)*100);
       var gColor = g==='S'?'#a855f7':g==='A+'?'#3b82f6':g==='A'?'#22c55e':g==='B'?'#eab308':g==='C'?'#f97316':'#6b7280';
       var label = gradeLabel(g);
@@ -1561,7 +1583,7 @@ async function renderProfileTab(){
         '<div style="font-size:22px;font-weight:800;color:'+gColor+';line-height:1;">'+label+'</div>' +
       '</div>';
     })() +
-    renderProfileStatsRow(workouts||[], true) +
+    renderProfileStatsRow(history, true) +
     '<div id="profile-tab-inner"></div>';
 
   // Render sub-tabs inline
@@ -3482,6 +3504,8 @@ function saveWorkout(){
   resetTaggedFriends();
   showMsg('Saving...'); saveToSupabase(history[0]); renderDayChips(); showMsg('Workout saved!');
   invalidateExUsageCache();
+  // Update profile tab consistency card in-place if visible
+  updateProfileConsistencyCard();
 
   // ── XP: show modal after save modal closes ──
   setTimeout(function(){ showXpModal(newEntry, _priorHistoryForXp); }, 350);
@@ -4431,12 +4455,23 @@ async function confirmEditWorkout(){
   localStorage.setItem('wl_history', JSON.stringify(history.slice(0,100)));
   pendingEditWorkoutIdx = null;
   closeModal('edit-workout-modal');
+
+  // Update _profileTabWorkouts in-memory so the Workouts sub-tab reflects edits instantly
+  if(window._profileTabWorkouts){
+    var ptIdx = window._profileTabWorkouts.findIndex(function(e){ return e.ts === entry.ts; });
+    if(ptIdx >= 0) window._profileTabWorkouts[ptIdx] = entry;
+  }
+
+  // Immediately re-render whichever profile sub-tab is active
+  if(_profileTabSection === 'workouts'){
+    renderProfileTabBody(window._profileTabWorkouts, currentUser.id);
+  } else if(_profileTabSection === 'history'){
+    var histBody = document.getElementById('profile-tab-body');
+    if(histBody){ histBody.innerHTML = '<div id="hist-list"></div>'; renderHistory(); }
+  }
+
   renderHistory();
-  // XP is derived — recalculate in case PBs or tags changed
   recalcAndSaveXp(history);
-  // If viewing Profile → History sub-tab, refresh it
-  if(_profileTabSection === 'history') setProfileTabSection('history');
-  // Reset progress tab so PBs recalculate with new data
   selEx = null;
   renderFeed();
 }
