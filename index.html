@@ -2,13 +2,14 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" id="viewport-meta">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" id="viewport-meta">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0a0a0b" id="theme-color-meta">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Lock In.">
 <title>Lock In.</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root {
@@ -67,24 +68,13 @@ body {
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
-/* Safe area handled in .app and .bottom-bar rules below */
 input, select, button, textarea { font-family: var(--font); }
 .app {
   max-width: 480px;
   margin: 0 auto;
-  padding: 0 1rem calc(var(--bottom-nav-h) + 1.25rem);
+  padding: env(safe-area-inset-top) 1rem calc(var(--bottom-nav-h) + env(safe-area-inset-bottom, 0px) + 1.25rem);
   min-height: 100vh;
   position: relative;
-}
-.app-header {
-  padding-top: env(safe-area-inset-top, 0px);
-  background: var(--bs);
-  position: sticky;
-  top: 0;
-  z-index: 50;
-  margin: 0 -1rem;
-  padding-left: 1rem;
-  padding-right: 1rem;
 }
 .app > div:first-child {
   display: flex;
@@ -107,7 +97,7 @@ input, select, button, textarea { font-family: var(--font); }
 .tabs { display: none; }
 .bottom-bar {
   position: fixed;
-  bottom: 0;
+  bottom: env(keyboard-inset-height, 0px);
   left: 50%;
   transform: translateX(-50%);
   width: 100%;
@@ -1060,10 +1050,6 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
   transition: background 0.15s;
 }
 .xp-close-btn:active { background: var(--accent-hover); }
-
-/* Icon base — inline SVGs injected by JS will have this class */
-i.ti, svg.ti { display: inline-block; vertical-align: middle; flex-shrink: 0; }
-svg.ti { overflow: visible; }
 </style>
 <div id="rotate-overlay" style="display:none;position:fixed;inset:0;background:var(--bs);z-index:9999;flex-direction:column;align-items:center;justify-content:center;gap:16px;">
   <i class="ti ti-rotate" style="font-size:48px;color:var(--tp);"></i>
@@ -1071,135 +1057,6 @@ svg.ti { overflow: visible; }
 </div>
 </head>
 <body>
-<svg xmlns="http://www.w3.org/2000/svg" style="display:none;" aria-hidden="true">
-  <symbol id="ti-activity" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M3 12h4l3-9 4 18 3-9h4"/>
-  </symbol>
-  <symbol id="ti-alert-circle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0M12 8v4M12 16h.01"/>
-  </symbol>
-  <symbol id="ti-arrow-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M12 5v14M18 13l-6 6-6-6"/>
-  </symbol>
-  <symbol id="ti-arrow-down-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M7 7l10 10M17 8v9h-9"/>
-  </symbol>
-  <symbol id="ti-arrow-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M5 12h14M5 12l6 6M5 12l6-6"/>
-  </symbol>
-  <symbol id="ti-arrows-exchange" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M7 10h14l-4-4M17 14H3l4 4"/>
-  </symbol>
-  <symbol id="ti-award" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M12 9m-6 0a6 6 0 1 0 12 0a6 6 0 1 0 -12 0M12 15v6M8.7 13.4l-3.7 6.6M15.3 13.4l3.7 6.6"/>
-  </symbol>
-  <symbol id="ti-barbell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M2 12h1M21 12h-1M6 12h12M4 9h1v6H4zM19 9h1v6h-1zM8 6h1v12H8zM15 6h1v12h-1z"/>
-  </symbol>
-  <symbol id="ti-chart-bar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M3 12v8M7 8v12M11 11v9M15 5v15M19 9v11"/>
-  </symbol>
-  <symbol id="ti-chart-line" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M4 19l5-5 4 4 5-7 3 3"/>
-  </symbol>
-  <symbol id="ti-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M5 12l5 5L20 7"/>
-  </symbol>
-  <symbol id="ti-chevron-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M6 9l6 6 6-6"/>
-  </symbol>
-  <symbol id="ti-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M8 8m0-2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-8a2 2 0 0 1-2-2zM16 16v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2h2"/>
-  </symbol>
-  <symbol id="ti-device-floppy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M6 4h10l4 4v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2M10 14m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0M8 4v4h6V4"/>
-  </symbol>
-  <symbol id="ti-dots" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M5 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0-2 0M12 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0-2 0M19 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0-2 0"/>
-  </symbol>
-  <symbol id="ti-flame" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M12 12c0-3 1.5-6 4-8-1 4 1 6 1 8a5 5 0 0 1-10 0c0-2 1-4 2-5 0 2 1 3.5 3 5z"/>
-  </symbol>
-  <symbol id="ti-grip-vertical" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M9 5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0-2 0M9 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0-2 0M9 19m-1 0a1 1 0 1 0 2 0a1 1 0 1 0-2 0M15 5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0-2 0M15 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0-2 0M15 19m-1 0a1 1 0 1 0 2 0a1 1 0 1 0-2 0"/>
-  </symbol>
-  <symbol id="ti-history" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M12 8v4l3 3M3.05 11a9 9 0 1 0 .5-3M3 4v4h4"/>
-  </symbol>
-  <symbol id="ti-info-circle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0-18 0M12 8h.01M11 12h1v4h1"/>
-  </symbol>
-  <symbol id="ti-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M9 6h11M9 12h11M9 18h11M5 6v.01M5 12v.01M5 18v.01"/>
-  </symbol>
-  <symbol id="ti-loader" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M12 6V3M16.25 7.75L18.4 5.6M18 12h3M16.25 16.25l2.15 2.15M12 18v3M7.75 16.25L5.6 18.4M6 12H3M7.75 7.75L5.6 5.6"/>
-  </symbol>
-  <symbol id="ti-message" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M4 4m0-2a2 2 0 0 1 2 0h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-14l-4 4z"/>
-  </symbol>
-  <symbol id="ti-minus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M5 12h14"/>
-  </symbol>
-  <symbol id="ti-note" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M13 20h-7a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v7M8 10h8M8 14h5M14 20l5-5 2 2-5 5h-2v-2z"/>
-  </symbol>
-  <symbol id="ti-pencil" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M4 20h4l10.5-10.5a2 2 0 0 0-4-4L4 16v4M13.5 6.5l4 4"/>
-  </symbol>
-  <symbol id="ti-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M12 5v14M5 12h14"/>
-  </symbol>
-  <symbol id="ti-repeat" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M4 12v-3a3 3 0 0 1 3-3h13M20 9l3-3-3-3M20 12v3a3 3 0 0 1-3 3H4M4 15l-3 3 3 3"/>
-  </symbol>
-  <symbol id="ti-rotate" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M19.95 11a8 8 0 1 0-.5 4M20 4v5h-5"/>
-  </symbol>
-  <symbol id="ti-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0-14 0M21 21l-6-6"/>
-  </symbol>
-  <symbol id="ti-send" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M10 14L21 3M21 3l-6.5 18a.55.55 0 0 1-1 0L10 14l-7-3.5a.55.55 0 0 1 0-1L21 3"/>
-  </symbol>
-  <symbol id="ti-settings" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 0 0-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 0 0-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 0 0-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 0 0-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 0 0 1.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065zM12 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0"/>
-  </symbol>
-  <symbol id="ti-thumb-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M7 11v8a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1h3a4 4 0 0 0 4-4V6a2 2 0 0 1 4 0v5h3a2 2 0 0 1 2 2l-1 5a2 3 0 0 1-2 2H7"/>
-  </symbol>
-  <symbol id="ti-thumb-up-filled" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M7 11v8a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1h3a4 4 0 0 0 4-4V6a2 2 0 0 1 4 0v5h3a2 2 0 0 1 2 2l-1 5a2 3 0 0 1-2 2H7"/>
-  </symbol>
-  <symbol id="ti-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M4 7h16M10 11v6M14 11v6M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/>
-  </symbol>
-  <symbol id="ti-trending-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M3 17l4-8 4 5 3-3 4 4M20 9V3h-6"/>
-  </symbol>
-  <symbol id="ti-trophy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M8 21l8 0M12 17v4M7 4h10l1 7a5 5 0 0 1-5 5h-2a5 5 0 0 1-5-5zM5 9H3a1 1 0 0 0-1 1 3 3 0 0 0 3 3M19 9h2a1 1 0 0 1 1 1 3 3 0 0 1-3 3"/>
-  </symbol>
-  <symbol id="ti-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M12 12m-4 0a4 4 0 1 0 8 0a4 4 0 1 0-8 0M6 20c0-2.21 2.686-4 6-4s6 1.79 6 4"/>
-  </symbol>
-  <symbol id="ti-user-circle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0-18 0M12 10m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0M6.168 18.849A4 4 0 0 1 10 16h4a4 4 0 0 1 3.834 2.855"/>
-  </symbol>
-  <symbol id="ti-user-minus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M8 7m-4 0a4 4 0 1 0 8 0a4 4 0 1 0-8 0M6 21v-2a4 4 0 0 1 4-4h4M20 13h-6"/>
-  </symbol>
-  <symbol id="ti-user-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M8 7m-4 0a4 4 0 1 0 8 0a4 4 0 1 0-8 0M6 21v-2a4 4 0 0 1 4-4h4M16 11h6M19 8v6"/>
-  </symbol>
-  <symbol id="ti-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M9 7m-4 0a4 4 0 1 0 8 0a4 4 0 1 0-8 0M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2M16 3.13a4 4 0 0 1 0 7.75M21 21v-2a4 4 0 0 0-3-3.85"/>
-  </symbol>
-  <symbol id="ti-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M18 6L6 18M6 6l12 12"/>
-  </symbol>
-</svg>
-
 <div id="loading-screen">
   <div id="loading-inner">
     <div id="loading-ring"></div>
@@ -1207,7 +1064,6 @@ svg.ti { overflow: visible; }
   </div>
 </div>
 <div class="app">
-  <div class="app-header">
   <div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:0.5px solid var(--bo3);margin-bottom:12px;">
     <div style="width:80px;"></div>
     <div style="font-size:22px;font-weight:800;color:var(--tp);letter-spacing:-0.02em;">Lock In.</div>
@@ -1215,7 +1071,6 @@ svg.ti { overflow: visible; }
       <button id="add-friends-btn" onclick="openManageFriendsModal()" style="display:none;background:var(--bp);border:0.5px solid var(--bo3);border-radius:var(--r1);cursor:pointer;color:var(--ts);font-size:13px;padding:4px 10px;align-items:center;gap:5px;flex-shrink:0;line-height:1;"><i class="ti ti-user-plus"></i> Friends</button>
     </div>
   </div>
-  </div><!-- /.app-header -->
   <div class="tabs">
     <button class="tab active" onclick="switchTab('friends')">Activity</button>
     <button class="tab" onclick="switchTab('log')">Today</button>
@@ -1639,6 +1494,27 @@ async function onAuthSuccess(user){
 }
 
 // ── Profile modal ──
+function updateProfileConsistencyCard(){
+  // Find the consistency card on the profile tab and update it in-place.
+  // Uses the global history array so it's always current.
+  var tabEl = document.getElementById('tab-profile');
+  if(!tabEl || tabEl.style.display === 'none') return;
+  var g = calcConsistencyGrade(history);
+  var days = calcConsistency(history);
+  var pct = Math.round((days/30)*100);
+  var gColor = g==='S'?'#a855f7':g==='A+'?'#3b82f6':g==='A'?'#22c55e':g==='B'?'#eab308':g==='C'?'#f97316':'#6b7280';
+  var label = gradeLabel(g);
+  // Find consistency card div by its known inner text structure and replace it
+  var cards = tabEl.querySelectorAll('[onclick="openConsistencyModal()"]');
+  cards.forEach(function(card){
+    card.style.borderColor = gColor;
+    var grade = card.querySelector('[style*="font-weight:800"]');
+    if(grade){ grade.style.color = gColor; grade.textContent = label; }
+    var sub = card.querySelector('[style*="font-size:13px"]');
+    if(sub) sub.textContent = days+'/30 active days \u2014 '+pct+'%';
+  });
+}
+
 async function renderProfileTab(){
   if(!currentUser){ return; }
   const el = document.getElementById('tab-profile');
@@ -1695,8 +1571,9 @@ async function renderProfileTab(){
       '</div>';
     })() +
     (function(){
-      var g = calcConsistencyGrade(workouts||[]);
-      var days = calcConsistency(workouts||[]);
+      var result = calcConsistencyGrade(history);
+      var g = result.grade || result;
+      var days = calcConsistency(history);
       var pct = Math.round((days/30)*100);
       var gColor = g==='S'?'#a855f7':g==='A+'?'#3b82f6':g==='A'?'#22c55e':g==='B'?'#eab308':g==='C'?'#f97316':'#6b7280';
       var label = gradeLabel(g);
@@ -1706,7 +1583,7 @@ async function renderProfileTab(){
         '<div style="font-size:22px;font-weight:800;color:'+gColor+';line-height:1;">'+label+'</div>' +
       '</div>';
     })() +
-    renderProfileStatsRow(workouts||[], true) +
+    renderProfileStatsRow(history, true) +
     '<div id="profile-tab-inner"></div>';
 
   // Render sub-tabs inline
@@ -3627,6 +3504,8 @@ function saveWorkout(){
   resetTaggedFriends();
   showMsg('Saving...'); saveToSupabase(history[0]); renderDayChips(); showMsg('Workout saved!');
   invalidateExUsageCache();
+  // Update profile tab consistency card in-place if visible
+  updateProfileConsistencyCard();
 
   // ── XP: show modal after save modal closes ──
   setTimeout(function(){ showXpModal(newEntry, _priorHistoryForXp); }, 350);
@@ -4576,12 +4455,23 @@ async function confirmEditWorkout(){
   localStorage.setItem('wl_history', JSON.stringify(history.slice(0,100)));
   pendingEditWorkoutIdx = null;
   closeModal('edit-workout-modal');
+
+  // Update _profileTabWorkouts in-memory so the Workouts sub-tab reflects edits instantly
+  if(window._profileTabWorkouts){
+    var ptIdx = window._profileTabWorkouts.findIndex(function(e){ return e.ts === entry.ts; });
+    if(ptIdx >= 0) window._profileTabWorkouts[ptIdx] = entry;
+  }
+
+  // Immediately re-render whichever profile sub-tab is active
+  if(_profileTabSection === 'workouts'){
+    renderProfileTabBody(window._profileTabWorkouts, currentUser.id);
+  } else if(_profileTabSection === 'history'){
+    var histBody = document.getElementById('profile-tab-body');
+    if(histBody){ histBody.innerHTML = '<div id="hist-list"></div>'; renderHistory(); }
+  }
+
   renderHistory();
-  // XP is derived — recalculate in case PBs or tags changed
   recalcAndSaveXp(history);
-  // If viewing Profile → History sub-tab, refresh it
-  if(_profileTabSection === 'history') setProfileTabSection('history');
-  // Reset progress tab so PBs recalculate with new data
   selEx = null;
   renderFeed();
 }
@@ -6693,65 +6583,5 @@ document.addEventListener('DOMContentLoaded', function(){ window._loadStart = Da
   </div>
 </div></div>
 
-<script>
-// Replace all <i class="ti ti-*"> elements with inline SVG for iOS compatibility
-(function(){
-  var paths = {"activity": "M3 12h4l3-9 4 18 3-9h4", "alert-circle": "M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0M12 8v4M12 16h.01", "arrow-down": "M12 5v14M18 13l-6 6-6-6", "arrow-down-right": "M7 7l10 10M17 8v9h-9", "arrow-left": "M5 12h14M5 12l6 6M5 12l6-6", "arrows-exchange": "M7 10h14l-4-4M17 14H3l4 4", "award": "M12 9m-6 0a6 6 0 1 0 12 0a6 6 0 1 0 -12 0M12 15v6M8.7 13.4l-3.7 6.6M15.3 13.4l3.7 6.6", "barbell": "M2 12h1M21 12h-1M6 12h12M4 9h1v6H4zM19 9h1v6h-1zM8 6h1v12H8zM15 6h1v12h-1z", "chart-bar": "M3 12v8M7 8v12M11 11v9M15 5v15M19 9v11", "chart-line": "M4 19l5-5 4 4 5-7 3 3", "check": "M5 12l5 5L20 7", "chevron-down": "M6 9l6 6 6-6", "copy": "M8 8m0-2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-8a2 2 0 0 1-2-2zM16 16v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2h2", "device-floppy": "M6 4h10l4 4v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2M10 14m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0M8 4v4h6V4", "dots": "M5 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0-2 0M12 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0-2 0M19 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0-2 0", "flame": "M12 12c0-3 1.5-6 4-8-1 4 1 6 1 8a5 5 0 0 1-10 0c0-2 1-4 2-5 0 2 1 3.5 3 5z", "grip-vertical": "M9 5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0-2 0M9 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0-2 0M9 19m-1 0a1 1 0 1 0 2 0a1 1 0 1 0-2 0M15 5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0-2 0M15 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0-2 0M15 19m-1 0a1 1 0 1 0 2 0a1 1 0 1 0-2 0", "history": "M12 8v4l3 3M3.05 11a9 9 0 1 0 .5-3M3 4v4h4", "info-circle": "M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0-18 0M12 8h.01M11 12h1v4h1", "list": "M9 6h11M9 12h11M9 18h11M5 6v.01M5 12v.01M5 18v.01", "loader": "M12 6V3M16.25 7.75L18.4 5.6M18 12h3M16.25 16.25l2.15 2.15M12 18v3M7.75 16.25L5.6 18.4M6 12H3M7.75 7.75L5.6 5.6", "message": "M4 4m0-2a2 2 0 0 1 2 0h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-14l-4 4z", "minus": "M5 12h14", "note": "M13 20h-7a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v7M8 10h8M8 14h5M14 20l5-5 2 2-5 5h-2v-2z", "pencil": "M4 20h4l10.5-10.5a2 2 0 0 0-4-4L4 16v4M13.5 6.5l4 4", "plus": "M12 5v14M5 12h14", "repeat": "M4 12v-3a3 3 0 0 1 3-3h13M20 9l3-3-3-3M20 12v3a3 3 0 0 1-3 3H4M4 15l-3 3 3 3", "rotate": "M19.95 11a8 8 0 1 0-.5 4M20 4v5h-5", "search": "M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0-14 0M21 21l-6-6", "send": "M10 14L21 3M21 3l-6.5 18a.55.55 0 0 1-1 0L10 14l-7-3.5a.55.55 0 0 1 0-1L21 3", "settings": "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 0 0-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 0 0-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 0 0-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 0 0-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 0 0 1.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065zM12 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0", "thumb-up": "M7 11v8a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1h3a4 4 0 0 0 4-4V6a2 2 0 0 1 4 0v5h3a2 2 0 0 1 2 2l-1 5a2 3 0 0 1-2 2H7", "thumb-up-filled": "M7 11v8a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1h3a4 4 0 0 0 4-4V6a2 2 0 0 1 4 0v5h3a2 2 0 0 1 2 2l-1 5a2 3 0 0 1-2 2H7", "trash": "M4 7h16M10 11v6M14 11v6M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3", "trending-up": "M3 17l4-8 4 5 3-3 4 4M20 9V3h-6", "trophy": "M8 21l8 0M12 17v4M7 4h10l1 7a5 5 0 0 1-5 5h-2a5 5 0 0 1-5-5zM5 9H3a1 1 0 0 0-1 1 3 3 0 0 0 3 3M19 9h2a1 1 0 0 1 1 1 3 3 0 0 1-3 3", "user": "M12 12m-4 0a4 4 0 1 0 8 0a4 4 0 1 0-8 0M6 20c0-2.21 2.686-4 6-4s6 1.79 6 4", "user-circle": "M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0-18 0M12 10m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0M6.168 18.849A4 4 0 0 1 10 16h4a4 4 0 0 1 3.834 2.855", "user-minus": "M8 7m-4 0a4 4 0 1 0 8 0a4 4 0 1 0-8 0M6 21v-2a4 4 0 0 1 4-4h4M20 13h-6", "user-plus": "M8 7m-4 0a4 4 0 1 0 8 0a4 4 0 1 0-8 0M6 21v-2a4 4 0 0 1 4-4h4M16 11h6M19 8v6", "users": "M9 7m-4 0a4 4 0 1 0 8 0a4 4 0 1 0-8 0M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2M16 3.13a4 4 0 0 1 0 7.75M21 21v-2a4 4 0 0 0-3-3.85", "x": "M18 6L6 18M6 6l12 12"};
-  function makeSvg(name, el) {
-    var d = paths[name];
-    if(!d) return;
-    var svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
-    svg.setAttribute('viewBox','0 0 24 24');
-    svg.setAttribute('fill','none');
-    svg.setAttribute('stroke','currentColor');
-    svg.setAttribute('stroke-width','2');
-    svg.setAttribute('stroke-linecap','round');
-    svg.setAttribute('stroke-linejoin','round');
-    svg.style.cssText = 'display:inline-block;width:1em;height:1em;vertical-align:middle;flex-shrink:0;';
-    // Copy font-size from original element for sizing
-    var computed = window.getComputedStyle(el);
-    svg.style.width = computed.fontSize || '1em';
-    svg.style.height = computed.fontSize || '1em';
-    // Copy classes for styling hooks
-    svg.className = el.className;
-    var path = document.createElementNS('http://www.w3.org/2000/svg','path');
-    path.setAttribute('d', d);
-    svg.appendChild(path);
-    el.parentNode.replaceChild(svg, el);
-  }
-  function replaceIcons(root) {
-    var els = (root || document).querySelectorAll('i[class*="ti-"]');
-    els.forEach(function(el) {
-      var classes = el.className || '';
-      var match = classes.match(/ti-([a-z-]+)/);
-      if(match && paths[match[1]]) makeSvg(match[1], el);
-    });
-  }
-  // Run on DOM ready
-  if(document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function(){ replaceIcons(); });
-  } else {
-    replaceIcons();
-  }
-  // Expose for dynamic content
-  window._replaceIcons = replaceIcons;
-  // Re-run after any dynamic content is added via MutationObserver
-  var observer = new MutationObserver(function(mutations) {
-    mutations.forEach(function(m) {
-      m.addedNodes.forEach(function(node) {
-        if(node.nodeType === 1) {
-          if(node.tagName === 'I' && node.className && node.className.includes('ti-')) {
-            var match = node.className.match(/ti-([a-z-]+)/);
-            if(match && paths[match[1]]) makeSvg(match[1], node);
-          } else {
-            replaceIcons(node);
-          }
-        }
-      });
-    });
-  });
-  observer.observe(document.body, { childList: true, subtree: true });
-})();
-</script>
 </body>
 </html>
