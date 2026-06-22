@@ -1071,12 +1071,7 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
 </div>
 <div class="app">
   <div class="statusbarspacer"></div>
-  <div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:0.5px solid var(--bo3);margin-bottom:12px;">
-    <div style="font-size:22px;font-weight:800;color:var(--tp);letter-spacing:-0.02em;">Lock In.</div>
-    <div style="width:80px;display:flex;justify-content:flex-end;">
-      <button id="add-friends-btn" onclick="openManageFriendsModal()" style="display:none;background:var(--bp);border:0.5px solid var(--bo3);border-radius:var(--r1);cursor:pointer;color:var(--ts);font-size:13px;padding:4px 10px;align-items:center;gap:5px;flex-shrink:0;line-height:1;"><i class="ti ti-user-plus"></i> Friends</button>
-    </div>
-  </div>
+  
   <div class="tabs">
     <button class="tab active" onclick="switchTab('friends')">Activity</button>
     <button class="tab" onclick="switchTab('log')">Today</button>
@@ -1160,13 +1155,18 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
     <div id="lb-content"></div>
   </div>
   <div id="tab-friends">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:0.5px solid var(--bo3);margin-bottom:12px;">
+    <div style="font-size:22px;font-weight:800;color:var(--tp);letter-spacing:-0.02em;">Lock In.</div>
+    <div style="width:80px;display:flex;justify-content:flex-end;">
+      <button id="add-friends-btn" onclick="openManageFriendsModal()" style="display:none;background:var(--bp);border:0.5px solid var(--bo3);border-radius:var(--r1);cursor:pointer;color:var(--ts);font-size:13px;padding:4px 10px;align-items:center;gap:5px;flex-shrink:0;line-height:1;"><i class="ti ti-user-plus"></i> Friends</button>
+    </div>
+  </div>
     <div id="pull-to-refresh" style="text-align:center;font-size:12px;color:var(--ts);height:0;overflow:hidden;transition:height .2s;">↓ Release to refresh</div>
     <div id="friends-feed-content"></div>
   </div>
   <div id="tab-profile" style="display:none;"></div>
 </div>
 
-<!-- Add friends button — fixed top right, shown only on activity tab -->
 <!-- iOS-style bottom tab bar -->
 <div class="bottom-bar">
   <button class="btab active" id="btab-friends" onclick="switchTab('friends')">
