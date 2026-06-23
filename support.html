@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Support — Lock In.</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0a0a0b;
+      --surface: #141416;
+      --surface2: #1c1c1e;
+      --border: rgba(255,255,255,0.08);
+      --tp: #f5f5f7;
+      --ts: #98989d;
+      --tm: #636366;
+      --accent: #4f8cff;
+      --accent-soft: rgba(79,140,255,0.12);
+      --accent-border: rgba(79,140,255,0.25);
+      --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    }
+    html, body {
+      background: var(--bg);
+      color: var(--tp);
+      font-family: var(--font);
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+    }
+    header {
+      border-bottom: 1px solid var(--border);
+      padding: 20px 24px;
+      max-width: 800px;
+      margin: 0 auto;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .logo { font-size: 20px; font-weight: 800; color: var(--tp); letter-spacing: -0.03em; text-decoration: none; }
+    .back-link { font-size: 13px; color: var(--accent); text-decoration: none; font-weight: 500; }
+    .back-link:hover { opacity: 0.8; }
+    main { max-width: 800px; margin: 0 auto; padding: 48px 24px 80px; }
+    .page-label { font-size: 11px; font-weight: 700; color: var(--tm); text-transform: uppercase; letter-spacing: .1em; margin-bottom: 12px; }
+    h1 { font-size: 36px; font-weight: 800; color: var(--tp); letter-spacing: -0.03em; line-height: 1.15; margin-bottom: 10px; }
+    .subtitle { font-size: 16px; color: var(--ts); line-height: 1.6; margin-bottom: 48px; }
+
+    /* Contact cards */
+    .contact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 56px; }
+    .contact-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+      text-decoration: none;
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      transition: border-color 0.15s;
+    }
+    .contact-card:hover { border-color: var(--accent-border); }
+    .contact-card-icon {
+      width: 40px; height: 40px; border-radius: 10px;
+      background: var(--accent-soft); border: 1px solid var(--accent-border);
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .contact-card-icon svg { width: 18px; height: 18px; stroke: var(--accent); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .contact-card-label { font-size: 12px; color: var(--tm); margin-bottom: 3px; }
+    .contact-card-value { font-size: 14px; font-weight: 600; color: var(--tp); }
+    .contact-card-sub { font-size: 12px; color: var(--ts); margin-top: 2px; }
+
+    /* Section headers */
+    .section-label {
+      font-size: 11px; font-weight: 700; color: var(--tm);
+      text-transform: uppercase; letter-spacing: .1em;
+      margin-bottom: 16px; padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* FAQ */
+    .faq-list { display: flex; flex-direction: column; gap: 2px; margin-bottom: 56px; }
+    details {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    details + details { margin-top: 2px; }
+    summary {
+      padding: 16px 20px;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--tp);
+      cursor: pointer;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      user-select: none;
+    }
+    summary::-webkit-details-marker { display: none; }
+    summary::after {
+      content: '';
+      width: 16px; height: 16px; flex-shrink: 0;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2398989d' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+      background-size: contain;
+      background-repeat: no-repeat;
+      transition: transform 0.2s;
+    }
+    details[open] summary::after { transform: rotate(180deg); }
+    details[open] summary { border-bottom: 1px solid var(--border); }
+    .faq-body { padding: 16px 20px; font-size: 14px; color: var(--ts); line-height: 1.75; }
+    .faq-body p { margin-bottom: 8px; }
+    .faq-body p:last-child { margin-bottom: 0; }
+    .faq-body ul { padding-left: 0; display: flex; flex-direction: column; gap: 4px; }
+    .faq-body ul li { padding-left: 16px; position: relative; }
+    .faq-body ul li::before { content: '–'; position: absolute; left: 0; color: var(--tm); }
+
+    /* Getting started steps */
+    .steps { display: flex; flex-direction: column; gap: 2px; margin-bottom: 56px; }
+    .step {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 20px;
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+    }
+    .step-num {
+      width: 28px; height: 28px; border-radius: 8px;
+      background: var(--accent-soft); border: 1px solid var(--accent-border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 800; color: var(--accent);
+      flex-shrink: 0; margin-top: 1px;
+    }
+    .step-title { font-size: 14px; font-weight: 600; color: var(--tp); margin-bottom: 3px; }
+    .step-desc { font-size: 13px; color: var(--ts); line-height: 1.6; }
+
+    footer { border-top: 1px solid var(--border); padding: 24px; text-align: center; font-size: 12px; color: var(--tm); max-width: 800px; margin: 0 auto; }
+    footer a { color: var(--accent); text-decoration: none; }
+
+    @media (max-width: 540px) {
+      h1 { font-size: 28px; }
+      .contact-grid { grid-template-columns: 1fr; }
+      main { padding: 32px 20px 60px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <a class="logo" href="#">Lock In.</a>
+  <a class="back-link" href="#">← Back to app</a>
+</header>
+
+<main>
+  <div class="page-label">Help Center</div>
+  <h1>Support</h1>
+  <p class="subtitle">Need help? Find answers below or get in touch directly.</p>
+
+  <!-- Contact -->
+  <div class="section-label">Get in touch</div>
+  <div class="contact-grid">
+    <a class="contact-card" href="mailto:support@lockinapp.pro">
+      <div class="contact-card-icon">
+        <svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 7l10 7 10-7"/></svg>
+      </div>
+      <div>
+        <div class="contact-card-label">Email support</div>
+        <div class="contact-card-value">support@lockinapp.pro</div>
+        <div class="contact-card-sub">We reply within 24 hours</div>
+      </div>
+    </a>
+    <a class="contact-card" href="mailto:support@lockinapp.pro?subject=Account Deletion Request">
+      <div class="contact-card-icon">
+        <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      </div>
+      <div>
+        <div class="contact-card-label">Account deletion</div>
+        <div class="contact-card-value">Request data removal</div>
+        <div class="contact-card-sub">Email us to delete your account</div>
+      </div>
+    </a>
+  </div>
+
+  <!-- Getting started -->
+  <div class="section-label">Getting started</div>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div>
+        <div class="step-title">Create your account</div>
+        <div class="step-desc">Sign up with your email and choose a username. Check your inbox to confirm your email before signing in.</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div>
+        <div class="step-title">Log your first workout</div>
+        <div class="step-desc">Tap the + Workout tab, pick a category and exercise, add your sets and reps, then hit Save Workout.</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div>
+        <div class="step-title">Add friends</div>
+        <div class="step-desc">Tap the Friends button on the Activity tab to search for friends by username and send requests.</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div>
+        <div class="step-title">Track your progress</div>
+        <div class="step-desc">Visit the Progress tab to see your exercise history, personal bests, and consistency rank over time.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FAQ -->
+  <div class="section-label">Frequently asked questions</div>
+  <div class="faq-list">
+
+    <details>
+      <summary>I confirmed my email but can't sign in with my username</summary>
+      <div class="faq-body">
+        <p>After confirming your email, try signing in with your email address instead of your username. Username login requires your profile to be fully set up — if you're still having trouble, email us and we'll sort it out.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>How do I reset my password?</summary>
+      <div class="faq-body">
+        <p>On the login screen, tap <strong>Forgot password?</strong> and enter your email address. You'll receive a reset link within a few minutes. Check your spam folder if it doesn't arrive.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>How does the Consistency Rank work?</summary>
+      <div class="faq-body">
+        <p>Your Consistency Rank is based on how many unique days you've logged a workout in the last 30 days. The grades are:</p>
+        <ul>
+          <li>D — Starting Out (under 40%)</li>
+          <li>C — Building (40%+)</li>
+          <li>B — Committed (60%+)</li>
+          <li>A — Consistent (73%+)</li>
+          <li>A+ — Absolute Unit (83%+)</li>
+          <li>S — Locked In (90%+)</li>
+        </ul>
+      </div>
+    </details>
+
+    <details>
+      <summary>What is XP and how do I earn it?</summary>
+      <div class="faq-body">
+        <p>XP is earned by logging workouts and earning badge tiers. Each workout gives base XP, with bonuses for adding notes, training with friends, longer sessions, and hitting personal bests. Badge tiers also award XP as you reach milestones.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>How do I tag friends in a workout?</summary>
+      <div class="faq-body">
+        <p>When saving a workout, tap the <strong>Tag friends</strong> option in the save modal. You can search for friends by username and select who you trained with. Tagged workouts appear on the Activity feed.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Can I edit or delete a workout after saving?</summary>
+      <div class="faq-body">
+        <p>Yes. Go to your Profile tab, open the Workouts section, expand any workout entry, and use the pencil (edit) or trash (delete) icons. Deleting a workout will recalculate your XP and badge progress automatically.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>How do I delete my account?</summary>
+      <div class="faq-body">
+        <p>Email us at <a href="mailto:support@lockinapp.pro">support@lockinapp.pro</a> with the subject line "Account Deletion Request" and we'll remove your account and all associated data.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Is my data private?</summary>
+      <div class="faq-body">
+        <p>Your workout data is only visible to you and friends you've connected with. We do not sell your data. See our <a href="privacy-policy.html">Privacy Policy</a> for full details.</p>
+      </div>
+    </details>
+
+  </div>
+
+</main>
+
+<footer>
+  © 2026 Lock In. &nbsp;·&nbsp; <a href="privacy-policy.html">Privacy Policy</a> &nbsp;·&nbsp; <a href="mailto:support@lockinapp.pro">Contact</a>
+</footer>
+
+</body>
+</html>
