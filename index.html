@@ -1382,16 +1382,29 @@ async function doLogin(){
   const pass = document.getElementById('login-password').value;
   if(!identifier || !pass){ setAuthMsg('Please fill in all fields.','error'); return; }
   setAuthMsg('Signing in...');
-  // If it doesn't look like an email, treat it as a username
+
   let email = identifier;
+  // Username login: look up email from profiles table
   if(!identifier.includes('@') || identifier.startsWith('@')){
     const username = identifier.replace(/^@/, '').toLowerCase();
-    const { data: profile } = await sb.from('profiles').select('email').eq('username', username).single();
-    if(!profile){ setAuthMsg('No account found with that username.','error'); return; }
+    const { data: profile } = await sb.from('profiles').select('email').eq('username', username).maybeSingle();
+    if(!profile){
+      setAuthMsg('No account found with that username. If you just confirmed your email, please sign in with your email address.','error');
+      return;
+    }
     email = profile.email;
   }
+
   const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
-  if(error){ setAuthMsg(error.message,'error'); return; }
+  if(error){
+    // Supabase returns "Email not confirmed" if they haven't clicked the link yet
+    if(error.message.toLowerCase().includes('not confirmed') || error.message.toLowerCase().includes('email')){
+      setAuthMsg('Please confirm your email before signing in. Check your inbox for the confirmation link.','error');
+    } else {
+      setAuthMsg(error.message,'error');
+    }
+    return;
+  }
   await onAuthSuccess(data.user);
 }
 
@@ -1401,26 +1414,39 @@ async function doSignup(){
   const email    = document.getElementById('signup-email').value.trim();
   const pass     = document.getElementById('signup-password').value;
   const passConfirm = document.getElementById('signup-password-confirm').value;
-  if(pass !== passConfirm){
-    setAuthMsg('Passwords do not match.','error');
-    return;
-  }
+  if(pass !== passConfirm){ setAuthMsg('Passwords do not match.','error'); return; }
   if(!name||!username||!email||!pass){ setAuthMsg('Please fill in all fields.','error'); return; }
   if(username.length < 3){ setAuthMsg('Username must be at least 3 characters.','error'); return; }
   if(pass.length < 6){ setAuthMsg('Password must be at least 6 characters.','error'); return; }
-  // Check username is taken
+
   setAuthMsg('Checking username...');
   const { data: existing } = await sb.from('profiles').select('id').eq('username', username).single();
   if(existing){ setAuthMsg('That username is taken — try another.','error'); return; }
+
   setAuthMsg('Creating account...');
-  const { data, error } = await sb.auth.signUp({ email, password: pass, options:{ data:{ name } } });
+  // Store username + name in user_metadata so profile can be created after email confirmation
+  const { data, error } = await sb.auth.signUp({
+    email, password: pass,
+    options: { data: { name, username } }
+  });
   if(error){ setAuthMsg(error.message,'error'); return; }
+
   if(data.user){
+    // Always create the profile row immediately — even if email confirmation is pending.
+    // This ensures username→email lookup works when they sign in after confirming.
     await sb.from('profiles').upsert({ id: data.user.id, name, username, email });
-    setAuthMsg('Account created! Signing you in...','success');
-    const { data: signInData, error: signInError } = await sb.auth.signInWithPassword({ email, password: pass });
-    if(signInError){ setAuthMsg('Account created! Please sign in.','success'); showAuthTab('login'); return; }
-    await onAuthSuccess(signInData.user);
+
+    if(data.session){
+      // Email confirmation is OFF — sign in immediately
+      setAuthMsg('Account created! Signing you in...','success');
+      const { data: signInData, error: signInError } = await sb.auth.signInWithPassword({ email, password: pass });
+      if(signInError){ setAuthMsg('Account created! Please sign in.','success'); showAuthTab('login'); return; }
+      await onAuthSuccess(signInData.user);
+    } else {
+      // Email confirmation is ON — show confirmation message
+      showAuthTab('login');
+      setAuthMsg('✅ Check your email to confirm your account, then sign in here.','success');
+    }
   }
 }
 
@@ -1490,12 +1516,16 @@ async function doSignOut(){
 async function onAuthSuccess(user){
   currentUser = user;
   document.getElementById('auth-screen').classList.remove('show');
-  // Load or create profile
+  // Load or create profile — profile may not exist yet if email confirmation was just completed
   let { data: profile } = await sb.from('profiles').select('*').eq('id', user.id).maybeSingle();
   if(!profile){
-    const name = user.user_metadata?.name || user.email.split('@')[0];
-    await sb.from('profiles').upsert({ id: user.id, name, email: user.email });
-    profile = { id: user.id, name, email: user.email };
+    // Auto-create profile using metadata stored during signup
+    const name     = user.user_metadata?.name     || user.email.split('@')[0];
+    const username = user.user_metadata?.username  || null;
+    const profileRow = { id: user.id, name, email: user.email };
+    if(username) profileRow.username = username;
+    await sb.from('profiles').upsert(profileRow);
+    profile = profileRow;
   }
   currentProfile = profile;
   updateGreeting();
