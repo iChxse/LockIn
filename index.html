@@ -3176,22 +3176,9 @@ function openPicker(){
   document.getElementById('add-trigger').style.display = 'none';
   document.getElementById('picker-exp').style.display = 'block';
   setMode('normal');
-  setTimeout(function(){
-    _pickerOutsideListener = function(e){
-      var exp = document.getElementById('picker-exp');
-      if(exp && exp.style.display !== 'none' && !exp.contains(e.target)){
-        closePicker();
-      }
-    };
-    document.addEventListener('pointerdown', _pickerOutsideListener);
-  }, 10);
 }
 
 function closePicker(){
-  if(_pickerOutsideListener){
-    document.removeEventListener('pointerdown', _pickerOutsideListener);
-    _pickerOutsideListener = null;
-  }
   mode = null; ssFirst = null;
   ['mode-normal','mode-super','mode-drop','mode-cardio'].forEach(id => document.getElementById(id).classList.remove('active'));
   document.getElementById('sec-cat').style.display = 'none';
