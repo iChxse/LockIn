@@ -25,3 +25,8 @@ Download Lock In today and start building momentum one workout at a time.
 Track Workouts. Stay Consistent.
 
 workout,gym,fitness,tracker,exercise,training,weightlifting,bodybuilding,workouts,progress,personal records,strength
+
+<key>NSPhotoLibraryUsageDescription</key>
+<string>Lock In. needs access to your photo library to set your profile picture.</string>
+<key>NSCameraUsageDescription</key>
+<string>Lock In. needs camera access to take a profile photo.</string>

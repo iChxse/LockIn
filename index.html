@@ -1072,6 +1072,13 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
   transition: background 0.15s;
 }
 .xp-close-btn:active { background: var(--accent-hover); }
+
+/* ── Version modals ── */
+.version-modal-icon { font-size: 36px; text-align: center; margin-bottom: 12px; }
+.version-badge { display: inline-block; background: var(--accent-soft); color: var(--accent); font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: var(--pill); letter-spacing: .04em; margin-bottom: 16px; }
+.changelog-list { display: flex; flex-direction: column; gap: 8px; margin: 16px 0; text-align: left; }
+.changelog-item { display: flex; align-items: flex-start; gap: 10px; font-size: 13px; color: var(--tp); line-height: 1.5; }
+.changelog-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex-shrink: 0; margin-top: 6px; }
 </style>
 <div id="rotate-overlay" style="display:none;position:fixed;inset:0;background:var(--bs);z-index:9999;flex-direction:column;align-items:center;justify-content:center;gap:16px;">
   <i class="ti ti-rotate" style="font-size:48px;color:var(--tp);"></i>
@@ -1297,7 +1304,7 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
     <div class="profile-pic-circle" id="profile-pic-preview"></div>
     <div class="profile-pic-edit"><i class="ti ti-pencil"></i></div>
   </div>
-  <input type="file" id="avatar-file-inp" accept="image/*" style="display:none;" onchange="handleAvatarUpload(event)">
+  <input type="file" id="avatar-file-inp" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none;" onchange="handleAvatarUpload(event)">
   <div class="modal-lbl">Your name</div>
   <input type="text" class="modal-inp" id="profile-name-inp" placeholder="Your name">
   <div class="modal-lbl">Username</div>
@@ -1345,6 +1352,9 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   }
 });
 
+// ── App version — update this with every release ──────────
+const APP_VERSION = '1.4.0';
+
 // Keep session alive across tab/app restores
 sb.auth.onAuthStateChange(function(event, session){
   if(event === 'SIGNED_IN' && session && !currentUser){
@@ -1382,29 +1392,16 @@ async function doLogin(){
   const pass = document.getElementById('login-password').value;
   if(!identifier || !pass){ setAuthMsg('Please fill in all fields.','error'); return; }
   setAuthMsg('Signing in...');
-
+  // If it doesn't look like an email, treat it as a username
   let email = identifier;
-  // Username login: look up email from profiles table
   if(!identifier.includes('@') || identifier.startsWith('@')){
     const username = identifier.replace(/^@/, '').toLowerCase();
-    const { data: profile } = await sb.from('profiles').select('email').eq('username', username).maybeSingle();
-    if(!profile){
-      setAuthMsg('No account found with that username. If you just confirmed your email, please sign in with your email address.','error');
-      return;
-    }
+    const { data: profile } = await sb.from('profiles').select('email').eq('username', username).single();
+    if(!profile){ setAuthMsg('No account found with that username.','error'); return; }
     email = profile.email;
   }
-
   const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
-  if(error){
-    // Supabase returns "Email not confirmed" if they haven't clicked the link yet
-    if(error.message.toLowerCase().includes('not confirmed') || error.message.toLowerCase().includes('email')){
-      setAuthMsg('Please confirm your email before signing in. Check your inbox for the confirmation link.','error');
-    } else {
-      setAuthMsg(error.message,'error');
-    }
-    return;
-  }
+  if(error){ setAuthMsg(error.message,'error'); return; }
   await onAuthSuccess(data.user);
 }
 
@@ -1414,39 +1411,26 @@ async function doSignup(){
   const email    = document.getElementById('signup-email').value.trim();
   const pass     = document.getElementById('signup-password').value;
   const passConfirm = document.getElementById('signup-password-confirm').value;
-  if(pass !== passConfirm){ setAuthMsg('Passwords do not match.','error'); return; }
+  if(pass !== passConfirm){
+    setAuthMsg('Passwords do not match.','error');
+    return;
+  }
   if(!name||!username||!email||!pass){ setAuthMsg('Please fill in all fields.','error'); return; }
   if(username.length < 3){ setAuthMsg('Username must be at least 3 characters.','error'); return; }
   if(pass.length < 6){ setAuthMsg('Password must be at least 6 characters.','error'); return; }
-
+  // Check username is taken
   setAuthMsg('Checking username...');
   const { data: existing } = await sb.from('profiles').select('id').eq('username', username).single();
   if(existing){ setAuthMsg('That username is taken — try another.','error'); return; }
-
   setAuthMsg('Creating account...');
-  // Store username + name in user_metadata so profile can be created after email confirmation
-  const { data, error } = await sb.auth.signUp({
-    email, password: pass,
-    options: { data: { name, username } }
-  });
+  const { data, error } = await sb.auth.signUp({ email, password: pass, options:{ data:{ name } } });
   if(error){ setAuthMsg(error.message,'error'); return; }
-
   if(data.user){
-    // Always create the profile row immediately — even if email confirmation is pending.
-    // This ensures username→email lookup works when they sign in after confirming.
     await sb.from('profiles').upsert({ id: data.user.id, name, username, email });
-
-    if(data.session){
-      // Email confirmation is OFF — sign in immediately
-      setAuthMsg('Account created! Signing you in...','success');
-      const { data: signInData, error: signInError } = await sb.auth.signInWithPassword({ email, password: pass });
-      if(signInError){ setAuthMsg('Account created! Please sign in.','success'); showAuthTab('login'); return; }
-      await onAuthSuccess(signInData.user);
-    } else {
-      // Email confirmation is ON — show confirmation message
-      showAuthTab('login');
-      setAuthMsg('✅ Check your email to confirm your account, then sign in here.','success');
-    }
+    setAuthMsg('Account created! Signing you in...','success');
+    const { data: signInData, error: signInError } = await sb.auth.signInWithPassword({ email, password: pass });
+    if(signInError){ setAuthMsg('Account created! Please sign in.','success'); showAuthTab('login'); return; }
+    await onAuthSuccess(signInData.user);
   }
 }
 
@@ -1513,19 +1497,83 @@ async function doSignOut(){
   setSS('ok', 'Signed out');
 }
 
+// ── Version check ─────────────────────────────────────────
+// Compares APP_VERSION against latest row in app_versions table.
+// Shows hard update wall if behind min_version.
+// Shows What's New modal once per version.
+function parseVersion(v){ return (v||'0.0.0').split('.').map(Number); }
+function versionLt(a, b){
+  var av = parseVersion(a), bv = parseVersion(b);
+  for(var i=0;i<3;i++){ if(av[i]<bv[i]) return true; if(av[i]>bv[i]) return false; }
+  return false;
+}
+function showUpdateSuggestion(latestVersion){
+  if(document.getElementById('update-banner')) return;
+  var banner = document.createElement('div');
+  banner.id = 'update-banner';
+  banner.style.cssText = 'position:fixed;bottom:calc(var(--bottom-nav-h) + 12px);left:50%;transform:translateX(-50%);width:calc(100% - 32px);max-width:448px;background:#1a1f35;border:1px solid var(--accent);border-radius:var(--r2);padding:12px 14px;display:flex;align-items:center;gap:12px;z-index:200;box-shadow:0 4px 24px rgba(0,0,0,0.4);';
+  banner.innerHTML =
+    '<div style="flex:1;min-width:0;">' +
+      '<div style="font-size:13px;font-weight:700;color:var(--tp);">Update Available — v'+latestVersion+'</div>' +
+      '<div style="font-size:12px;color:var(--ts);margin-top:2px;">Update the app to see what\'s new.</div>' +
+    '</div>' +
+    '<a href="https://apps.apple.com/app/lock-in" target="_blank" style="background:var(--accent);color:#fff;font-size:12px;font-weight:700;padding:7px 14px;border-radius:var(--pill);text-decoration:none;white-space:nowrap;">Update</a>' +
+    '<button onclick="document.getElementById(\'update-banner\').remove()" style="background:none;border:none;color:var(--ts);cursor:pointer;padding:4px;font-size:16px;line-height:1;">✕</button>';
+  document.body.appendChild(banner);
+}
+
+async function checkAppVersion(){
+  try {
+    var { data } = await sb.from('app_versions')
+      .select('version,min_version,changelog')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+    if(!data) return true;
+
+    // Hard wall — must update to continue
+    if(versionLt(APP_VERSION, data.min_version)){
+      var modal = document.getElementById('update-required-modal');
+      if(modal){ modal.style.display = 'flex'; modal.classList.add('open'); }
+      return false;
+    }
+
+    // Soft update suggestion — user is behind latest but above min
+    if(versionLt(APP_VERSION, data.version)){
+      setTimeout(function(){ showUpdateSuggestion(data.version); }, 800);
+      return true;
+    }
+
+    // User is on the latest version — show What's New once
+    var seenVersion = localStorage.getItem('wl_seen_version');
+    if(APP_VERSION === data.version && versionLt(seenVersion || '0.0.0', data.version)){
+      var list = document.getElementById('whats-new-list');
+      var badge = document.getElementById('whats-new-version');
+      if(list && data.changelog && data.changelog.length){
+        badge.textContent = 'v' + data.version;
+        list.innerHTML = data.changelog.map(function(item){
+          return '<div class="changelog-item"><div class="changelog-dot"></div><div>'+item+'</div></div>';
+        }).join('');
+        setTimeout(function(){ openModal('whats-new-modal'); }, 600);
+      } else {
+        localStorage.setItem('wl_seen_version', data.version);
+      }
+    }
+    return true;
+  } catch(e){
+    return true;
+  }
+}
+
 async function onAuthSuccess(user){
   currentUser = user;
   document.getElementById('auth-screen').classList.remove('show');
-  // Load or create profile — profile may not exist yet if email confirmation was just completed
+  // Load or create profile
   let { data: profile } = await sb.from('profiles').select('*').eq('id', user.id).maybeSingle();
   if(!profile){
-    // Auto-create profile using metadata stored during signup
-    const name     = user.user_metadata?.name     || user.email.split('@')[0];
-    const username = user.user_metadata?.username  || null;
-    const profileRow = { id: user.id, name, email: user.email };
-    if(username) profileRow.username = username;
-    await sb.from('profiles').upsert(profileRow);
-    profile = profileRow;
+    const name = user.user_metadata?.name || user.email.split('@')[0];
+    await sb.from('profiles').upsert({ id: user.id, name, email: user.email });
+    profile = { id: user.id, name, email: user.email };
   }
   currentProfile = profile;
   updateGreeting();
@@ -1544,6 +1592,7 @@ async function onAuthSuccess(user){
   var _sc = new Date(); _sc.setHours(0,0,0,0); var _s = 0;
   while(_ud.has(_sc.toDateString())){ _s++; _sc.setDate(_sc.getDate()-1); }
   renderHeaderStreak(_s);
+  await checkAppVersion();
   hideLoadingScreen();
 }
 
@@ -4541,32 +4590,41 @@ function getAvatarHtml(profile, size){
 }
 
 async function handleAvatarUpload(event){
-  var file = event.target.files[0];
-  if(!file || !currentUser) return;
-  // Resize to max 400px to keep it small before uploading
-  var img = new Image();
-  var url = URL.createObjectURL(file);
-  img.onload = async function(){
-    var MAX = 400;
-    var canvas = document.createElement('canvas');
-    var scale = Math.min(1, MAX/img.width, MAX/img.height);
-    canvas.width = Math.round(img.width*scale);
-    canvas.height = Math.round(img.height*scale);
-    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-    URL.revokeObjectURL(url);
-    canvas.toBlob(async function(blob){
-      var path = currentUser.id+'/avatar.jpg';
-      var { error } = await sb.storage.from('avatars').upload(path, blob, {upsert:true, contentType:'image/jpeg'});
-      if(error){ alert('Upload failed: '+error.message); return; }
-      var { data } = sb.storage.from('avatars').getPublicUrl(path);
-      var avatar_url = data.publicUrl + '?t=' + Date.now();
-      await sb.from('profiles').update({ avatar_url }).eq('id', currentUser.id);
-      currentProfile.avatar_url = avatar_url;
-      var ppEl = document.getElementById('profile-pic-preview');
-      if(ppEl) ppEl.innerHTML = '<img class="avatar-img" src="'+avatar_url+'" alt="avatar" onerror="this.parentElement.innerHTML=\'<span>'+((currentProfile.name||'?').charAt(0).toUpperCase())+'</span>\'">';
-    }, 'image/jpeg', 0.85);
-  };
-  img.src = url;
+  try {
+    var file = event.target.files[0];
+    if(!file || !currentUser) return;
+    // Reset input so same file can be re-selected
+    event.target.value = '';
+    // Resize to max 400px before uploading
+    var img = new Image();
+    var url = URL.createObjectURL(file);
+    img.onload = async function(){
+      try {
+        var MAX = 400;
+        var canvas = document.createElement('canvas');
+        var scale = Math.min(1, MAX/img.width, MAX/img.height);
+        canvas.width = Math.round(img.width*scale);
+        canvas.height = Math.round(img.height*scale);
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+        URL.revokeObjectURL(url);
+        canvas.toBlob(async function(blob){
+          try {
+            var path = currentUser.id+'/avatar.jpg';
+            var { error } = await sb.storage.from('avatars').upload(path, blob, {upsert:true, contentType:'image/jpeg'});
+            if(error){ alert('Upload failed: '+error.message); return; }
+            var { data } = sb.storage.from('avatars').getPublicUrl(path);
+            var avatar_url = data.publicUrl + '?t=' + Date.now();
+            await sb.from('profiles').update({ avatar_url }).eq('id', currentUser.id);
+            currentProfile.avatar_url = avatar_url;
+            var ppEl = document.getElementById('profile-pic-preview');
+            if(ppEl) ppEl.innerHTML = '<img class="avatar-img" src="'+avatar_url+'" alt="avatar" onerror="this.parentElement.innerHTML=\'<span>'+((currentProfile.name||'?').charAt(0).toUpperCase())+'</span>\'">';
+          } catch(e){ alert('Upload error: '+e.message); }
+        }, 'image/jpeg', 0.85);
+      } catch(e){ alert('Image processing error: '+e.message); }
+    };
+    img.onerror = function(){ alert('Could not read image. Please try a different photo.'); URL.revokeObjectURL(url); };
+    img.src = url;
+  } catch(e){ alert('Could not open photo: '+e.message); }
 }
 
 
@@ -6627,6 +6685,33 @@ document.addEventListener('DOMContentLoaded', function(){ window._loadStart = Da
     <button class="xp-close-btn" onclick="closeModal('xp-modal')">Continue</button>
   </div>
 </div></div>
+
+<!-- Force update modal (hard wall — cannot be dismissed) -->
+<div class="modal-bg open" id="update-required-modal" style="display:none;">
+  <div class="modal" style="max-width:320px;text-align:center;padding:2rem 1.5rem;">
+    <div class="version-modal-icon">🔒</div>
+    <div class="modal-title">Update Required</div>
+    <p class="modal-body" style="margin-bottom:1.25rem;">A required update is available. Please update Lock In. to continue.</p>
+    <a id="update-store-link" href="https://apps.apple.com/app/lock-in" target="_blank" style="display:block;width:100%;padding:13px;background:var(--accent);color:#fff;border:none;border-radius:var(--r2);font-size:15px;font-weight:700;cursor:pointer;font-family:var(--font);text-decoration:none;box-sizing:border-box;">Update Now</a>
+  </div>
+</div>
+
+<!-- What's New modal (dismissible, shown once per version) -->
+<div class="modal-bg" id="whats-new-modal">
+  <div class="modal" style="max-width:340px;padding:0;border-radius:var(--r3);overflow:hidden;">
+    <div style="padding:0.75rem 1.5rem;text-align:center;border-bottom:0.5px solid var(--bo3);background:linear-gradient(135deg,#1a1f35 0%,#0f1220 100%);display:flex;align-items:center;justify-content:center;gap:8px;">
+      <span style="font-size:18px;">🚀</span>
+      <span style="font-size:15px;font-weight:700;color:var(--tp);">What's New</span>
+      <span class="version-badge" id="whats-new-version" style="margin:0;">v1.0.0</span>
+    </div>
+    <div style="padding:1.25rem 1.5rem;">
+      <div class="changelog-list" id="whats-new-list"></div>
+    </div>
+    <div style="padding:0 1.5rem 1.5rem;">
+      <button class="xp-close-btn" onclick="closeModal('whats-new-modal');localStorage.setItem('wl_seen_version', APP_VERSION);">Let's Go</button>
+    </div>
+  </div>
+</div>
 
 <!-- Manage friends modal -->
 <div class="modal-bg" id="manage-friends-modal"><div class="modal modal-flex" style="max-height:85vh;">
