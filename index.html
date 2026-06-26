@@ -3170,12 +3170,18 @@ function init(){
   renderDayChips();
 }
 
-var _pickerOutsideListener = null;
-
 function openPicker(){
   document.getElementById('add-trigger').style.display = 'none';
   document.getElementById('picker-exp').style.display = 'block';
-  setMode('normal');
+  // Default to Single — activate visually without going through setMode toggle logic
+  mode = 'normal'; ssFirst = null;
+  ['mode-normal','mode-super','mode-drop','mode-cardio'].forEach(id => document.getElementById(id).classList.remove('active'));
+  document.getElementById('mode-normal').classList.add('active');
+  document.getElementById('sec-cardio').style.display = 'none';
+  document.getElementById('sec-cat').style.display = 'block';
+  document.getElementById('sec-ex').style.display = 'block';
+  renderCatSelect();
+  renderExSelect();
 }
 
 function closePicker(){
