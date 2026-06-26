@@ -4639,11 +4639,11 @@ let pendingDeleteWorkoutTs = null;
 let pendingEditWorkoutIdx = null;
 
 function openEditWorkoutByTs(ts){
-  var idx = history.findIndex(function(e){ return e.ts === ts; });
+  var idx = history.findIndex(function(e){ return e.ts === ts || (e.ts && ts && e.ts.slice(0,19) === ts.slice(0,19)); });
   if(idx >= 0) openEditWorkout(idx);
 }
 function openDeleteWorkoutByTs(ts){
-  var idx = history.findIndex(function(e){ return e.ts === ts; });
+  var idx = history.findIndex(function(e){ return e.ts === ts || (e.ts && ts && e.ts.slice(0,19) === ts.slice(0,19)); });
   if(idx >= 0) openDeleteWorkout(idx);
 }
 
