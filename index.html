@@ -1121,6 +1121,33 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
             <button class="mode-btn" id="mode-normal" onclick="setMode('normal')">Single</button>
             <button class="mode-btn" id="mode-super" onclick="setMode('superset')"><i class="ti ti-arrows-exchange"></i> Superset</button>
             <button class="mode-btn" id="mode-drop" onclick="setMode('dropset')"><i class="ti ti-arrow-down"></i> Dropset</button>
+            <button class="mode-btn" id="mode-cardio" onclick="setMode('cardio')">🏃 Cardio</button>
+          </div>
+        </div>
+        <div class="picker-sec" id="sec-cardio" style="display:none;">
+          <div class="sec-lbl">Activity</div>
+          <div class="drop-select-row">
+            <select class="picker-select" id="cardio-activity-select">
+              <option>Running</option>
+              <option>Walking</option>
+              <option>Incline Walk</option>
+              <option>Cycling</option>
+              <option>Stairmaster</option>
+              <option>Elliptical</option>
+              <option>Rowing</option>
+              <option>Treadmill</option>
+              <option>Assault Bike</option>
+              <option>Jump Rope</option>
+              <option>Hiking</option>
+            </select>
+            <button class="add-btn" onclick="pickCardioFromSelect()">Add</button>
+            <button class="icon-btn" onclick="openCardioSettingsModal()"><i class="ti ti-settings"></i></button>
+            <button class="icon-btn" onclick="toggleAddCardioCustom()"><i class="ti ti-plus"></i></button>
+          </div>
+          <div class="add-inline-row" id="add-cardio-row">
+            <input type="text" id="new-cardio-inp" placeholder="Activity name..." onkeydown="if(event.key==='Enter')addCustomCardio();if(event.key==='Escape')toggleAddCardioCustom()">
+            <button class="icon-btn" onclick="addCustomCardio()">Add</button>
+            <button class="icon-btn" onclick="toggleAddCardioCustom()" style="color:var(--ts);"><i class="ti ti-x"></i></button>
           </div>
         </div>
         <div class="picker-sec" id="sec-cat" style="display:none;">
@@ -1267,6 +1294,23 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
   <div class="modal-body" style="margin-bottom:.75rem;">Showing exercises in <strong id="ex-settings-cat-name"></strong></div>
   <div class="exm-list" id="ex-settings-list"></div>
   <button class="modal-btn" style="width:100%;text-align:center;" onclick="closeModal('ex-settings-modal')">Done</button>
+</div></div>
+
+<!-- Cardio activities settings modal -->
+<div class="modal-bg" id="cardio-settings-modal"><div class="modal">
+  <div class="modal-title">Manage Activities</div>
+  <div class="exm-list" id="cardio-settings-list"></div>
+  <button class="modal-btn" style="width:100%;text-align:center;margin-top:8px;" onclick="closeModal('cardio-settings-modal')">Done</button>
+</div></div>
+
+<!-- Cardio activity delete confirm modal -->
+<div class="modal-bg" id="del-cardio-modal"><div class="modal">
+  <div class="modal-title">Remove activity?</div>
+  <div class="modal-body" id="del-cardio-body"></div>
+  <div class="modal-actions">
+    <button class="modal-btn" onclick="closeModal('del-cardio-modal');openCardioSettingsModal()">Cancel</button>
+    <button class="modal-btn danger" id="del-cardio-ok">Remove</button>
+  </div>
 </div></div>
 
 
@@ -1725,12 +1769,12 @@ function renderProfileTabBody(workouts, userId){
     window._profileTabWorkouts = workouts;
     if(!workouts.length){ body.innerHTML='<div class="empty">No workouts yet.</div>'; return; }
     body.innerHTML = workouts.map(function(entry,idx){
-      const exNames = entry.blocks.flatMap(function(b){return b.exercises.map(function(e){return e.name;});});
+      const exNames = entry.blocks.flatMap(function(b){return b.exercises ? b.exercises.map(function(e){return e.name;}) : [];});
       const preview = exNames.slice(0,3).join(', ')+(exNames.length>3?' +'+(exNames.length-3)+' more':'');
       const bodyBlocks = entry.blocks.map(function(b){
         var assistedBadge = b.assisted ? ' <span class="ex-assisted-badge"><i class="ti ti-arrow-down-right"></i> Assisted</span>' : '';
         var noteHtml = b.note ? '<div class="ex-note">"'+b.note+'"</div>' : '';
-        if(b.type==='single'){var ex=b.exercises[0];var lines=ex.sets.map(function(s,i){return 'Set '+(i+1)+': '+fw(s.w)+' x '+fr(s.r)+' reps'+(s.warmup?' <span class=\"ex-warmup-badge\">Warm-up</span>':'');}).join('<br>');return '<div class="hist-block"><div class="hist-name">'+ex.name+assistedBadge+'</div>'+noteHtml+'<div class="hist-sets">'+lines+'</div></div>';}
+        if(b.type==='cardio'){var c=b.cardio||{};var h=c.hours||0,m=c.minutes||0,s=c.seconds||0;var dur=(h>0?h+'h ':'')+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');return '<div class="hist-block"><div class="hist-name">'+getCardioIcon(c.name)+' '+c.name+' <span style="font-size:11px;background:rgba(34,197,94,0.12);color:#22c55e;padding:2px 7px;border-radius:20px;font-weight:600;">Cardio</span></div><div class="hist-sets">'+(dur!=='00:00'?dur:'No duration')+(c.notes?'<br><em style="color:var(--ts);">'+c.notes+'</em>':'')+'</div></div>';}if(b.type==='single'){var ex=b.exercises[0];var lines=ex.sets.map(function(s,i){return 'Set '+(i+1)+': '+fw(s.w)+' x '+fr(s.r)+' reps'+(s.warmup?' <span class=\"ex-warmup-badge\">Warm-up</span>':'');}).join('<br>');return '<div class="hist-block"><div class="hist-name">'+ex.name+assistedBadge+'</div>'+noteHtml+'<div class="hist-sets">'+lines+'</div></div>';}
         if(b.type==='superset'){var e1=b.exercises[0],e2=b.exercises[1],ms=Math.max(e1.sets.length,e2.sets.length);var lines=Array.from({length:ms},function(_,i){var s1=e1.sets[i],s2=e2.sets[i];return 'Set '+(i+1)+': '+(s1?fw(s1.w)+' x '+fr(s1.r)+' reps':'—')+' / '+(s2?fw(s2.w)+' x '+fr(s2.r)+' reps':'—');}).join('<br>');return '<div class="hist-block"><div class="hist-name">'+e1.name+' / '+e2.name+' <span style="font-size:11px;background:#1a1a5c;color:#7a7ae0;padding:2px 7px;border-radius:20px;font-weight:500;"><i class="ti ti-arrows-exchange"></i> Superset</span>'+assistedBadge+'</div>'+noteHtml+'<div class="hist-sets">'+lines+'</div></div>';}
         if(b.type==='dropset'){var ex=b.exercises[0];var lines=ex.dropSets.map(function(drops,i){return 'Set '+(i+1)+': '+drops.map(function(d){return fw(d.w)+' x '+fr(d.r)+' reps';}).join(' > ');}).join('<br>');return '<div class="hist-block"><div class="hist-name">'+ex.name+assistedBadge+'</div>'+noteHtml+'<div class="hist-sets">'+lines+'</div></div>';}
         return '';
@@ -1895,8 +1939,10 @@ async function loadFromSupabase(){
     if(wRes.data) history = wRes.data.map(r => ({ date:r.date, ts:r.ts, label:r.label, desc:r.desc||null, tagged:r.tagged||null, duration_seconds:r.duration_seconds||null, blocks:r.blocks, id:r.id }));
     if(eRes.data?.exercises){
       // Server is the sole source of truth — never merge stale localStorage on top.
-      // localStorage is only used as a fallback when offline.
       EX = eRes.data.exercises;
+    }
+    if(eRes.data?.cardio_activities && Array.isArray(eRes.data.cardio_activities)){
+      _cardioActivities = eRes.data.cardio_activities;
     }
     localStorage.setItem('wl_history', JSON.stringify(history.slice(0,100)));
     localStorage.setItem('wl_exercises', JSON.stringify(EX));
@@ -1980,7 +2026,7 @@ async function saveToSupabase(newEntry){
         localStorage.setItem('wl_history', JSON.stringify(history.slice(0,100)));
       }
     }
-    const { error: exErr } = await sb.from('exercise_lists').upsert({ user_id: currentUser.id, exercises: EX }, { onConflict: 'user_id' });
+    const { error: exErr } = await sb.from('exercise_lists').upsert({ user_id: currentUser.id, exercises: EX, cardio_activities: _cardioActivities }, { onConflict: 'user_id' });
     if(exErr) console.error('Exercise save error:', exErr);
     setSS('ok','Saved');
   } catch(e){
@@ -2304,11 +2350,11 @@ async function renderFeed(){
     const comments = (allComments||[]).filter(function(c){return c.workout_id===w.id;});
     const commentCount = comments.length;
 
-    const exNames = w.blocks.flatMap(function(b){return b.exercises.map(function(e){return e.name;});});
+    const exNames = w.blocks.flatMap(function(b){return b.exercises?b.exercises.map(function(e){return e.name;}):[]; });
     const preview = exNames.slice(0,3).join(', ') + (exNames.length>3 ? ' +' + (exNames.length-3) + ' more' : '');
 
     const detailBlocks = w.blocks.map(function(b){
-      if(b.type==='single'){const ex=b.exercises[0];const lines=ex.sets.map(function(s,j){return 'Set '+(j+1)+': '+fw(s.w)+' \xd7 '+fr(s.r)+' reps'+(s.warmup?' <span class=\"ex-warmup-badge\">Warm-up</span>':'');}).join('<br>');var ab=b.assisted?'<span class="ex-assisted-badge"><i class="ti ti-arrow-down-right"></i> Assisted</span>':'';var nb=b.note?'<div class="ex-note">"'+b.note+'"</div>':'';return '<div class="hist-block"><div class="hist-name">'+ex.name+ab+'</div>'+nb+'<div class="hist-sets">'+lines+'</div></div>';}
+      if(b.type==='cardio'){var c=b.cardio||{};var h=c.hours||0,m=c.minutes||0,s=c.seconds||0;var dur=(h>0?h+'h ':'')+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');return '<div class="hist-block"><div class="hist-name">'+getCardioIcon(c.name)+' '+c.name+' <span style="font-size:11px;background:rgba(34,197,94,0.12);color:#22c55e;padding:2px 7px;border-radius:20px;font-weight:600;">Cardio</span></div><div class="hist-sets">'+(dur!=='00:00'?dur:'No duration')+(c.notes?'<br><em style="color:var(--ts);">'+c.notes+'</em>':'')+'</div></div>';}if(b.type==='single'){const ex=b.exercises[0];const lines=ex.sets.map(function(s,j){return 'Set '+(j+1)+': '+fw(s.w)+' \xd7 '+fr(s.r)+' reps'+(s.warmup?' <span class=\"ex-warmup-badge\">Warm-up</span>':'');}).join('<br>');var ab=b.assisted?'<span class="ex-assisted-badge"><i class="ti ti-arrow-down-right"></i> Assisted</span>':'';var nb=b.note?'<div class="ex-note">"'+b.note+'"</div>':'';return '<div class="hist-block"><div class="hist-name">'+ex.name+ab+'</div>'+nb+'<div class="hist-sets">'+lines+'</div></div>';}
       if(b.type==='superset'){const e1=b.exercises[0],e2=b.exercises[1],ms=Math.max(e1.sets.length,e2.sets.length);const lines=Array.from({length:ms},function(_,j){const s1=e1.sets[j],s2=e2.sets[j];return 'Set '+(j+1)+': '+(s1?fw(s1.w)+' \xd7 '+fr(s1.r)+' reps':'—')+' / '+(s2?fw(s2.w)+' \xd7 '+fr(s2.r)+' reps':'—');}).join('<br>');var ab=b.assisted?'<span class="ex-assisted-badge"><i class="ti ti-arrow-down-right"></i> Assisted</span>':'';var nb=b.note?'<div class="ex-note">"'+b.note+'"</div>':'';return '<div class="hist-block"><div class="hist-name">'+e1.name+' / '+e2.name+' <span style="font-size:11px;background:#1a1a5c;color:#7a7ae0;padding:2px 7px;border-radius:20px;font-weight:500;"><i class="ti ti-arrows-exchange"></i> Superset</span>'+ab+'</div>'+nb+'<div class="hist-sets">'+lines+'</div></div>';}
       if(b.type==='dropset'){const ex=b.exercises[0];const lines=ex.dropSets.map(function(drops,j){return 'Set '+(j+1)+': '+drops.map(function(d){return fw(d.w)+' \xd7 '+fr(d.r)+' reps';}).join(' \u2192 ');}).join('<br>');var ab=b.assisted?'<span class="ex-assisted-badge"><i class="ti ti-arrow-down-right"></i> Assisted</span>':'';var nb=b.note?'<div class="ex-note">"'+b.note+'"</div>':'';return '<div class="hist-block"><div class="hist-name">'+ex.name+' <span style="font-size:11px;background:#FEF3E2;color:#A05C00;padding:2px 7px;border-radius:20px;font-weight:500;">\u2193 Dropset</span>'+ab+'</div>'+nb+'<div class="hist-sets">'+lines+'</div></div>';}
       return '';
@@ -2903,8 +2949,9 @@ function copyFeedWorkout(i){
   const entry = window._feedWorkouts[i];
   if(!entry) return;
   blocks = entry.blocks.map(b => {
+    if(b.type==='cardio') return {type:'cardio', exercises:[], cardio:Object.assign({},b.cardio,{hours:b.cardio?.hours||0,minutes:b.cardio?.minutes||0,seconds:b.cardio?.seconds||0,notes:b.cardio?.notes||''})};
     if(b.type==='dropset') return {type:'dropset', exercises:[{name:b.exercises[0].name, dropSets:b.exercises[0].dropSets.map(ds=>ds.map(()=>({w:'',r:''})))}]};
-    return {type:b.type, exercises:b.exercises.map(ex=>({name:ex.name, sets:(ex.sets||[]).map(()=>({w:'',r:''}))}))};
+    return {type:b.type, exercises:(b.exercises||[]).map(ex=>({name:ex.name, sets:(ex.sets||[]).map(()=>({w:'',r:''}))}))};
   });
   if(entry.label) document.getElementById('day-inp').value = entry.label;
   // Fetch source user's exercise map for correct category import
@@ -3123,19 +3170,37 @@ function init(){
   renderDayChips();
 }
 
+var _pickerOutsideListener = null;
+
 function openPicker(){
   document.getElementById('add-trigger').style.display = 'none';
   document.getElementById('picker-exp').style.display = 'block';
+  setMode('normal');
+  setTimeout(function(){
+    _pickerOutsideListener = function(e){
+      var exp = document.getElementById('picker-exp');
+      if(exp && exp.style.display !== 'none' && !exp.contains(e.target)){
+        closePicker();
+      }
+    };
+    document.addEventListener('pointerdown', _pickerOutsideListener);
+  }, 10);
 }
 
 function closePicker(){
+  if(_pickerOutsideListener){
+    document.removeEventListener('pointerdown', _pickerOutsideListener);
+    _pickerOutsideListener = null;
+  }
   mode = null; ssFirst = null;
-  ['mode-normal','mode-super','mode-drop'].forEach(id => document.getElementById(id).classList.remove('active'));
+  ['mode-normal','mode-super','mode-drop','mode-cardio'].forEach(id => document.getElementById(id).classList.remove('active'));
   document.getElementById('sec-cat').style.display = 'none';
   document.getElementById('sec-ex').style.display = 'none';
+  document.getElementById('sec-cardio').style.display = 'none';
   document.getElementById('ss-pending').style.display = 'none';
   document.getElementById('add-cat-row').classList.remove('open');
   document.getElementById('add-ex-row').classList.remove('open');
+  document.getElementById('add-cardio-row').classList.remove('open');
   document.getElementById('picker-exp').style.display = 'none';
   document.getElementById('add-trigger').style.display = 'flex';
 }
@@ -3144,13 +3209,207 @@ function setMode(m){
   if(mode === m){ closePicker(); return; }
   mode = m; ssFirst = null;
   document.getElementById('ss-pending').style.display = 'none';
-  ['mode-normal','mode-super','mode-drop'].forEach(id => document.getElementById(id).classList.remove('active'));
-  const ids = {normal:'mode-normal', superset:'mode-super', dropset:'mode-drop'};
+  ['mode-normal','mode-super','mode-drop','mode-cardio'].forEach(id => document.getElementById(id).classList.remove('active'));
+  const ids = {normal:'mode-normal', superset:'mode-super', dropset:'mode-drop', cardio:'mode-cardio'};
   document.getElementById(ids[m]).classList.add('active');
-  document.getElementById('sec-cat').style.display = 'block';
-  document.getElementById('sec-ex').style.display = 'block';
-  renderCatSelect();
-  renderExSelect();
+  if(m === 'cardio'){
+    document.getElementById('sec-cat').style.display = 'none';
+    document.getElementById('sec-ex').style.display = 'none';
+    document.getElementById('sec-cardio').style.display = 'block';
+    renderCardioSelect();
+  } else {
+    document.getElementById('sec-cardio').style.display = 'none';
+    document.getElementById('sec-cat').style.display = 'block';
+    document.getElementById('sec-ex').style.display = 'block';
+    renderCatSelect();
+    renderExSelect();
+  }
+}
+
+function toggleAddCardioCustom(){
+  const el = document.getElementById('add-cardio-row');
+  el.classList.toggle('open');
+  if(el.classList.contains('open')) setTimeout(()=>document.getElementById('new-cardio-inp').focus(), 50);
+}
+
+// ── Cardio ─────────────────────────────────────────────
+var _cardioActivities = ['Running','Walking','Incline Walk','Cycling','Stairmaster','Elliptical','Rowing','Treadmill','Assault Bike','Jump Rope','Hiking'];
+var _cardioTimers = {};
+
+function getCardioIcon(name){
+  var icons = {running:'🏃',walking:'🚶',cycling:'🚴',stairmaster:'🪜',elliptical:'🏃',rowing:'🚣',treadmill:'🏃','assault bike':'🚴',hiking:'🥾','jump rope':'🪃','incline walk':'🚶'};
+  return icons[(name||'').toLowerCase()] || '🏃';
+}
+
+function renderCardioSelect(){
+  var sel = document.getElementById('cardio-activity-select');
+  if(!sel) return;
+  var cur = sel.value;
+  sel.innerHTML = _cardioActivities.map(function(a){ return '<option'+(a===cur?' selected':'')+'>'+a+'</option>'; }).join('');
+  if(cur) sel.value = cur;
+}
+
+function pickCardioFromSelect(){
+  var name = document.getElementById('cardio-activity-select').value;
+  if(!name) return;
+  blocks.push({ type:'cardio', exercises:[], cardio:{ name:name, hours:0, minutes:0, seconds:0, notes:'' } });
+  closePicker();
+  renderBlocks();
+}
+
+function addCustomCardio(){
+  var name = document.getElementById('new-cardio-inp').value.trim();
+  if(!name) return;
+  if(!_cardioActivities.includes(name)) _cardioActivities.push(name);
+  renderCardioSelect();
+  saveToSupabase(null);
+  document.getElementById('cardio-activity-select').value = name;
+  document.getElementById('add-cardio-row').classList.remove('open');
+  document.getElementById('new-cardio-inp').value = '';
+}
+
+function openCardioSettingsModal(){
+  const list = document.getElementById('cardio-settings-list');
+  list.innerHTML = _cardioActivities.length
+    ? _cardioActivities.map(function(a, i){
+        return '<div class="exm-row" draggable="false" data-activity="'+a+'">' +
+          '<i class="ti ti-grip-vertical" style="color:var(--ts);cursor:grab;font-size:16px;flex-shrink:0;" onmousedown="this.closest(\'[draggable]\').setAttribute(\'draggable\',\'true\')" ontouchstart="this.closest(\'[draggable]\').setAttribute(\'draggable\',\'true\')"></i>' +
+          '<input class="cat-inp" value="'+a+'" onblur="renameCardioActivity(\''+a+'\',this.value)" style="flex:1;min-width:0;">' +
+          '<button class="action-btn" onclick="confirmDeleteCardioActivity(\''+a+'\')" style="color:#A32D2D;"><i class="ti ti-trash"></i></button>' +
+        '</div>';
+      }).join('')
+    : '<div style="font-size:13px;color:var(--ts);text-align:center;padding:1rem;">No activities yet.</div>';
+  initCardioActivityDrag();
+  openModal('cardio-settings-modal');
+}
+
+function initCardioActivityDrag(){
+  const list = document.getElementById('cardio-settings-list');
+  if(!list) return;
+  let dragSrc = null;
+  list.querySelectorAll('.exm-row').forEach(function(row){
+    row.addEventListener('dragstart', function(){ dragSrc = row; row.style.opacity='.4'; });
+    row.addEventListener('dragend', function(){ row.style.opacity=''; row.setAttribute('draggable','false'); });
+    row.addEventListener('dragover', function(e){ e.preventDefault(); });
+    row.addEventListener('drop', function(e){
+      e.preventDefault();
+      if(!dragSrc || dragSrc===row) return;
+      var si = _cardioActivities.indexOf(dragSrc.dataset.activity);
+      var ti = _cardioActivities.indexOf(row.dataset.activity);
+      if(si===-1||ti===-1) return;
+      _cardioActivities.splice(ti,0,_cardioActivities.splice(si,1)[0]);
+      saveToSupabase(null);
+      openCardioSettingsModal();
+    });
+  });
+}
+
+function renameCardioActivity(oldName, newName){
+  newName = newName.trim();
+  if(!newName || newName === oldName) return;
+  var i = _cardioActivities.indexOf(oldName);
+  if(i === -1) return;
+  _cardioActivities[i] = newName;
+  renderCardioSelect();
+  saveToSupabase(null);
+}
+
+function confirmDeleteCardioActivity(name){
+  document.getElementById('del-cardio-body').textContent = 'Remove "'+name+'" from your activities list?';
+  document.getElementById('del-cardio-ok').onclick = function(){
+    var i = _cardioActivities.indexOf(name);
+    if(i !== -1) _cardioActivities.splice(i, 1);
+    renderCardioSelect();
+    saveToSupabase(null);
+    closeModal('del-cardio-modal');
+    openCardioSettingsModal();
+  };
+  closeModal('cardio-settings-modal');
+  openModal('del-cardio-modal');
+}
+
+function deleteCardioActivity(i){
+  // legacy stub
+  if(_cardioActivities[i]) confirmDeleteCardioActivity(_cardioActivities[i]);
+}
+
+function updCardio(bi, field, val){
+  if(!blocks[bi] || blocks[bi].type !== 'cardio') return;
+  blocks[bi].cardio[field] = (field==='hours'||field==='minutes'||field==='seconds') ? (parseInt(val)||0) : val;
+}
+
+// Per-card timers
+function toggleCardioTimerCard(bi){
+  var sec = document.getElementById('ctimer-section-'+bi);
+  if(sec) sec.style.display = sec.style.display === 'none' ? '' : 'none';
+}
+
+function cardioTimerCardStart(bi){
+  if(_cardioTimers[bi]) clearInterval(_cardioTimers[bi].interval);
+  _cardioTimers[bi] = { seconds:0, running:true };
+  _cardioTimers[bi].interval = setInterval(function(){
+    _cardioTimers[bi].seconds++;
+    var s = _cardioTimers[bi].seconds;
+    var disp = document.getElementById('ctimer-display-'+bi);
+    if(disp) disp.textContent = String(Math.floor(s/3600)).padStart(2,'0')+':'+String(Math.floor((s%3600)/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
+  }, 1000);
+  document.getElementById('ctimer-start-'+bi).style.display='none';
+  document.getElementById('ctimer-pause-'+bi).style.display='';
+  document.getElementById('ctimer-finish-'+bi).style.display='';
+}
+
+function cardioTimerCardPause(bi){
+  if(_cardioTimers[bi]) clearInterval(_cardioTimers[bi].interval);
+  document.getElementById('ctimer-pause-'+bi).style.display='none';
+  document.getElementById('ctimer-resume-'+bi).style.display='';
+}
+
+function cardioTimerCardResume(bi){
+  _cardioTimers[bi].interval = setInterval(function(){
+    _cardioTimers[bi].seconds++;
+    var s=_cardioTimers[bi].seconds;
+    var disp=document.getElementById('ctimer-display-'+bi);
+    if(disp) disp.textContent=String(Math.floor(s/3600)).padStart(2,'0')+':'+String(Math.floor((s%3600)/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
+  },1000);
+  document.getElementById('ctimer-resume-'+bi).style.display='none';
+  document.getElementById('ctimer-pause-'+bi).style.display='';
+}
+
+function cardioTimerCardFinish(bi){
+  if(_cardioTimers[bi]) clearInterval(_cardioTimers[bi].interval);
+  var s = _cardioTimers[bi] ? _cardioTimers[bi].seconds : 0;
+  var h=Math.floor(s/3600), m=Math.floor((s%3600)/60), sec=s%60;
+  if(blocks[bi] && blocks[bi].type==='cardio'){
+    blocks[bi].cardio.hours=h; blocks[bi].cardio.minutes=m; blocks[bi].cardio.seconds=sec;
+  }
+  var hi=document.getElementById('ch-'+bi), mi=document.getElementById('cm-'+bi), si=document.getElementById('cs-'+bi);
+  if(hi) hi.value=h||''; if(mi) mi.value=m||''; if(si) si.value=sec||'';
+  var pauseBtn=document.getElementById('ctimer-pause-'+bi);
+  var resumeBtn=document.getElementById('ctimer-resume-'+bi);
+  var finishBtn=document.getElementById('ctimer-finish-'+bi);
+  var resetBtn=document.getElementById('ctimer-reset-'+bi);
+  if(pauseBtn) pauseBtn.style.display='none';
+  if(resumeBtn) resumeBtn.style.display='none';
+  if(finishBtn) finishBtn.style.display='none';
+  if(resetBtn) resetBtn.style.display='';
+  delete _cardioTimers[bi];
+}
+
+function cardioTimerCardReset(bi){
+  if(_cardioTimers[bi]) clearInterval(_cardioTimers[bi].interval);
+  delete _cardioTimers[bi];
+  var disp=document.getElementById('ctimer-display-'+bi);
+  if(disp) disp.textContent='00:00:00';
+  var startBtn=document.getElementById('ctimer-start-'+bi);
+  var pauseBtn=document.getElementById('ctimer-pause-'+bi);
+  var resumeBtn=document.getElementById('ctimer-resume-'+bi);
+  var finishBtn=document.getElementById('ctimer-finish-'+bi);
+  var resetBtn=document.getElementById('ctimer-reset-'+bi);
+  if(startBtn) startBtn.style.display='';
+  if(pauseBtn) pauseBtn.style.display='none';
+  if(resumeBtn) resumeBtn.style.display='none';
+  if(finishBtn) finishBtn.style.display='none';
+  if(resetBtn) resetBtn.style.display='none';
 }
 
 function toggleAddCat(){
@@ -3215,7 +3474,7 @@ function renderExSelect(){
     if(tb !== ta) return tb > ta ? 1 : -1;
     return a.localeCompare(b);
   });
-  const added = new Set(blocks.flatMap(b => b.exercises.map(e => e.name)));
+  const added = new Set(blocks.flatMap(b => b.exercises ? (b.exercises||[]).map(e => e.name) : []));
   const sel = document.getElementById('ex-select');
   sel.innerHTML = list.map(ex =>
     `<option value="${ex}"${added.has(ex)?' disabled':''} >${ex}${added.has(ex)?' ✓':''}</option>`
@@ -3377,6 +3636,7 @@ function removeExNote(bi){
 
 function confirmRemoveBlock(bi){
   var b = blocks[bi];
+  if(b.type === 'cardio'){ blocks.splice(bi,1); renderBlocks(); return; }
   var hasData = false;
   b.exercises.forEach(function(ex){
     if(ex.dropSets){ ex.dropSets.forEach(function(ds){ ds.forEach(function(d){ if(d.w||d.r) hasData=true; }); }); }
@@ -3491,6 +3751,51 @@ function renderBlocks(){
   const el = document.getElementById('blocks-list');
   if(!blocks.length){ el.innerHTML=''; return; }
   el.innerHTML = blocks.map((b,bi) => {
+    if(b.type === 'cardio'){
+      const c = b.cardio;
+      const actIcon = getCardioIcon(c.name);
+      const h = c.hours||0, m = c.minutes||0, s = c.seconds||0;
+      return `<div class="exercise-card" style="border-color:rgba(34,197,94,0.35);">
+        <div class="ex-header">
+          <span class="ex-name">${actIcon} ${c.name} <span style="font-size:10px;font-weight:700;background:rgba(34,197,94,0.12);color:#22c55e;padding:2px 8px;border-radius:var(--pill);border:0.5px solid rgba(34,197,94,0.3);letter-spacing:.04em;text-transform:uppercase;">Cardio</span></span>
+          <button class="remove-btn" onclick="confirmRemoveBlock(${bi})"><i class="ti ti-x"></i></button>
+        </div>
+        <div style="margin-top:10px;">
+          <div style="font-size:11px;font-weight:700;color:var(--ts);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">Duration</div>
+          <div style="display:flex;gap:6px;align-items:flex-end;">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1;">
+              <span style="font-size:10px;color:var(--ts);">Hours</span>
+              <input type="text" inputmode="numeric" pattern="[0-9]*" class="set-inp" placeholder="0" value="${h||''}" id="ch-${bi}" oninput="updCardio(${bi},'hours',this.value)" style="width:100%;text-align:center;padding:8px 4px;">
+            </div>
+            <div style="font-size:20px;font-weight:700;color:var(--ts);padding-bottom:4px;">:</div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1;">
+              <span style="font-size:10px;color:var(--ts);">Minutes</span>
+              <input type="text" inputmode="numeric" pattern="[0-9]*" class="set-inp" placeholder="0" value="${m||''}" id="cm-${bi}" oninput="updCardio(${bi},'minutes',this.value)" style="width:100%;text-align:center;padding:8px 4px;">
+            </div>
+            <div style="font-size:20px;font-weight:700;color:var(--ts);padding-bottom:4px;">:</div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1;">
+              <span style="font-size:10px;color:var(--ts);">Seconds</span>
+              <input type="text" inputmode="numeric" pattern="[0-9]*" class="set-inp" placeholder="00" value="${s||''}" id="cs-${bi}" oninput="updCardio(${bi},'seconds',this.value)" style="width:100%;text-align:center;padding:8px 4px;">
+            </div>
+          </div>
+          <button class="add-set-btn" onclick="toggleCardioTimerCard(${bi})" style="margin-top:8px;width:100%;justify-content:center;">⏱ Use live timer</button>
+          <div id="ctimer-section-${bi}" style="display:none;margin-top:8px;background:var(--bs);border-radius:var(--r2);border:0.5px solid var(--bo3);padding:10px;">
+            <div style="font-size:28px;font-weight:800;color:var(--tp);text-align:center;letter-spacing:-.02em;font-variant-numeric:tabular-nums;padding:6px 0;" id="ctimer-display-${bi}">00:00:00</div>
+            <div style="display:flex;gap:6px;margin-top:8px;">
+              <button id="ctimer-start-${bi}" onclick="cardioTimerCardStart(${bi})" style="flex:1;padding:9px;border:none;border-radius:var(--r2);background:var(--accent);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font);">Start</button>
+              <button id="ctimer-pause-${bi}" onclick="cardioTimerCardPause(${bi})" style="display:none;flex:1;padding:9px;border:none;border-radius:var(--r2);background:#f59e0b;color:#000;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font);">Pause</button>
+              <button id="ctimer-resume-${bi}" onclick="cardioTimerCardResume(${bi})" style="display:none;flex:1;padding:9px;border:none;border-radius:var(--r2);background:var(--accent);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font);">Resume</button>
+              <button id="ctimer-finish-${bi}" onclick="cardioTimerCardFinish(${bi})" style="display:none;flex:1;padding:9px;border:none;border-radius:var(--r2);background:#22c55e;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font);">Finish</button>
+              <button id="ctimer-reset-${bi}" onclick="cardioTimerCardReset(${bi})" style="display:none;flex:1;padding:9px;border:none;border-radius:var(--r2);background:var(--bs);color:var(--ts);font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font);border:0.5px solid var(--bo3);">Reset</button>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:10px;">
+          <div style="font-size:11px;font-weight:700;color:var(--ts);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">Notes <span style="font-weight:400;text-transform:none;font-size:10px;">(optional)</span></div>
+          <input type="text" class="set-inp" placeholder="e.g. Incline 12, speed 3.0" value="${c.notes||''}" oninput="updCardio(${bi},'notes',this.value)" style="width:100%;border-radius:var(--r1);padding:7px 10px;">
+        </div>
+      </div>`;
+    }
     if(b.type === 'single'){
       const ex = b.exercises[0];
       const assistedBadge = b.assisted ? '<span class="ex-assisted-badge"><i class="ti ti-arrow-down-right"></i> Assisted</span>' : '';
@@ -4100,7 +4405,7 @@ function renderHistory(){
   }
   el.innerHTML = history.map((entry, idx) => {
     // Build preview: exercise names joined
-    const exNames = entry.blocks.flatMap(b => b.exercises.map(e => e.name));
+    const exNames = entry.blocks.flatMap(b => b.exercises ? (b.exercises||[]).map(e => e.name) : []);
     const preview = exNames.slice(0,3).join(', ') + (exNames.length>3 ? ` +${exNames.length-3} more` : '');
 
     const bodyBlocks = entry.blocks.map(b => {
@@ -4162,10 +4467,11 @@ function renderHistory(){
 function repeatWorkout(idx){
   const entry = history[idx];
   blocks = entry.blocks.map(b => {
+    if(b.type==='cardio') return {type:'cardio', exercises:[], cardio:Object.assign({},b.cardio,{hours:b.cardio?.hours||0,minutes:b.cardio?.minutes||0,seconds:b.cardio?.seconds||0,notes:b.cardio?.notes||''})};
     if(b.type==='dropset'){
       return {type:'dropset', exercises:[{name:b.exercises[0].name, dropSets:b.exercises[0].dropSets.map(ds=>ds.map(()=>({w:'',r:''})))}]};
     }
-    return {type:b.type, exercises:b.exercises.map(ex=>({name:ex.name, sets:(ex.sets||[]).map(()=>({w:'',r:''}))}))};
+    return {type:b.type, exercises:(b.exercises||[]).map(ex=>({name:ex.name, sets:(ex.sets||[]).map(()=>({w:'',r:''}))}))};
   });
   if(entry.label) document.getElementById('day-inp').value = entry.label;
   renderBlocks(); renderExSelect();
@@ -4259,7 +4565,7 @@ async function viewFriendWorkouts(userId, name){
   }
   window._friendWorkouts = data;
   document.getElementById('friend-history-list').innerHTML = data.map(function(entry, idx){
-    const exNames = entry.blocks.flatMap(function(b){ return b.exercises.map(function(e){ return e.name; }); });
+    const exNames = entry.blocks.flatMap(function(b){ return b.exercises ? b.exercises.map(function(e){ return e.name; }) : []; });
     const preview = exNames.slice(0,3).join(', ') + (exNames.length>3 ? ' +' + (exNames.length-3) + ' more' : '');
     const bodyBlocks = entry.blocks.map(function(b){
       if(b.type==='single'){
@@ -4327,14 +4633,12 @@ function openModal(id){
   document.body.style.overflow = 'hidden';
 }
 function closeModal(id){
-  document.getElementById(id).classList.remove('open');
-  // Only restore scroll if no other modals are open
-  if(!document.querySelector('.modal-bg.open')){
-    document.body.style.overflow = '';
-  }
+  var el = document.getElementById(id);
+  if(el) el.classList.remove('open');
+  document.body.style.overflow = '';
 }
 document.querySelectorAll('.modal-bg').forEach(el => {
-  el.addEventListener('click', e => { if(e.target===el) el.classList.remove('open'); });
+  el.addEventListener('click', e => { if(e.target===el) closeModal(el.id); });
 });
 
 let pendingDeleteWorkoutIdx = null;
@@ -4375,11 +4679,18 @@ async function confirmDeleteWorkout(){
   const pending = JSON.parse(localStorage.getItem('wl_pending') || '[]');
   localStorage.setItem('wl_pending', JSON.stringify(pending.filter(function(p){ return p.id !== entry.id && p.ts !== entry.ts; })));
 
-  // Immediately re-render from in-memory history — no need to wait for Supabase
-  if(_profileTabSection === 'history'){
+  // Immediately update _profileTabWorkouts in-memory and re-render active tab
+  if(window._profileTabWorkouts){
+    var ptIdx = window._profileTabWorkouts.findIndex(function(e){ return e.ts === entry.ts; });
+    if(ptIdx >= 0) window._profileTabWorkouts.splice(ptIdx, 1);
+  }
+  if(_profileTabSection === 'workouts'){
+    renderProfileTabBody(window._profileTabWorkouts || [], currentUser.id);
+  } else if(_profileTabSection === 'history'){
     var histBody = document.getElementById('profile-tab-body');
     if(histBody){ histBody.innerHTML = '<div id="hist-list"></div>'; renderHistory(); }
   }
+  renderHistory();
   renderFeed();
   recalcAndSaveXp(history);
 
@@ -4409,6 +4720,32 @@ function openEditWorkout(idx){
   // Build editable set inputs for each block
   const container = document.getElementById('edit-workout-blocks');
   container.innerHTML = entry.blocks.map((b, bi) => {
+    if(b.type === 'cardio'){
+      const c = b.cardio || {};
+      const h = c.hours||0, m = c.minutes||0, s = c.seconds||0;
+      return `<div style="margin-bottom:1rem;padding:12px;background:var(--bs);border-radius:var(--r2);border:0.5px solid rgba(34,197,94,0.3);">
+        <div style="font-size:13px;font-weight:600;color:var(--tp);margin-bottom:10px;">${getCardioIcon(c.name)} ${c.name} <span style="font-size:10px;color:#22c55e;background:rgba(34,197,94,0.12);padding:2px 7px;border-radius:20px;">Cardio</span></div>
+        <div style="font-size:11px;font-weight:700;color:var(--ts);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">Duration</div>
+        <div style="display:flex;gap:6px;align-items:flex-end;margin-bottom:10px;">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1;">
+            <span style="font-size:10px;color:var(--ts);">Hours</span>
+            <input type="text" inputmode="numeric" class="modal-inp" style="text-align:center;margin:0;" placeholder="0" value="${h||''}" oninput="editCardioVal(${bi},'hours',this.value)">
+          </div>
+          <div style="font-size:18px;font-weight:700;color:var(--ts);padding-bottom:6px;">:</div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1;">
+            <span style="font-size:10px;color:var(--ts);">Minutes</span>
+            <input type="text" inputmode="numeric" class="modal-inp" style="text-align:center;margin:0;" placeholder="0" value="${m||''}" oninput="editCardioVal(${bi},'minutes',this.value)">
+          </div>
+          <div style="font-size:18px;font-weight:700;color:var(--ts);padding-bottom:6px;">:</div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1;">
+            <span style="font-size:10px;color:var(--ts);">Seconds</span>
+            <input type="text" inputmode="numeric" class="modal-inp" style="text-align:center;margin:0;" placeholder="00" value="${s||''}" oninput="editCardioVal(${bi},'seconds',this.value)">
+          </div>
+        </div>
+        <div style="font-size:11px;font-weight:700;color:var(--ts);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">Notes <span style="font-weight:400;text-transform:none;font-size:10px;">(optional)</span></div>
+        <input type="text" class="modal-inp" style="margin:0;" placeholder="e.g. Incline 12, speed 3.0" value="${(c.notes||'').replace(/"/g,'&quot;')}" oninput="editCardioVal(${bi},'notes',this.value)">
+      </div>`;
+    }
     const noteRow = `<div style="display:flex;gap:6px;align-items:center;margin-bottom:10px;">
       <input type="text" class="modal-inp" style="margin:0;flex:1;font-size:13px;" id="edit-note-inp-${bi}" value="${(b.note||'').replace(/"/g,'&quot;')}" placeholder="Note for this exercise (optional)..." oninput="editNoteVal(${bi},this.value)">
     </div>`;
@@ -4531,6 +4868,14 @@ function toggleEditAssisted(bi){
 function editNoteVal(bi, v){
   if(pendingEditWorkoutIdx === null) return;
   history[pendingEditWorkoutIdx].blocks[bi].note = v.trim() || null;
+  localStorage.setItem('wl_history', JSON.stringify(history.slice(0,100)));
+}
+
+function editCardioVal(bi, field, v){
+  if(pendingEditWorkoutIdx === null) return;
+  var cardio = history[pendingEditWorkoutIdx].blocks[bi].cardio;
+  if(!cardio) return;
+  cardio[field] = (field==='hours'||field==='minutes'||field==='seconds') ? (parseInt(v)||0) : v;
   localStorage.setItem('wl_history', JSON.stringify(history.slice(0,100)));
 }
 
@@ -4755,6 +5100,30 @@ var BADGE_CATEGORIES = [
     ]
     // XP: flat 75 per tier
   },
+  {
+    // Iron Lungs — total cardio time logged
+    unit: 'h',
+    getValue: function(h){
+      var mins = 0;
+      h.forEach(function(e){
+        e.blocks.forEach(function(b){
+          if(b.type==='cardio' && b.cardio){
+            mins += (b.cardio.hours||0)*60 + (b.cardio.minutes||0) + Math.floor((b.cardio.seconds||0)/60);
+          }
+        });
+      });
+      return Math.floor(mins/60);
+    },
+    tiers: [
+      { icon:'🫁', name:'Iron Lungs I',   desc:'Log 1 hour of cardio',    threshold:1,   check: function(h){ var m=0; h.forEach(function(e){e.blocks.forEach(function(b){if(b.type==='cardio'&&b.cardio){m+=(b.cardio.hours||0)*60+(b.cardio.minutes||0)+Math.floor((b.cardio.seconds||0)/60);}})}); return Math.floor(m/60)>=1; } },
+      { icon:'🫁', name:'Iron Lungs II',  desc:'Log 5 hours of cardio',   threshold:5,   check: function(h){ var m=0; h.forEach(function(e){e.blocks.forEach(function(b){if(b.type==='cardio'&&b.cardio){m+=(b.cardio.hours||0)*60+(b.cardio.minutes||0)+Math.floor((b.cardio.seconds||0)/60);}})}); return Math.floor(m/60)>=5; } },
+      { icon:'🫁', name:'Iron Lungs III', desc:'Log 10 hours of cardio',  threshold:10,  check: function(h){ var m=0; h.forEach(function(e){e.blocks.forEach(function(b){if(b.type==='cardio'&&b.cardio){m+=(b.cardio.hours||0)*60+(b.cardio.minutes||0)+Math.floor((b.cardio.seconds||0)/60);}})}); return Math.floor(m/60)>=10; } },
+      { icon:'🫁', name:'Iron Lungs IV',  desc:'Log 25 hours of cardio',  threshold:25,  check: function(h){ var m=0; h.forEach(function(e){e.blocks.forEach(function(b){if(b.type==='cardio'&&b.cardio){m+=(b.cardio.hours||0)*60+(b.cardio.minutes||0)+Math.floor((b.cardio.seconds||0)/60);}})}); return Math.floor(m/60)>=25; } },
+      { icon:'🫁', name:'Iron Lungs V',   desc:'Log 50 hours of cardio',  threshold:50,  check: function(h){ var m=0; h.forEach(function(e){e.blocks.forEach(function(b){if(b.type==='cardio'&&b.cardio){m+=(b.cardio.hours||0)*60+(b.cardio.minutes||0)+Math.floor((b.cardio.seconds||0)/60);}})}); return Math.floor(m/60)>=50; } },
+      { icon:'🫁', name:'Iron Lungs VI',  desc:'Log 100 hours of cardio', threshold:100, check: function(h){ var m=0; h.forEach(function(e){e.blocks.forEach(function(b){if(b.type==='cardio'&&b.cardio){m+=(b.cardio.hours||0)*60+(b.cardio.minutes||0)+Math.floor((b.cardio.seconds||0)/60);}})}); return Math.floor(m/60)>=100; } },
+      { icon:'🫁', name:'Iron Lungs VII', desc:'Log 200 hours of cardio', threshold:200, check: function(h){ var m=0; h.forEach(function(e){e.blocks.forEach(function(b){if(b.type==='cardio'&&b.cardio){m+=(b.cardio.hours||0)*60+(b.cardio.minutes||0)+Math.floor((b.cardio.seconds||0)/60);}})}); return Math.floor(m/60)>=200; } },
+    ]
+  },
 ];
 
 function gradeLabel(g){
@@ -4879,6 +5248,7 @@ function countTotalSets(h){
   var total = 0;
   h.forEach(function(e){
     e.blocks.forEach(function(b){
+      if(b.type==='cardio' || !b.exercises) return;
       b.exercises.forEach(function(ex){
         total += ex.dropSets ? ex.dropSets.length : (ex.sets||[]).length;
       });
@@ -5178,6 +5548,8 @@ function openStatPicker(slotIdx){
   dropdown.className = 'stat-picker-dropdown';
   dropdown.style.cssText = 'position:fixed;z-index:300;background:var(--bp);border:0.5px solid var(--bo3);border-radius:var(--r2);box-shadow:0 4px 16px rgba(0,0,0,.25);min-width:180px;overflow:hidden;';
   BADGE_CATEGORIES.forEach(function(cat, catIdx){
+    var tiersEarned = countDisplayTiersForCat(cat, history);
+    if(tiersEarned === 0) return; // hide badges not yet unlocked
     var baseName = cat.tiers[cat.tiers.length-1].name.replace(/\s+[IVXLCDM]+$/, '');
     var isActive = chosen[slotIdx] === catIdx;
     var isTaken = otherSlots.indexOf(catIdx) !== -1;
@@ -5264,7 +5636,7 @@ async function viewUserProfile(userId){
     var bodyBlocks = entry.blocks.map(function(b){
       var ab = b.assisted ? '<span class="ex-assisted-badge"><i class="ti ti-arrow-down-right"></i> Assisted</span>' : '';
       var nb = b.note ? '<div class="ex-note">"'+b.note+'"</div>' : '';
-      if(b.type==='single'){var ex=b.exercises[0];var lines=ex.sets.map(function(s,i){return 'Set '+(i+1)+': '+fw(s.w)+' x '+fr(s.r)+' reps'+(s.warmup?' <span class="ex-warmup-badge">Warm-up</span>':'');}).join('<br>');return '<div class="hist-block"><div class="hist-name">'+ex.name+ab+'</div>'+nb+'<div class="hist-sets">'+lines+'</div></div>';}
+      if(b.type==='cardio'){var c=b.cardio||{};var h=c.hours||0,m=c.minutes||0,s=c.seconds||0;var dur=(h>0?h+'h ':'')+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');return '<div class="hist-block"><div class="hist-name">'+getCardioIcon(c.name)+' '+c.name+' <span style="font-size:11px;background:rgba(34,197,94,0.12);color:#22c55e;padding:2px 7px;border-radius:20px;font-weight:600;">Cardio</span></div><div class="hist-sets">'+(dur!=='00:00'?dur:'No duration')+(c.notes?'<br><em style="color:var(--ts);">'+c.notes+'</em>':'')+'</div></div>';}if(b.type==='single'){var ex=b.exercises[0];var lines=ex.sets.map(function(s,i){return 'Set '+(i+1)+': '+fw(s.w)+' x '+fr(s.r)+' reps'+(s.warmup?' <span class="ex-warmup-badge">Warm-up</span>':'');}).join('<br>');return '<div class="hist-block"><div class="hist-name">'+ex.name+ab+'</div>'+nb+'<div class="hist-sets">'+lines+'</div></div>';}
       if(b.type==='superset'){var e1=b.exercises[0],e2=b.exercises[1],ms=Math.max(e1.sets.length,e2.sets.length);var lines=Array.from({length:ms},function(_,i){var s1=e1.sets[i],s2=e2.sets[i];return 'Set '+(i+1)+': '+(s1?fw(s1.w)+' x '+fr(s1.r)+' reps':'--')+' / '+(s2?fw(s2.w)+' x '+fr(s2.r)+' reps':'--');}).join('<br>');return '<div class="hist-block"><div class="hist-name">'+e1.name+' / '+e2.name+' <span style="font-size:11px;background:#1a1a5c;color:#7a7ae0;padding:2px 7px;border-radius:20px;font-weight:500;"><i class="ti ti-arrows-exchange"></i> Superset</span>'+ab+'</div>'+nb+'<div class="hist-sets">'+lines+'</div></div>';}
       if(b.type==='dropset'){var ex=b.exercises[0];var lines=ex.dropSets.map(function(drops,i){return 'Set '+(i+1)+': '+drops.map(function(d){return fw(d.w)+' x '+fr(d.r)+' reps';}).join(' > ');}).join('<br>');return '<div class="hist-block"><div class="hist-name">'+ex.name+ab+'</div>'+nb+'<div class="hist-sets">'+lines+'</div></div>';}
       return '';
@@ -5421,8 +5793,9 @@ function copyUPMWorkout(idx){
   var entry = window._upmWorkouts[idx];
   if(!entry) return;
   blocks = entry.blocks.map(function(b){
+    if(b.type==='cardio') return {type:'cardio', exercises:[], cardio:Object.assign({},b.cardio,{hours:(b.cardio&&b.cardio.hours)||0,minutes:(b.cardio&&b.cardio.minutes)||0,seconds:(b.cardio&&b.cardio.seconds)||0,notes:(b.cardio&&b.cardio.notes)||''})};
     if(b.type==='dropset') return {type:'dropset',exercises:[{name:b.exercises[0].name,dropSets:b.exercises[0].dropSets.map(function(ds){return ds.map(function(){return {w:'',r:''};});})}]};
-    return {type:b.type,exercises:b.exercises.map(function(ex){return {name:ex.name,sets:(ex.sets||[]).map(function(){return {w:'',r:''};})};})};
+    return {type:b.type,exercises:(b.exercises||[]).map(function(ex){return {name:ex.name,sets:(ex.sets||[]).map(function(){return {w:'',r:''};})};})};
   });
   if(entry.label) document.getElementById('day-inp').value = entry.label;
   // Fetch source user's exercise map for correct category import
@@ -5439,12 +5812,12 @@ function copyUPMWorkout(idx){
 }
 
 function copyProfileWorkout(idx){
-  // Used by own profile Workouts tab and History tab — reads from _profileTabWorkouts or history
   var entry = (window._profileTabWorkouts && window._profileTabWorkouts[idx]) || history[idx];
   if(!entry) return;
   blocks = entry.blocks.map(function(b){
+    if(b.type==='cardio') return {type:'cardio', exercises:[], cardio:Object.assign({},b.cardio,{hours:(b.cardio&&b.cardio.hours)||0,minutes:(b.cardio&&b.cardio.minutes)||0,seconds:(b.cardio&&b.cardio.seconds)||0,notes:(b.cardio&&b.cardio.notes)||''})};
     if(b.type==='dropset') return {type:'dropset',exercises:[{name:b.exercises[0].name,dropSets:b.exercises[0].dropSets.map(function(ds){return ds.map(function(){return {w:'',r:''};});})}]};
-    return {type:b.type,exercises:b.exercises.map(function(ex){return {name:ex.name,sets:(ex.sets||[]).map(function(){return {w:'',r:''};})};})};
+    return {type:b.type,exercises:(b.exercises||[]).map(function(ex){return {name:ex.name,sets:(ex.sets||[]).map(function(){return {w:'',r:''};})};})};
   });
   if(entry.label) document.getElementById('day-inp').value = entry.label;
   importExercisesIntoEX(blocks);
