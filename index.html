@@ -1319,14 +1319,14 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
   <div class="auth-box">
     <div class="auth-logo">💪 Lock In.</div>
     <div class="auth-sub">Track your gains, share your progress.</div>
-    <div class="auth-tabs">
+    <div class="auth-tabs" id="auth-tabs-row">
       <button class="auth-tab active" onclick="showAuthTab('login')">Sign in</button>
       <button class="auth-tab" onclick="showAuthTab('signup')">Create account</button>
     </div>
     <div id="auth-login">
       <div class="auth-field"><label>Username/Email</label><input type="text" id="login-email" placeholder="username or you@example.com" autocomplete="email"></div>
       <div class="auth-field"><label>Password</label><input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password"></div>
-      <button class="auth-btn" onclick="doLogin()">Sign in</button>
+      <button class="auth-btn" id="login-btn" onclick="doLogin()">Sign in</button>
       <button class="auth-btn" onclick="doForgotPassword()" style="background:none;color:var(--ts);border:none;font-size:13px;margin-top:8px;">Forgot password?</button>
     </div>
     <div id="auth-signup" style="display:none;">
@@ -1335,7 +1335,14 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
       <div class="auth-field"><label>Email</label><input type="email" id="signup-email" placeholder="you@example.com" autocomplete="email"></div>
       <div class="auth-field"><label>Password</label><input type="password" id="signup-password" placeholder="At least 6 characters" autocomplete="new-password"></div>
       <div class="auth-field"><label>Confirm password</label><input type="password" id="signup-password-confirm" placeholder="Re-enter your password" autocomplete="new-password"></div>
-      <button class="auth-btn" onclick="doSignup()">Create account</button>
+      <button class="auth-btn" id="signup-btn" onclick="doSignup()">Create account</button>
+    </div>
+    <!-- Password reset screen — shown when user arrives via recovery link -->
+    <div id="auth-reset" style="display:none;">
+      <div style="font-size:14px;color:var(--ts);margin-bottom:1rem;text-align:center;">Enter your new password below.</div>
+      <div class="auth-field"><label>New password</label><input type="password" id="reset-password" placeholder="At least 6 characters" autocomplete="new-password"></div>
+      <div class="auth-field"><label>Confirm new password</label><input type="password" id="reset-password-confirm" placeholder="Re-enter new password" autocomplete="new-password"></div>
+      <button class="auth-btn" id="reset-btn" onclick="doResetPassword()">Set new password</button>
     </div>
     <div class="auth-msg" id="auth-msg"></div>
   </div>
@@ -1392,20 +1399,29 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
-    detectSessionInUrl: false
+    detectSessionInUrl: true
   }
 });
 
 // ── App version — update this with every release ──────────
-const APP_VERSION = '1.5.0';
+const APP_VERSION = '1.5.1';
 
 // Keep session alive across tab/app restores
 sb.auth.onAuthStateChange(function(event, session){
+  if(event === 'PASSWORD_RECOVERY'){
+    // User arrived via password reset link — show reset screen
+    document.getElementById('auth-screen').classList.add('show');
+    document.getElementById('auth-tabs-row').style.display = 'none';
+    document.getElementById('auth-login').style.display = 'none';
+    document.getElementById('auth-signup').style.display = 'none';
+    document.getElementById('auth-reset').style.display = '';
+    setAuthMsg('Enter your new password.', 'success');
+    return;
+  }
   if(event === 'SIGNED_IN' && session && !currentUser){
     onAuthSuccess(session.user);
   }
   if(event === 'TOKEN_REFRESHED' && session && currentUser){
-    // Token refreshed — don't reload data, just update the user object silently
     currentUser = session.user;
   }
   if(event === 'SIGNED_OUT'){
@@ -1416,11 +1432,14 @@ sb.auth.onAuthStateChange(function(event, session){
 
 let currentUser = null;
 let currentProfile = null;
+let _authBusy = false; // prevents duplicate submissions
 
 // ── Auth helpers ──
 function showAuthTab(tab){
   document.getElementById('auth-login').style.display = tab==='login' ? '' : 'none';
   document.getElementById('auth-signup').style.display = tab==='signup' ? '' : 'none';
+  document.getElementById('auth-reset').style.display = 'none';
+  document.getElementById('auth-tabs-row').style.display = '';
   document.querySelectorAll('.auth-tab').forEach((t,i) => t.classList.toggle('active', (i===0&&tab==='login')||(i===1&&tab==='signup')));
   setAuthMsg('');
 }
@@ -1431,50 +1450,89 @@ function setAuthMsg(msg, type=''){
   el.className = 'auth-msg' + (type ? ' '+type : '');
 }
 
+function setAuthLoading(loading, btnId){
+  _authBusy = loading;
+  var btn = document.getElementById(btnId);
+  if(btn){ btn.disabled = loading; btn.style.opacity = loading ? '0.6' : ''; }
+}
+
+function friendlyAuthError(msg){
+  if(!msg) return 'Something went wrong. Please try again.';
+  var m = msg.toLowerCase();
+  if(m.includes('invalid login') || m.includes('invalid credentials')) return 'Incorrect email or password.';
+  if(m.includes('email not confirmed')) return 'Please confirm your email before signing in. Check your inbox.';
+  if(m.includes('user already registered')) return 'An account with that email already exists. Try signing in instead.';
+  if(m.includes('password should be')) return 'Password must be at least 6 characters.';
+  if(m.includes('unable to validate')) return 'Password reset link has expired. Please request a new one.';
+  if(m.includes('network')) return 'Network error. Check your connection and try again.';
+  return msg;
+}
+
 async function doLogin(){
+  if(_authBusy) return;
   let identifier = document.getElementById('login-email').value.trim();
   const pass = document.getElementById('login-password').value;
   if(!identifier || !pass){ setAuthMsg('Please fill in all fields.','error'); return; }
+  setAuthLoading(true, 'login-btn');
   setAuthMsg('Signing in...');
-  // If it doesn't look like an email, treat it as a username
   let email = identifier;
   if(!identifier.includes('@') || identifier.startsWith('@')){
     const username = identifier.replace(/^@/, '').toLowerCase();
-    const { data: profile } = await sb.from('profiles').select('email').eq('username', username).single();
-    if(!profile){ setAuthMsg('No account found with that username.','error'); return; }
+    const { data: profile } = await sb.from('profiles').select('email').eq('username', username).maybeSingle();
+    if(!profile){
+      setAuthMsg('No account found with that username. Try signing in with your email instead.','error');
+      setAuthLoading(false, 'login-btn');
+      return;
+    }
     email = profile.email;
   }
   const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
-  if(error){ setAuthMsg(error.message,'error'); return; }
+  setAuthLoading(false, 'login-btn');
+  if(error){ setAuthMsg(friendlyAuthError(error.message),'error'); return; }
   await onAuthSuccess(data.user);
 }
 
 async function doSignup(){
+  if(_authBusy) return;
   const name     = document.getElementById('signup-name').value.trim();
   const username = document.getElementById('signup-username').value.trim().toLowerCase();
   const email    = document.getElementById('signup-email').value.trim();
   const pass     = document.getElementById('signup-password').value;
   const passConfirm = document.getElementById('signup-password-confirm').value;
-  if(pass !== passConfirm){
-    setAuthMsg('Passwords do not match.','error');
-    return;
-  }
-  if(!name||!username||!email||!pass){ setAuthMsg('Please fill in all fields.','error'); return; }
+  if(!name||!username||!email||!pass||!passConfirm){ setAuthMsg('Please fill in all fields.','error'); return; }
+  if(pass !== passConfirm){ setAuthMsg('Passwords do not match.','error'); return; }
   if(username.length < 3){ setAuthMsg('Username must be at least 3 characters.','error'); return; }
   if(pass.length < 6){ setAuthMsg('Password must be at least 6 characters.','error'); return; }
-  // Check username is taken
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ setAuthMsg('Please enter a valid email address.','error'); return; }
+  setAuthLoading(true, 'signup-btn');
   setAuthMsg('Checking username...');
-  const { data: existing } = await sb.from('profiles').select('id').eq('username', username).single();
-  if(existing){ setAuthMsg('That username is taken — try another.','error'); return; }
+  const { data: existing } = await sb.from('profiles').select('id').eq('username', username).maybeSingle();
+  if(existing){ setAuthMsg('That username is taken — try another.','error'); setAuthLoading(false,'signup-btn'); return; }
   setAuthMsg('Creating account...');
-  const { data, error } = await sb.auth.signUp({ email, password: pass, options:{ data:{ name } } });
-  if(error){ setAuthMsg(error.message,'error'); return; }
+  const { data, error } = await sb.auth.signUp({
+    email, password: pass,
+    options: { data: { name, username } }
+  });
+  if(error){ setAuthMsg(friendlyAuthError(error.message),'error'); setAuthLoading(false,'signup-btn'); return; }
   if(data.user){
+    // Always create profile row immediately so username lookup works after email confirmation
     await sb.from('profiles').upsert({ id: data.user.id, name, username, email });
-    setAuthMsg('Account created! Signing you in...','success');
-    const { data: signInData, error: signInError } = await sb.auth.signInWithPassword({ email, password: pass });
-    if(signInError){ setAuthMsg('Account created! Please sign in.','success'); showAuthTab('login'); return; }
-    await onAuthSuccess(signInData.user);
+    if(data.session){
+      // Email confirmation OFF — sign straight in
+      setAuthMsg('Account created! Signing you in...','success');
+      const { data: signInData, error: signInError } = await sb.auth.signInWithPassword({ email, password: pass });
+      setAuthLoading(false,'signup-btn');
+      if(signInError){ setAuthMsg('Account created! Please sign in.','success'); showAuthTab('login'); return; }
+      await onAuthSuccess(signInData.user);
+    } else {
+      // Email confirmation ON — tell user to check email
+      setAuthLoading(false,'signup-btn');
+      showAuthTab('login');
+      setAuthMsg('✅ Account created! Check your email to confirm, then sign in here.','success');
+    }
+  } else {
+    setAuthLoading(false,'signup-btn');
+    setAuthMsg('Something went wrong. Please try again.','error');
   }
 }
 
@@ -1484,13 +1542,47 @@ async function doForgotPassword(){
   let email = identifier;
   if(!identifier.includes('@') || identifier.startsWith('@')){
     const username = identifier.replace(/^@/, '').toLowerCase();
-    const { data: profile } = await sb.from('profiles').select('email').eq('username', username).single();
+    const { data: profile } = await sb.from('profiles').select('email').eq('username', username).maybeSingle();
     if(!profile){ setAuthMsg('No account found with that username.','error'); return; }
     email = profile.email;
   }
-  const { error } = await sb.auth.resetPasswordForEmail(email);
-  if(error) setAuthMsg(error.message,'error');
-  else setAuthMsg('Reset email sent!','success');
+  setAuthMsg('Sending reset email...');
+  const { error } = await sb.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin + window.location.pathname
+  });
+  if(error) setAuthMsg(friendlyAuthError(error.message),'error');
+  else setAuthMsg('✅ Reset email sent! Check your inbox and click the link.','success');
+}
+
+async function doResetPassword(){
+  if(_authBusy) return;
+  const newPass = document.getElementById('reset-password').value;
+  const confirm = document.getElementById('reset-password-confirm').value;
+  if(!newPass || !confirm){ setAuthMsg('Please fill in both fields.','error'); return; }
+  if(newPass !== confirm){ setAuthMsg('Passwords do not match.','error'); return; }
+  if(newPass.length < 6){ setAuthMsg('Password must be at least 6 characters.','error'); return; }
+  setAuthLoading(true, 'reset-btn');
+  setAuthMsg('Updating password...');
+  const { error } = await sb.auth.updateUser({ password: newPass });
+  setAuthLoading(false, 'reset-btn');
+  if(error){
+    setAuthMsg(friendlyAuthError(error.message),'error');
+  } else {
+    setAuthMsg('✅ Password updated! Signing you in...','success');
+    // Session is already active after PASSWORD_RECOVERY — just enter the app
+    setTimeout(async function(){
+      const { data: { session } } = await sb.auth.getSession();
+      if(session){
+        document.getElementById('auth-screen').classList.remove('show');
+        document.getElementById('auth-reset').style.display = 'none';
+        document.getElementById('auth-tabs-row').style.display = '';
+        await onAuthSuccess(session.user);
+      } else {
+        showAuthTab('login');
+        setAuthMsg('Password updated. Please sign in.','success');
+      }
+    }, 1200);
+  }
 }
 
 async function doSignOut(){
