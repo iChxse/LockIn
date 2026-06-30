@@ -116,6 +116,25 @@ input, select, button, textarea { font-family: var(--font); }
 .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--success); flex-shrink: 0; box-shadow: 0 0 8px rgba(52, 199, 89, 0.45); }
 .sync-dot.saving { background: var(--dropset); box-shadow: 0 0 8px rgba(251, 191, 36, 0.45); }
 .sync-dot.error { background: var(--danger); box-shadow: 0 0 8px rgba(255, 69, 58, 0.45); }
+/* ── Notification bell (top-right of activity feed header) ── */
+.notif-bell-badge {
+  position: absolute; top: -3px; right: -3px; min-width: 15px; height: 15px;
+  background: #E24B4A; color: #fff; font-size: 9px; font-weight: 700;
+  border-radius: 10px; display: flex; align-items: center; justify-content: center;
+  padding: 0 3px; border: 1.5px solid var(--bs); pointer-events:none;
+}
+.notif-panel { position: fixed; inset: 0; background: var(--bs); z-index: 150; display: none; flex-direction: column; max-width: 480px; margin: 0 auto; }
+.notif-panel.open { display: flex; }
+.notif-panel-hdr { display:flex; align-items:center; gap:10px; padding: calc(env(safe-area-inset-top,0px) + 12px) 16px 12px; border-bottom: 0.5px solid var(--bo3); flex-shrink:0; }
+.notif-panel-title { font-size: 17px; font-weight: 700; color: var(--tp); flex: 1; }
+.notif-panel-body { flex: 1; overflow-y: auto; padding: 8px 0 24px; }
+.notif-row { display:flex; gap:12px; padding:13px 16px; border-bottom:0.5px solid var(--bo3); cursor:pointer; position:relative; }
+.notif-row.unread { background: rgba(124,124,255,0.06); }
+.notif-row.unread::before { content:''; position:absolute; left:6px; top:50%; transform:translateY(-50%); width:6px; height:6px; border-radius:50%; background:var(--accent); }
+.notif-icon { font-size: 20px; flex-shrink:0; width:30px; text-align:center; line-height:1.4; }
+.notif-text { flex:1; min-width:0; }
+.notif-title { font-size: 13px; color: var(--tp); line-height:1.4; }
+.notif-time { font-size: 11px; color: var(--tm); margin-top:3px; }
 .tabs { display: none; }
 .bottom-bar {
   position: fixed;
@@ -1253,8 +1272,12 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
     <div class ="feedHeader">
       <div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:0.5px solid var(--bo3);margin-bottom:12px;">
         <div style="font-size:22px;font-weight:800;color:var(--tp);letter-spacing:-0.02em;">Lock In.</div>
-        <div style="width:80px;display:flex;justify-content:flex-end;">
+        <div style="display:flex;align-items:center;gap:8px;justify-content:flex-end;flex-shrink:0;">
           <button id="add-friends-btn" onclick="openManageFriendsModal()" style="display:none;background:var(--bp);border:0.5px solid var(--bo3);border-radius:var(--r1);cursor:pointer;color:var(--ts);font-size:13px;padding:4px 10px;align-items:center;gap:5px;flex-shrink:0;line-height:1;"><i class="ti ti-user-plus"></i> Friends</button>
+          <button id="notif-bell-btn" onclick="openNotifPanel()" style="display:none;position:relative;background:var(--bp);border:0.5px solid var(--bo3);border-radius:50%;width:32px;height:32px;cursor:pointer;color:var(--ts);align-items:center;justify-content:center;flex-shrink:0;">
+            <i class="ti ti-bell" style="font-size:16px;"></i>
+            <span class="notif-bell-badge" id="notif-bell-badge" style="display:none;">0</span>
+          </button>
       </div>
       </div>
     </div>
@@ -1265,6 +1288,15 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
 </div>
 
 <!-- iOS-style bottom tab bar -->
+<div class="notif-panel" id="notif-panel">
+  <div class="notif-panel-hdr">
+    <button onclick="closeNotifPanel()" style="background:none;border:none;color:var(--accent);font-size:14px;font-weight:600;font-family:var(--font);cursor:pointer;display:flex;align-items:center;gap:4px;"><i class="ti ti-arrow-left"></i> Back</button>
+    <div class="notif-panel-title">Notifications</div>
+    <button onclick="markAllNotifsRead()" style="background:none;border:none;color:var(--ts);font-size:13px;font-family:var(--font);cursor:pointer;">Mark all read</button>
+  </div>
+  <div class="notif-panel-body" id="notif-panel-body"></div>
+</div>
+
 <div class="bottom-bar">
   <button class="btab active" id="btab-friends" onclick="switchTab('friends')">
     <i class="ti ti-activity"></i>
@@ -1414,6 +1446,17 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
       <input type="checkbox" id="dark-mode-toggle" onchange="toggleTheme()">
       <div class="toggle-track"></div>
     </label>
+  </div>
+  <div class="toggle-row">
+    <span class="toggle-lbl">Daily workout reminder</span>
+    <label class="toggle-switch">
+      <input type="checkbox" id="reminder-toggle" onchange="onReminderToggleChange()">
+      <div class="toggle-track"></div>
+    </label>
+  </div>
+  <div id="reminder-time-row" style="display:none;margin-top:-8px;margin-bottom:1.25rem;">
+    <div class="modal-lbl">Reminder time</div>
+    <input type="time" class="modal-inp" id="reminder-time-inp" value="18:00">
   </div>
   <div class="modal-actions" style="justify-content:space-between;margin-top:1.25rem;">
     <button class="modal-btn danger" onclick="doSignOut()">Sign out</button>
@@ -1633,6 +1676,9 @@ async function doResetPassword(){
 
 async function doSignOut(){
   await sb.auth.signOut();
+  document.getElementById('notif-bell-btn').style.display = 'none';
+  closeNotifPanel();
+  stopNotifPolling();
 
   // ── Clear all user state ──
   currentUser = null;
@@ -1747,6 +1793,300 @@ async function checkAppVersion(){
   }
 }
 
+// ════════════════════════════════════════════════════════════
+// ── Notification system ──────────────────────────────────────
+// ════════════════════════════════════════════════════════════
+var _notifPollInterval = null;
+var _notifCache = [];
+
+function startNotifPolling(){
+  stopNotifPolling();
+  // Poll every 45s for new notifications + unread count while app is open.
+  // (Native push notifications cover the "app closed" case — see push setup notes.)
+  _notifPollInterval = setInterval(loadNotifUnreadCount, 45000);
+}
+function stopNotifPolling(){
+  if(_notifPollInterval){ clearInterval(_notifPollInterval); _notifPollInterval = null; }
+}
+
+async function loadNotifUnreadCount(){
+  if(!currentUser) return;
+  try {
+    var { count } = await sb.from('notifications')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', currentUser.id)
+      .eq('read', false);
+    var badge = document.getElementById('notif-bell-badge');
+    if(badge){
+      if(count && count > 0){ badge.textContent = count > 99 ? '99+' : count; badge.style.display = 'flex'; }
+      else { badge.style.display = 'none'; }
+    }
+  } catch(e){ /* silent — notifications are non-critical */ }
+}
+
+async function openNotifPanel(){
+  document.getElementById('notif-panel').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  var body = document.getElementById('notif-panel-body');
+  body.innerHTML = '<div class="tab-loader"><div class="tab-loader-ring"></div></div>';
+  try {
+    var { data } = await sb.from('notifications')
+      .select('*')
+      .eq('user_id', currentUser.id)
+      .order('created_at', { ascending: false })
+      .limit(50);
+    _notifCache = data || [];
+    renderNotifList();
+  } catch(e){
+    body.innerHTML = '<div class="empty" style="padding:2rem 0;">Couldn\'t load notifications.</div>';
+  }
+}
+function closeNotifPanel(){
+  document.getElementById('notif-panel').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function renderNotifList(){
+  var body = document.getElementById('notif-panel-body');
+  if(!_notifCache.length){
+    body.innerHTML = '<div class="empty" style="padding:3rem 1rem;text-align:center;"><i class="ti ti-bell-off" style="font-size:32px;display:block;margin-bottom:10px;color:var(--tm);"></i>No notifications yet.<br><span style="font-size:12px;color:var(--tm);">Likes, comments, and friend activity will show up here.</span></div>';
+    return;
+  }
+  body.innerHTML = _notifCache.map(function(n, i){
+    var icon = NOTIF_ICONS[n.type] || '🔔';
+    var timeStr = formatNotifTime(n.created_at);
+    return '<div class="notif-row'+(n.read?'':' unread')+'" onclick="onNotifTap('+i+')">' +
+      '<div class="notif-icon">'+icon+'</div>' +
+      '<div class="notif-text">' +
+        '<div class="notif-title">'+n.body+'</div>' +
+        '<div class="notif-time">'+timeStr+'</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+var NOTIF_ICONS = {
+  like: '❤️', comment: '💬', comment_reply: '💬',
+  friend_request: '🤝', friend_accept: '✅', tag: '👥',
+  leaderboard: '🏆', reminder: '💪'
+};
+
+function formatNotifTime(ts){
+  var d = new Date(ts), now = new Date();
+  var diffMs = now - d, diffMin = Math.floor(diffMs/60000), diffHr = Math.floor(diffMin/60), diffDay = Math.floor(diffHr/24);
+  if(diffMin < 1) return 'Just now';
+  if(diffMin < 60) return diffMin+'m ago';
+  if(diffHr < 24) return diffHr+'h ago';
+  if(diffDay < 7) return diffDay+'d ago';
+  return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+}
+
+async function onNotifTap(i){
+  var n = _notifCache[i];
+  if(!n) return;
+  if(!n.read){
+    n.read = true;
+    renderNotifList();
+    decrementNotifBadge();
+    sb.from('notifications').update({ read: true }).eq('id', n.id).then(function(){});
+  }
+  closeNotifPanel();
+  deepLinkNotif(n);
+}
+
+function decrementNotifBadge(){
+  var badge = document.getElementById('notif-bell-badge');
+  if(!badge) return;
+  var cur = parseInt(badge.textContent) || 0;
+  var next = Math.max(0, cur - 1);
+  if(next === 0){ badge.style.display = 'none'; }
+  else { badge.textContent = next; }
+}
+
+function deepLinkNotif(n){
+  var data = n.data || {};
+  switch(n.type){
+    case 'like':
+    case 'comment':
+    case 'comment_reply':
+    case 'tag':
+      switchTab('friends');
+      if(data.workout_id){
+        // Feed may need a moment to render after switching tabs
+        var attempts = 0;
+        var tryOpen = function(){
+          attempts++;
+          var card = document.querySelector('.activity-card[data-workout-id="'+data.workout_id+'"]');
+          if(card){
+            card.scrollIntoView({behavior:'smooth', block:'center'});
+            card.style.outline = '2px solid var(--accent)';
+            setTimeout(function(){ card.style.outline = ''; }, 1500);
+            if(n.type==='comment' || n.type==='comment_reply'){
+              var idx = parseInt((card.id||'').replace('acard-',''));
+              if(!isNaN(idx)) toggleComments(idx);
+            }
+          } else if(attempts < 10){
+            setTimeout(tryOpen, 300); // feed still loading — retry briefly
+          }
+        };
+        setTimeout(tryOpen, 300);
+      }
+      break;
+    case 'friend_request':
+    case 'friend_accept':
+      openManageFriendsModal();
+      break;
+    case 'leaderboard':
+      switchTab('friends');
+      setTimeout(function(){ switchLBTab('consistency'); }, 200);
+      break;
+    default:
+      break;
+  }
+}
+
+async function markAllNotifsRead(){
+  if(!currentUser) return;
+  _notifCache.forEach(function(n){ n.read = true; });
+  renderNotifList();
+  // Set badge to 0 immediately — querying Supabase right now would race
+  // against the update below and could read stale unread counts.
+  var badge = document.getElementById('notif-bell-badge');
+  if(badge) badge.style.display = 'none';
+  await sb.from('notifications').update({ read: true }).eq('user_id', currentUser.id).eq('read', false);
+}
+
+// ── Creating notifications (called at the moment of the social action) ──
+// Each call is fire-and-forget; failures never block the underlying action.
+async function createNotification(userId, type, title, body, data){
+  if(!userId || userId === currentUser?.id) return; // never notify yourself
+  try {
+    var { error } = await sb.from('notifications').insert({ user_id: userId, type, title, body, data: data||{} });
+    if(error) console.error('createNotification failed:', error.message, {userId, type});
+  } catch(e){ console.error('createNotification exception:', e); }
+}
+
+// Likes: group multiple recent likers into one notification when possible.
+// Strategy: check for an existing unread 'like' notification on this workout
+// from the last 24h and update it in place rather than spamming a new row.
+async function notifyWorkoutLike(workoutOwnerId, workoutId, likerName){
+  if(!workoutOwnerId || workoutOwnerId === currentUser?.id) return;
+  try {
+    var since = new Date(Date.now() - 24*60*60*1000).toISOString();
+    var { data: existing } = await sb.from('notifications')
+      .select('*')
+      .eq('user_id', workoutOwnerId)
+      .eq('type', 'like')
+      .eq('read', false)
+      .gte('created_at', since)
+      .filter('data->>workout_id', 'eq', String(workoutId))
+      .maybeSingle();
+    if(existing){
+      var names = (existing.data && existing.data.likers) || [existing.data.first_liker];
+      if(!names.includes(likerName)) names.push(likerName);
+      var bodyText = names.length === 1
+        ? '❤️ '+names[0]+' liked your workout.'
+        : names.length === 2
+          ? '❤️ '+names[0]+' and '+names[1]+' liked your workout.'
+          : '❤️ '+names[0]+' and '+(names.length-1)+' others liked your workout.';
+      await sb.from('notifications').update({
+        body: bodyText,
+        data: Object.assign({}, existing.data, { likers: names }),
+        created_at: new Date().toISOString() // bump to top
+      }).eq('id', existing.id);
+    } else {
+      await createNotification(workoutOwnerId, 'like', 'New like',
+        '❤️ '+likerName+' liked your workout.',
+        { workout_id: workoutId, first_liker: likerName, likers: [likerName] });
+    }
+  } catch(e){ /* non-critical */ }
+}
+
+function notifyWorkoutComment(workoutOwnerId, workoutId, workoutTs, commenterName, isReply, commentId){
+  createNotification(workoutOwnerId, isReply ? 'comment_reply' : 'comment',
+    isReply ? 'New reply' : 'New comment',
+    '💬 '+commenterName+(isReply ? ' replied to your comment.' : ' commented on your workout.'),
+    { workout_id: workoutId, workout_owner_id: workoutOwnerId, ts: workoutTs, comment_id: commentId });
+}
+
+function notifyFriendRequest(addresseeId, requesterName){
+  createNotification(addresseeId, 'friend_request', 'Friend request',
+    '🤝 '+requesterName+' sent you a friend request.', {});
+}
+
+function notifyFriendAccept(requesterId, accepterName){
+  createNotification(requesterId, 'friend_accept', 'Friend request accepted',
+    '✅ '+accepterName+' accepted your friend request.', {});
+}
+
+function notifyWorkoutTag(taggedUserId, taggerName, workoutId, workoutTs){
+  createNotification(taggedUserId, 'tag', 'Tagged in a workout',
+    '👥 '+taggerName+' tagged you in a workout.',
+    { workout_id: workoutId, ts: workoutTs });
+}
+
+// ── Leaderboard change detection ──
+// Compares the user's current Consistency rank among friends against the
+// last-seen rank stored on their profile, and notifies on meaningful moves
+// (became #1, entered top 3, or jumped 3+ places). Runs once per session on
+// login — cheap enough not to need a server-side cron for v1.
+async function checkLeaderboardChanges(){
+  if(!currentUser) return;
+  try {
+    var { data: friendships } = await sb.from('friendships')
+      .select('requester_id,addressee_id')
+      .or('requester_id.eq.'+currentUser.id+',addressee_id.eq.'+currentUser.id)
+      .eq('status','accepted');
+    var friendIds = (friendships||[]).map(function(f){ return f.requester_id===currentUser.id ? f.addressee_id : f.requester_id; });
+    if(!friendIds.length) return;
+    var allIds = [currentUser.id].concat(friendIds);
+
+    var { data: profiles } = await sb.from('profiles').select('id,name').in('id', allIds);
+    var { data: workouts } = await sb.from('workouts').select('user_id,ts').in('user_id', allIds);
+    if(!workouts) return;
+
+    // Consistency = active days in last 30
+    var since = new Date(Date.now() - 30*24*60*60*1000);
+    var activeDays = {};
+    workouts.forEach(function(w){
+      if(new Date(w.ts) < since) return;
+      var key = w.user_id+':'+new Date(w.ts).toDateString();
+      activeDays[key] = true;
+    });
+    var counts = {};
+    allIds.forEach(function(id){ counts[id] = 0; });
+    Object.keys(activeDays).forEach(function(k){ var id = k.split(':')[0]; counts[id] = (counts[id]||0)+1; });
+
+    var ranked = allIds.slice().sort(function(a,b){ return counts[b]-counts[a]; });
+    var myNewRank = ranked.indexOf(currentUser.id) + 1;
+
+    var prevRanks = (currentProfile && currentProfile.last_leaderboard_rank) || {};
+    var myOldRank = prevRanks.consistency;
+
+    if(myOldRank && myOldRank !== myNewRank){
+      var nameOf = {}; (profiles||[]).forEach(function(p){ nameOf[p.id]=p.name; });
+      var msg = null;
+      if(myNewRank === 1 && myOldRank !== 1){
+        msg = '👑 You\'re now #1 on the Consistency leaderboard.';
+      } else if(myOldRank - myNewRank >= 3){
+        msg = '⬆️ You climbed '+(myOldRank-myNewRank)+' places on the leaderboard.';
+      } else if(myNewRank <= 3 && myOldRank > 3){
+        msg = '📈 You moved up to #'+myNewRank+' among your friends.';
+      } else if(myNewRank === myOldRank - 1 && myNewRank <= 5){
+        // Check who specifically passed/was passed for the most personal message
+        var passerId = ranked[myNewRank-2]; // the person now just above us... approximate
+        var passerName = nameOf[passerId];
+        msg = passerName ? '🏆 '+passerName+' is now ahead of you on the Consistency leaderboard.' : '📈 Your leaderboard position changed.';
+      }
+      if(msg) createNotification(currentUser.id, 'leaderboard', 'Leaderboard update', msg, {});
+    }
+
+    var newPrefs = Object.assign({}, prevRanks, { consistency: myNewRank });
+    await sb.from('profiles').update({ last_leaderboard_rank: newPrefs }).eq('id', currentUser.id);
+    if(currentProfile) currentProfile.last_leaderboard_rank = newPrefs;
+  } catch(e){ /* non-critical — never block app load */ }
+}
+
 async function onAuthSuccess(user){
   currentUser = user;
   document.getElementById('auth-screen').classList.remove('show');
@@ -1775,6 +2115,10 @@ async function onAuthSuccess(user){
   while(_ud.has(_sc.toDateString())){ _s++; _sc.setDate(_sc.getDate()-1); }
   renderHeaderStreak(_s);
   await checkAppVersion();
+  document.getElementById('notif-bell-btn').style.display = 'flex';
+  await loadNotifUnreadCount();
+  startNotifPolling();
+  checkLeaderboardChanges();
   hideLoadingScreen();
 }
 
@@ -1996,9 +2340,21 @@ function openProfileModal(){
   document.getElementById('profile-username-inp').value = currentProfile.username || '';
   document.getElementById('profile-email-display').textContent = currentProfile.email || currentUser?.email || '';
   syncThemeToggle();
+  var remToggle = document.getElementById('reminder-toggle');
+  var remTimeRow = document.getElementById('reminder-time-row');
+  var remTimeInp = document.getElementById('reminder-time-inp');
+  var remEnabled = currentProfile.reminder_enabled !== false; // default true
+  remToggle.checked = remEnabled;
+  remTimeRow.style.display = remEnabled ? '' : 'none';
+  remTimeInp.value = currentProfile.reminder_time || '18:00';
   const ppEl = document.getElementById('profile-pic-preview');
   if(ppEl){ if(currentProfile.avatar_url){ ppEl.innerHTML='<img class="avatar-img" src="'+currentProfile.avatar_url+'" alt="avatar">'; } else { ppEl.innerHTML='<span>'+((currentProfile.name||'?').charAt(0).toUpperCase())+'</span>'; } }
   openModal('profile-modal');
+}
+
+function onReminderToggleChange(){
+  var checked = document.getElementById('reminder-toggle').checked;
+  document.getElementById('reminder-time-row').style.display = checked ? '' : 'none';
 }
 
 async function saveProfile(){
@@ -2011,10 +2367,12 @@ async function saveProfile(){
     const { data: existing } = await sb.from('profiles').select('id').eq('username', username).single();
     if(existing && existing.id !== currentUser.id){ alert('That username is already taken.'); return; }
   }
-  await sb.from('profiles').update({ name, username: username || null }).eq('id', currentUser.id);
+  const reminderEnabled = document.getElementById('reminder-toggle').checked;
+  const reminderTime = document.getElementById('reminder-time-inp').value || '18:00';
+  await sb.from('profiles').update({ name, username: username || null, reminder_enabled: reminderEnabled, reminder_time: reminderTime }).eq('id', currentUser.id);
   const { data: fresh } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
   if(fresh) currentProfile = fresh;
-  else { currentProfile.name = name; currentProfile.username = username; }
+  else { currentProfile.name = name; currentProfile.username = username; currentProfile.reminder_enabled = reminderEnabled; currentProfile.reminder_time = reminderTime; }
   updateGreeting();
   closeModal('profile-modal');
 }
@@ -2131,6 +2489,12 @@ async function saveToSupabase(newEntry){
         const localEntry = history.find(function(e){ return e.ts === newEntry.ts; });
         if(localEntry) localEntry.id = inserted.id;
         localStorage.setItem('wl_history', JSON.stringify(history.slice(0,100)));
+        // Notify any tagged friends
+        if(newEntry.tagged && newEntry.tagged.length){
+          newEntry.tagged.forEach(function(t){
+            notifyWorkoutTag(t.id, currentProfile.name || 'Someone', inserted.id, newEntry.ts);
+          });
+        }
       }
     }
     const { error: exErr } = await sb.from('exercise_lists').upsert({ user_id: currentUser.id, exercises: EX, cardio_activities: _cardioActivities }, { onConflict: 'user_id' });
@@ -2710,7 +3074,7 @@ async function renderFeed(){
       ? '<div class="feed-events">' + eventChips.join('') + '</div>'
       : '';
 
-    return '<div class="activity-card" id="acard-'+i+'">' +
+    return '<div class="activity-card" id="acard-'+i+'" data-workout-id="'+w.id+'">' +
       '<div class="activity-hdr">' +
         getAvatarHtml(w.profile, 52) +
         '<div class="activity-meta">' +
@@ -2733,7 +3097,7 @@ async function renderFeed(){
           '<i class="ti ti-trending-up"></i> Progress' +
         '</button>' +
         '<div style="flex:1;"></div>' +
-        '<button class="feed-pill-btn feed-pill-action'+likedClass+'" id="alike-btn-'+i+'" data-wid="'+w.id+'" data-idx="'+i+'" data-liked="'+(iLiked?1:0)+'" data-count="'+likeCount+'" data-own="'+(isMe?1:0)+'">' +
+        '<button class="feed-pill-btn feed-pill-action'+likedClass+'" id="alike-btn-'+i+'" data-wid="'+w.id+'" data-idx="'+i+'" data-liked="'+(iLiked?1:0)+'" data-count="'+likeCount+'" data-own="'+(isMe?1:0)+'" data-owner="'+w.user_id+'">' +
           '<i class="'+likeIcon+'"></i><span class="feed-pill-count">'+likeCount+'</span>' +
         '</button>' +
         '<button class="feed-pill-btn feed-pill-action" data-role="comment-btn" onclick="toggleComments('+i+')">' +
@@ -2812,8 +3176,20 @@ async function deleteComment(commentId, workoutIdx){
   showConfirm('Delete comment', msg, 'Delete', async function(){
     var el = document.getElementById('comment-'+commentId);
     if(!el) return;
+    // Collect reply ids first so we can clean up their notifications too
+    var { data: replies } = await sb.from('workout_comments').select('id').eq('parent_id', commentId);
+    var idsToClean = [commentId].concat((replies||[]).map(function(r){ return r.id; }));
     await sb.from('workout_comments').delete().eq('parent_id', commentId);
     await sb.from('workout_comments').delete().eq('id', commentId);
+    // Remove any notifications tied to these comments so they don't linger
+    // for the recipient after the comment itself is gone.
+    idsToClean.forEach(function(cid){
+      sb.from('notifications').delete().filter('data->>comment_id', 'eq', String(cid)).then(function(res){
+        if(res.error) console.error('Notification cleanup failed:', res.error.message);
+      });
+    });
+    // Refresh badge in case one of the deleted notifications was our own
+    loadNotifUnreadCount();
     var nextEl = el.nextElementSibling;
     if(nextEl && nextEl.classList.contains('comment-replies')) nextEl.remove();
     var wrapEl = document.getElementById('reply-wrap-'+commentId);
@@ -2862,6 +3238,13 @@ async function submitReply(parentId, workoutIdx){
   if(error){ console.error('Reply error:', error); return; }
 
   var newId = data ? data.id : 'tmp-'+Date.now();
+
+  // Notify the parent comment's author (if it's not yourself)
+  sb.from('workout_comments').select('user_id').eq('id', parentId).maybeSingle().then(function(res){
+    if(res.data && res.data.user_id){
+      notifyWorkoutComment(res.data.user_id, workout.id, workout.ts, currentProfile.name || 'Someone', true, newId);
+    }
+  });
   var name = currentProfile.name || 'You';
   var delBtn = '<button class="comment-del-btn" onclick="deleteComment(\'' + newId + '\',' + workoutIdx + ')" title="Delete"><i class="ti ti-trash" style="font-size:10px;"></i></button>';
 
@@ -2947,6 +3330,8 @@ async function doLike(btn, workoutId, i){
   btn.dataset.liked = '1';
   btn.dataset.count = newCount;
   await sb.from('workout_likes').insert({workout_id: workoutId, user_id: currentUser.id});
+  var ownerId = btn.dataset.owner;
+  if(ownerId) notifyWorkoutLike(ownerId, workoutId, currentProfile.name || 'Someone');
 }
 
 async function doUnlike(btn, workoutId){
@@ -2971,6 +3356,12 @@ async function postComment(workoutId, i){
     .insert({workout_id: workoutId, user_id: currentUser.id, body})
     .select('id').single();
   const newCid = newData ? newData.id : 'tmp-'+Date.now();
+
+  // Notify the workout owner (skip if commenting on your own post)
+  var feedW = (window._feedWorkouts || [])[i];
+  if(feedW && feedW.user_id){
+  notifyWorkoutComment(feedW.user_id, workoutId, feedW.ts, currentProfile.name || 'Someone', false, newCid);
+  }
 
   const section = document.getElementById('acomments-'+i);
   const scrollDiv = document.getElementById('acomments-scroll-'+i);
@@ -4647,10 +5038,18 @@ async function searchMFM(){
 async function sendFriendRequest(addresseeId){
   const { error } = await sb.from('friendships').insert({ requester_id: currentUser.id, addressee_id: addresseeId, status:'pending' });
   if(error) alert('Could not send request: ' + error.message);
-  else { document.getElementById('friend-search-results').innerHTML='<div style="font-size:13px;color:#3B6D11;padding:8px 0;">Friend request sent!</div>'; }
+  else {
+    document.getElementById('friend-search-results').innerHTML='<div style="font-size:13px;color:#3B6D11;padding:8px 0;">Friend request sent!</div>';
+    notifyFriendRequest(addresseeId, currentProfile.name || 'Someone');
+  }
 }
 
-async function acceptFriend(id){ await sb.from('friendships').update({ status:'accepted' }).eq('id', id); renderFriendsTab(); }
+async function acceptFriend(id){
+  var { data: row } = await sb.from('friendships').select('requester_id').eq('id', id).maybeSingle();
+  await sb.from('friendships').update({ status:'accepted' }).eq('id', id);
+  if(row && row.requester_id) notifyFriendAccept(row.requester_id, currentProfile.name || 'Someone');
+  renderFriendsTab();
+}
 async function declineFriend(id){ await sb.from('friendships').delete().eq('id', id); renderFriendsTab(); }
 async function removeFriend(id){ await sb.from('friendships').delete().eq('id', id); renderFriendsTab(); }
 
