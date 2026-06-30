@@ -1,6 +1,28 @@
-supabase secrets set \
-  APNS_KEY_ID=YOUR_KEY_ID \
-  APNS_TEAM_ID=YOUR_TEAM_ID \
-  APNS_BUNDLE_ID=com.lockin.app \
-  APNS_PRODUCTION=false \
-  APNS_PRIVATE_KEY="$(cat /path/to/AuthKey_XXXXXXXXXX.p8)"
+`UIScene` lifecycle will soon be required. Failure to adopt will result in an assert in the future.
+Reading from public effective user settings.
+Could not create a sandbox extension for '/var/containers/Bundle/Application/9D6BA564-4E04-4430-AE90-28093D9AB652/App.app'
+⚡️  Loading app at capacitor://localhost...
+Networking process (0x108060190) took 2.679376 seconds to launch
+WebContent process (0x1080e80c0) took 2.177507 seconds to launch
+WebContent[25009] Unable to hide query parameters from script (missing data)
+⚡️  WebView loaded
+⚡️  [log] - XP backfill: 7205 XP ( 5055 workout + 2150 badge)
+⚡️  [log] - XP backfill: 7205 XP ( 5055 workout + 2150 badge)
+⚡️  To Native ->  PushNotifications checkPermissions 816510
+⚡️  TO JS {"receive":"granted"}
+⚡️  To Native ->  PushNotifications addListener 816511
+⚡️  To Native ->  PushNotifications addListener 816512
+⚡️  To Native ->  PushNotifications addListener 816513
+⚡️  To Native ->  PushNotifications addListener 816514
+⚡️  To Native ->  PushNotifications register 816515
+⚡️  TO JS undefined
+⚡️  To Native ->  PushNotifications checkPermissions 816516
+⚡️  TO JS {"receive":"granted"}
+⚡️  To Native ->  PushNotifications addListener 816517
+⚡️  To Native ->  PushNotifications addListener 816518
+⚡️  To Native ->  PushNotifications addListener 816519
+⚡️  To Native ->  PushNotifications addListener 816520
+⚡️  To Native ->  PushNotifications register 816521
+⚡️  TO JS undefined
+WebContent[25009] xpc_user_sessions_get_foreground_uid() failed with error 1 - Operation not permitted
+WebContent[25009] xpc_user_sessions_get_foreground_uid() failed with error 1 - Operation not permitted
