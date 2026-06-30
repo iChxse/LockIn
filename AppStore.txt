@@ -1,32 +1,6 @@
-Lock In is the simple workout tracker built to help you stay consistent, track progress, and stay motivated.
-
-Whether you're a beginner stepping into the gym for the first time or an experienced lifter chasing new personal records, Lock In gives you everything you need without the clutter.
-
-FEATURES
-
-• Log workouts quickly and easily
-• Track weights, reps, and exercise history
-• View personal records and progress over time
-• Earn badges and level up as you train
-• Build consistency streaks and rankings
-• Add friends and stay accountable together
-• Compare progress on leaderboards
-• Clean, distraction-free interface
-• Fast workout logging designed for real gym sessions
-
-LOCK IN AND STAY CONSISTENT
-
-Fitness success comes from showing up. Lock In helps you focus on consistency, celebrate milestones, and see your progress every step of the way.
-
-Whether your goal is building muscle, getting stronger, losing weight, or simply staying active, Lock In gives you the tools to track your journey and keep moving forward.
-
-Download Lock In today and start building momentum one workout at a time.
-
-Track Workouts. Stay Consistent.
-
-workout,gym,fitness,tracker,exercise,training,weightlifting,bodybuilding,workouts,progress,personal records,strength
-
-<key>NSPhotoLibraryUsageDescription</key>
-<string>Lock In. needs access to your photo library to set your profile picture.</string>
-<key>NSCameraUsageDescription</key>
-<string>Lock In. needs camera access to take a profile photo.</string>
+supabase secrets set \
+  APNS_KEY_ID=YOUR_KEY_ID \
+  APNS_TEAM_ID=YOUR_TEAM_ID \
+  APNS_BUNDLE_ID=com.lockin.app \
+  APNS_PRODUCTION=false \
+  APNS_PRIVATE_KEY="$(cat /path/to/AuthKey_XXXXXXXXXX.p8)"

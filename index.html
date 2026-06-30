@@ -2119,7 +2119,56 @@ async function onAuthSuccess(user){
   await loadNotifUnreadCount();
   startNotifPolling();
   checkLeaderboardChanges();
+  registerPushNotifications();
   hideLoadingScreen();
+}
+
+// ── Native push registration (Capacitor only — no-ops in browser) ──
+// Assumes @capacitor/push-notifications is installed via npm and synced
+// (`npm install @capacitor/push-notifications && npx cap sync ios`).
+// Capacitor automatically exposes installed plugins on window.Capacitor.Plugins
+// — no bundler or CDN import needed since this is a single-file web app.
+async function registerPushNotifications(){
+  if(!window.Capacitor || !window.Capacitor.isNativePlatform || !window.Capacitor.isNativePlatform()) return;
+  const PushNotifications = window.Capacitor.Plugins && window.Capacitor.Plugins.PushNotifications;
+  if(!PushNotifications){
+    console.warn('PushNotifications plugin not found — did you run npm install @capacitor/push-notifications && npx cap sync ios?');
+    return;
+  }
+  try {
+    const permStatus = await PushNotifications.checkPermissions();
+    if(permStatus.receive !== 'granted'){
+      const req = await PushNotifications.requestPermissions();
+      if(req.receive !== 'granted') return;
+    }
+    await PushNotifications.register();
+
+    PushNotifications.addListener('registration', async function(token){
+      if(!currentUser || !token?.value) return;
+      await sb.from('push_tokens').upsert({ user_id: currentUser.id, token: token.value, platform: 'ios' }, { onConflict: 'user_id,token' });
+    });
+    PushNotifications.addListener('registrationError', function(err){
+      console.error('Push registration error:', err);
+    });
+    // Push arrives while app is open/foregrounded — refresh badge immediately
+    PushNotifications.addListener('pushNotificationReceived', function(){
+      loadNotifUnreadCount();
+    });
+    // Tapping a native push notification while app is backgrounded/closed
+    PushNotifications.addListener('pushNotificationActionPerformed', function(action){
+      var data = action.notification?.data;
+      if(data && data.notif_id){
+        sb.from('notifications').select('*').eq('id', data.notif_id).maybeSingle().then(function(res){
+          if(res.data){
+            sb.from('notifications').update({ read: true }).eq('id', res.data.id).then(function(){});
+            deepLinkNotif(res.data);
+          }
+        });
+      }
+    });
+  } catch(e){
+    console.error('Push notification setup failed:', e);
+  }
 }
 
 // ── Profile modal ──
@@ -2334,6 +2383,24 @@ async function loadProfileTabFriends(workouts, userId){
 }
 
 
+// Convert a "HH:MM" time the user picked in their LOCAL timezone into the
+// equivalent "HH:MM" in UTC, so the server-side cron (which only knows UTC)
+// fires at the right real-world moment regardless of where the user is.
+function localTimeToUTC(localHHMM){
+  var [h, m] = localHHMM.split(':').map(Number);
+  var d = new Date();
+  d.setHours(h, m, 0, 0);
+  return String(d.getUTCHours()).padStart(2,'0') + ':' + String(d.getUTCMinutes()).padStart(2,'0');
+}
+// Reverse: convert a stored UTC "HH:MM" back into the user's local time for
+// display in the <input type="time"> picker.
+function utcTimeToLocal(utcHHMM){
+  var [h, m] = utcHHMM.split(':').map(Number);
+  var d = new Date();
+  d.setUTCHours(h, m, 0, 0);
+  return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+}
+
 function openProfileModal(){
   if(!currentProfile) return;
   document.getElementById('profile-name-inp').value = currentProfile.name || '';
@@ -2346,7 +2413,8 @@ function openProfileModal(){
   var remEnabled = currentProfile.reminder_enabled !== false; // default true
   remToggle.checked = remEnabled;
   remTimeRow.style.display = remEnabled ? '' : 'none';
-  remTimeInp.value = currentProfile.reminder_time || '18:00';
+  // reminder_time is stored in UTC — convert to local for the picker
+  remTimeInp.value = utcTimeToLocal(currentProfile.reminder_time || '18:00');
   const ppEl = document.getElementById('profile-pic-preview');
   if(ppEl){ if(currentProfile.avatar_url){ ppEl.innerHTML='<img class="avatar-img" src="'+currentProfile.avatar_url+'" alt="avatar">'; } else { ppEl.innerHTML='<span>'+((currentProfile.name||'?').charAt(0).toUpperCase())+'</span>'; } }
   openModal('profile-modal');
@@ -2368,11 +2436,15 @@ async function saveProfile(){
     if(existing && existing.id !== currentUser.id){ alert('That username is already taken.'); return; }
   }
   const reminderEnabled = document.getElementById('reminder-toggle').checked;
-  const reminderTime = document.getElementById('reminder-time-inp').value || '18:00';
-  await sb.from('profiles').update({ name, username: username || null, reminder_enabled: reminderEnabled, reminder_time: reminderTime }).eq('id', currentUser.id);
+  const reminderTimeLocal = document.getElementById('reminder-time-inp').value || '18:00';
+  // Convert local picker time to UTC before saving — the daily-reminder
+  // cron only ever compares against UTC, so this conversion is what makes
+  // reminders fire at the right real-world hour for users outside UTC.
+  const reminderTimeUTC = localTimeToUTC(reminderTimeLocal);
+  await sb.from('profiles').update({ name, username: username || null, reminder_enabled: reminderEnabled, reminder_time: reminderTimeUTC }).eq('id', currentUser.id);
   const { data: fresh } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
   if(fresh) currentProfile = fresh;
-  else { currentProfile.name = name; currentProfile.username = username; currentProfile.reminder_enabled = reminderEnabled; currentProfile.reminder_time = reminderTime; }
+  else { currentProfile.name = name; currentProfile.username = username; currentProfile.reminder_enabled = reminderEnabled; currentProfile.reminder_time = reminderTimeUTC; }
   updateGreeting();
   closeModal('profile-modal');
 }
