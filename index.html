@@ -125,7 +125,7 @@ input, select, button, textarea { font-family: var(--font); }
 }
 .notif-panel { position: fixed; inset: 0; background: var(--bs); z-index: 150; display: none; flex-direction: column; max-width: 480px; margin: 0 auto; }
 .notif-panel.open { display: flex; }
-.notif-panel-hdr { display:flex; align-items:center; gap:10px; padding: calc(env(safe-area-inset-top,0px) + 12px) 16px 12px; border-bottom: 0.5px solid var(--bo3); flex-shrink:0; }
+.notif-panel-hdr { display:flex; align-items:center; gap:10px; padding: 12px 16px; border-bottom: 0.5px solid var(--bo3); flex-shrink:0; }
 .notif-panel-title { font-size: 17px; font-weight: 700; color: var(--tp); flex: 1; }
 .notif-panel-body { flex: 1; overflow-y: auto; padding: 8px 0 24px; }
 .notif-row { display:flex; gap:12px; padding:13px 16px; border-bottom:0.5px solid var(--bo3); cursor:pointer; position:relative; }
@@ -1289,6 +1289,7 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
 
 <!-- iOS-style bottom tab bar -->
 <div class="notif-panel" id="notif-panel">
+  <div class="statusbarspacer"></div>
   <div class="notif-panel-hdr">
     <button onclick="closeNotifPanel()" style="background:none;border:none;color:var(--accent);font-size:14px;font-weight:600;font-family:var(--font);cursor:pointer;display:flex;align-items:center;gap:4px;"><i class="ti ti-arrow-left"></i> Back</button>
     <div class="notif-panel-title">Notifications</div>
@@ -2128,26 +2129,58 @@ async function onAuthSuccess(user){
 // (`npm install @capacitor/push-notifications && npx cap sync ios`).
 // Capacitor automatically exposes installed plugins on window.Capacitor.Plugins
 // — no bundler or CDN import needed since this is a single-file web app.
+function showPushDebug(msg){
+  var el = document.getElementById('push-debug-overlay');
+  if(!el){
+    el = document.createElement('div');
+    el.id = 'push-debug-overlay';
+    el.style.cssText = 'position:fixed;bottom:90px;left:8px;right:8px;background:rgba(0,0,0,0.92);color:#0f0;font-size:11px;font-family:monospace;padding:10px;border-radius:8px;z-index:9999;max-height:200px;overflow-y:auto;white-space:pre-wrap;';
+    document.body.appendChild(el);
+  }
+  el.textContent += msg + '\n';
+  el.scrollTop = el.scrollHeight;
+}
+
 async function registerPushNotifications(){
-  if(!window.Capacitor || !window.Capacitor.isNativePlatform || !window.Capacitor.isNativePlatform()) return;
+  showPushDebug('--- registerPushNotifications start ---');
+  showPushDebug('isNative: ' + (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()));
+  if(!window.Capacitor || !window.Capacitor.isNativePlatform || !window.Capacitor.isNativePlatform()){
+    showPushDebug('STOP: not running as native platform (browser?)');
+    return;
+  }
   const PushNotifications = window.Capacitor.Plugins && window.Capacitor.Plugins.PushNotifications;
+  showPushDebug('PushNotifications plugin found: ' + !!PushNotifications);
   if(!PushNotifications){
+    showPushDebug('STOP: PushNotifications plugin missing from window.Capacitor.Plugins');
     console.warn('PushNotifications plugin not found — did you run npm install @capacitor/push-notifications && npx cap sync ios?');
     return;
   }
   try {
     const permStatus = await PushNotifications.checkPermissions();
+    showPushDebug('Current permission: ' + JSON.stringify(permStatus));
     if(permStatus.receive !== 'granted'){
       const req = await PushNotifications.requestPermissions();
-      if(req.receive !== 'granted') return;
+      showPushDebug('Requested permission result: ' + JSON.stringify(req));
+      if(req.receive !== 'granted'){
+        showPushDebug('STOP: permission not granted');
+        return;
+      }
     }
+    showPushDebug('Calling PushNotifications.register()...');
     await PushNotifications.register();
+    showPushDebug('register() call completed — waiting for registration event');
 
     PushNotifications.addListener('registration', async function(token){
-      if(!currentUser || !token?.value) return;
-      await sb.from('push_tokens').upsert({ user_id: currentUser.id, token: token.value, platform: 'ios' }, { onConflict: 'user_id,token' });
+      showPushDebug('GOT TOKEN: ' + (token?.value ? token.value.slice(0,20)+'...' : 'EMPTY'));
+      if(!currentUser || !token?.value){
+        showPushDebug('STOP: no currentUser or empty token');
+        return;
+      }
+      const { error } = await sb.from('push_tokens').upsert({ user_id: currentUser.id, token: token.value, platform: 'ios' }, { onConflict: 'user_id,token' });
+      showPushDebug('Saved to push_tokens: ' + (error ? 'ERROR - '+error.message : 'SUCCESS'));
     });
     PushNotifications.addListener('registrationError', function(err){
+      showPushDebug('REGISTRATION ERROR: ' + JSON.stringify(err));
       console.error('Push registration error:', err);
     });
     // Push arrives while app is open/foregrounded — refresh badge immediately
@@ -2167,6 +2200,7 @@ async function registerPushNotifications(){
       }
     });
   } catch(e){
+    showPushDebug('EXCEPTION: ' + (e && e.message ? e.message : String(e)));
     console.error('Push notification setup failed:', e);
   }
 }
