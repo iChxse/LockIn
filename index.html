@@ -2166,10 +2166,8 @@ async function registerPushNotifications(){
         return;
       }
     }
-    showPushDebug('Calling PushNotifications.register()...');
-    await PushNotifications.register();
-    showPushDebug('register() call completed — waiting for registration event');
-
+    // Register listeners BEFORE calling register() — if a token arrives
+    // before the listener exists, the event is missed entirely.
     PushNotifications.addListener('registration', async function(token){
       showPushDebug('GOT TOKEN: ' + (token?.value ? token.value.slice(0,20)+'...' : 'EMPTY'));
       if(!currentUser || !token?.value){
@@ -2199,6 +2197,10 @@ async function registerPushNotifications(){
         });
       }
     });
+
+    showPushDebug('Calling PushNotifications.register()...');
+    await PushNotifications.register();
+    showPushDebug('register() call completed — waiting for registration event');
   } catch(e){
     showPushDebug('EXCEPTION: ' + (e && e.message ? e.message : String(e)));
     console.error('Push notification setup failed:', e);
