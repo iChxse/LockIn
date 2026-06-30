@@ -855,10 +855,11 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
   .bottom-bar { border-left: 1px solid var(--bo3); border-right: 1px solid var(--bo3); }
 }
 
-.badge-grid { display:flex; flex-direction:column; gap:8px; padding:4px 0; }
-.badge-item { display:flex; align-items:center; gap:12px; padding:12px 14px; background:var(--bs); border-radius:var(--r2); border:0.5px solid var(--bo3); }
+.badge-grid { display:flex; flex-direction:column; background:var(--bp); border:1px solid var(--bo3); border-radius:var(--r3); overflow:hidden; box-shadow:var(--card-shadow); }
+.badge-item { display:flex; align-items:center; gap:12px; padding:12px 14px; border-bottom:0.5px solid var(--bo3); }
+.badge-item:last-child { border-bottom:none; }
 .badge-item.locked { opacity:0.4; }
-.badge-icon { font-size:28px; line-height:1; flex-shrink:0; width:36px; text-align:center; }
+.badge-icon { font-size:26px; line-height:1; flex-shrink:0; width:34px; text-align:center; }
 .badge-name { font-size:14px; font-weight:600; color:var(--tp); line-height:1.3; }
 .badge-desc { font-size:12px; color:var(--ts); margin-top:1px; }
 .badge-next { font-size:11px; color:var(--ts); margin-top:3px; opacity:0.7; }
@@ -1448,7 +1449,7 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 });
 
 // ── App version — update this with every release ──────────
-const APP_VERSION = '1.5.2';
+const APP_VERSION = '1.5.0';
 
 // Keep session alive across tab/app restores
 sb.auth.onAuthStateChange(function(event, session){
@@ -1978,12 +1979,14 @@ async function loadProfileTabFriends(workouts, userId){
   });
 
   upmFriends.sort(function(a,b){ return (togetherMap[b.id]||0)-(togetherMap[a.id]||0); });
-  body.innerHTML = upmFriends.map(function(friend){
+  body.innerHTML = '<div style="background:var(--bp);border:1px solid var(--bo3);border-radius:var(--r3);overflow:hidden;box-shadow:var(--card-shadow);">' +
+    upmFriends.map(function(friend, i){
     var together=togetherMap[friend.id]||0;
     var uname=friend.username?'<div style="font-size:12px;color:var(--ts);">@'+friend.username+'</div>':'';
     var tog=together>0?'<div style="font-size:12px;color:var(--ts);margin-top:3px;"><i class="ti ti-barbell" style="font-size:11px;"></i> '+together+' workout'+(together===1?'':'s')+' together</div>':'<div style="font-size:12px;color:var(--ts);margin-top:3px;">No workouts together yet</div>';
-    return '<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:0.5px solid var(--bo3);cursor:pointer;" onclick="viewUserProfile(\''+friend.id+'\')">'+getAvatarHtml(friend,40)+'<div><div style="font-size:14px;font-weight:500;color:var(--tp);">'+friend.name+'</div>'+uname+tog+'</div></div>';
-  }).join('');
+    var borderTop = i > 0 ? 'border-top:0.5px solid var(--bo3);' : '';
+    return '<div style="'+borderTop+'display:flex;align-items:center;gap:12px;padding:12px 14px;cursor:pointer;" onclick="viewUserProfile(\''+friend.id+'\')">'+getAvatarHtml(friend,40)+'<div><div style="font-size:14px;font-weight:500;color:var(--tp);">'+friend.name+'</div>'+uname+tog+'</div></div>';
+  }).join('') + '</div>';
 }
 
 
@@ -6136,17 +6139,19 @@ async function viewUserProfile(userId){
   });
 
   upmFriends.sort(function(a,b){ return (togetherMap[b.id]||0)-(togetherMap[a.id]||0); });
-  friendsEl.innerHTML = upmFriends.map(function(friend){
+  friendsEl.innerHTML = '<div style="background:var(--bp);border:1px solid var(--bo3);border-radius:var(--r3);overflow:hidden;box-shadow:var(--card-shadow);">' +
+    upmFriends.map(function(friend, i){
     var together = togetherMap[friend.id] || 0;
     var uname = friend.username ? '<div style="font-size:12px;color:var(--ts);">@'+friend.username+'</div>' : '';
     var togetherStr = together > 0
       ? '<div style="font-size:12px;color:var(--ts);margin-top:3px;"><i class="ti ti-barbell" style="font-size:11px;"></i> '+together+' workout'+(together===1?'':'s')+' together</div>'
       : '<div style="font-size:12px;color:var(--ts);margin-top:3px;">No workouts together yet</div>';
-    return '<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:0.5px solid var(--bo3);cursor:pointer;" onclick="closeModal(\'user-profile-modal\');viewUserProfile(\''+friend.id+'\')">' +
+    var borderTop = i > 0 ? 'border-top:0.5px solid var(--bo3);' : '';
+    return '<div style="'+borderTop+'display:flex;align-items:center;gap:12px;padding:12px 14px;cursor:pointer;" onclick="closeModal(\'user-profile-modal\');viewUserProfile(\''+friend.id+'\')">' +
       getAvatarHtml(friend, 40) +
       '<div><div style="font-size:14px;font-weight:500;color:var(--tp);">'+friend.name+'</div>'+uname+togetherStr+'</div>' +
     '</div>';
-  }).join('');
+  }).join('') + '</div>';
 }
 
 function copyUPMWorkout(idx){
