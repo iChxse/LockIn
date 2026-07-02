@@ -1997,42 +1997,20 @@ async function createNotification(userId, type, title, body, data){
 // from the last 24h and update it in place rather than spamming a new row.
 async function notifyWorkoutLike(workoutOwnerId, workoutId, likerName){
   if(!workoutOwnerId || workoutOwnerId === currentUser?.id) return;
+  // dedup_key = "like:{workoutId}:{likerId}" — unique per liker per workout.
+  // upsert with ignoreDuplicates means spamming like can never create more than
+  // one notification row regardless of timing or how many times they like/unlike/like.
+  var dedupKey = 'like:' + String(workoutId) + ':' + currentUser.id;
   try {
-    // Fetch ALL existing like notifications for this workout (could be multiple
-    // duplicates from before this dedup logic existed)
-    var { data: rows } = await sb.from('notifications')
-      .select('*')
-      .eq('user_id', workoutOwnerId)
-      .eq('type', 'like')
-      .filter('data->>workout_id', 'eq', String(workoutId))
-      .order('created_at', { ascending: true });
-
-    if(rows && rows.length > 0){
-      // Clean up duplicates — delete all but the oldest row
-      if(rows.length > 1){
-        var idsToDelete = rows.slice(1).map(function(r){ return r.id; });
-        await sb.from('notifications').delete().in('id', idsToDelete);
-      }
-      var existing = rows[0];
-      var names = (existing.data && existing.data.likers) || (existing.data && existing.data.first_liker ? [existing.data.first_liker] : []);
-      if(names.includes(likerName)) return; // already notified, do nothing
-      names.push(likerName);
-      var bodyText = names.length === 1
-        ? '❤️ '+names[0]+' liked your workout.'
-        : names.length === 2
-          ? '❤️ '+names[0]+' and '+names[1]+' liked your workout.'
-          : '❤️ '+names[0]+' and '+(names.length-1)+' others liked your workout.';
-      await sb.from('notifications').update({
-        body: bodyText,
-        data: Object.assign({}, existing.data, { likers: names, workout_id: String(workoutId) }),
-        read: false,
-        created_at: new Date().toISOString()
-      }).eq('id', existing.id);
-    } else {
-      await createNotification(workoutOwnerId, 'like', 'New like',
-        '❤️ '+likerName+' liked your workout.',
-        { workout_id: String(workoutId), first_liker: likerName, likers: [likerName] });
-    }
+    await sb.from('notifications').upsert({
+      user_id: workoutOwnerId,
+      type: 'like',
+      title: 'New like',
+      body: '❤️ ' + likerName + ' liked your workout.',
+      data: { workout_id: String(workoutId), liker_id: currentUser.id },
+      dedup_key: dedupKey,
+      read: false
+    }, { onConflict: 'user_id,dedup_key', ignoreDuplicates: true });
   } catch(e){ console.error('notifyWorkoutLike error:', e); }
 }
 
@@ -3481,8 +3459,6 @@ document.addEventListener('click', function(e){
   }
 });
 
-var _likeNotifTimers = {}; // keyed by workoutId
-
 async function doLike(btn, workoutId, i){
   const currentCount = parseInt(btn.dataset.count) || 0;
   const newCount = currentCount + 1;
@@ -3491,22 +3467,11 @@ async function doLike(btn, workoutId, i){
   btn.dataset.liked = '1';
   btn.dataset.count = newCount;
   await sb.from('workout_likes').insert({workout_id: workoutId, user_id: currentUser.id});
-  // Debounce notification — only send after 2s of the like being stable.
-  // If the user rapidly likes/unlikes, the timer resets and no notification fires.
   var ownerId = btn.dataset.owner;
-  if(ownerId){
-    clearTimeout(_likeNotifTimers[workoutId]);
-    _likeNotifTimers[workoutId] = setTimeout(function(){
-      notifyWorkoutLike(ownerId, workoutId, currentProfile.name || 'Someone');
-      delete _likeNotifTimers[workoutId];
-    }, 2000);
-  }
+  if(ownerId) notifyWorkoutLike(ownerId, workoutId, currentProfile.name || 'Someone');
 }
 
 async function doUnlike(btn, workoutId){
-  // Cancel any pending like notification — user changed their mind before debounce fired
-  clearTimeout(_likeNotifTimers[workoutId]);
-  delete _likeNotifTimers[workoutId];
   const currentCount = parseInt(btn.dataset.count) || 0;
   const newCount = Math.max(0, currentCount - 1);
   btn.className = 'feed-pill-btn';
@@ -3516,10 +3481,10 @@ async function doUnlike(btn, workoutId){
   await sb.from('workout_likes').delete()
     .eq('workout_id', workoutId)
     .eq('user_id', currentUser.id);
-  // NOTE: we intentionally do NOT delete the like notification here.
-  // The notification row is kept as a permanent dedup key so that if the
-  // user likes again later, notifyWorkoutLike finds it and skips creating
-  // a duplicate. Deleting it would allow infinite re-notification on like/unlike cycles.
+  // Remove the like notification so recipient's center stays accurate
+  var dedupKey = 'like:' + String(workoutId) + ':' + currentUser.id;
+  sb.from('notifications').delete().eq('dedup_key', dedupKey)
+    .then(function(){ loadNotifUnreadCount(); });
 }
 
 async function postComment(workoutId, i){
