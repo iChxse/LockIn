@@ -1839,8 +1839,7 @@ async function loadNotifUnreadCount(){
     var { count } = await sb.from('notifications')
       .select('id', { count: 'exact', head: true })
       .eq('user_id', currentUser.id)
-      .eq('read', false)
-      .eq('hidden', false);
+      .eq('read', false);
     var badge = document.getElementById('notif-bell-badge');
     if(badge){
       if(count && count > 0){ badge.textContent = count > 99 ? '99+' : count; badge.style.display = 'flex'; }
@@ -1858,7 +1857,6 @@ async function openNotifPanel(){
     var { data } = await sb.from('notifications')
       .select('*')
       .eq('user_id', currentUser.id)
-      .eq('hidden', false)
       .order('created_at', { ascending: false })
       .limit(50);
     _notifCache = data || [];
@@ -2000,15 +1998,18 @@ async function createNotification(userId, type, title, body, data){
 async function notifyWorkoutLike(workoutOwnerId, workoutId, likerName){
   if(!workoutOwnerId || workoutOwnerId === currentUser?.id) return;
   try {
-    // notify_like RPC: inserts with ON CONFLICT DO NOTHING (first like),
-    // or un-hides if they previously unliked (subsequent likes).
-    var { error } = await sb.rpc('notify_like', {
-      p_owner_id: workoutOwnerId,
-      p_workout_id: String(workoutId),
-      p_liker_id: currentUser.id,
-      p_liker_name: likerName
-    });
-    if(error){ console.error('notifyWorkoutLike error:', error.message); alert('Like notif error: ' + error.message); }
+    // Check if we already notified this owner about this liker on this workout
+    var { data: existing } = await sb.from('notifications')
+      .select('id')
+      .eq('user_id', workoutOwnerId)
+      .eq('type', 'like')
+      .filter('data->>workout_id', 'eq', String(workoutId))
+      .filter('data->>liker_id', 'eq', currentUser.id)
+      .maybeSingle();
+    if(existing) return; // already sent once, never send again
+    await createNotification(workoutOwnerId, 'like', 'New like',
+      '❤️ ' + likerName + ' liked your workout.',
+      { workout_id: String(workoutId), liker_id: currentUser.id });
   } catch(e){ console.error('notifyWorkoutLike error:', e); }
 }
 
@@ -3481,15 +3482,11 @@ async function doUnlike(btn, workoutId){
   await sb.from('workout_likes').delete()
     .eq('workout_id', workoutId)
     .eq('user_id', currentUser.id);
-  // Hide the like notification rather than deleting it — keeping the row
-  // preserves the unique dedup_key so re-liking doesn't spam a new notification.
-  sb.rpc('hide_like_notification', {
+  // Delete this specific like notification via service-role RPC to bypass RLS
+  sb.rpc('delete_like_notification', {
     p_workout_id: String(workoutId),
     p_liker_id: currentUser.id
-  }).then(function(res){
-    if(res.error) console.error('Unlike notif hide error:', res.error.message);
-    loadNotifUnreadCount();
-  });
+  }).then(function(){ loadNotifUnreadCount(); });
 }
 
 async function postComment(workoutId, i){
