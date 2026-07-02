@@ -1997,20 +1997,38 @@ async function createNotification(userId, type, title, body, data){
 // from the last 24h and update it in place rather than spamming a new row.
 async function notifyWorkoutLike(workoutOwnerId, workoutId, likerName){
   if(!workoutOwnerId || workoutOwnerId === currentUser?.id) return;
+  var dedupKey = 'like:' + String(workoutId) + ':' + currentUser.id;
   try {
-    // DB has a unique index on (data->>'workout_id', data->>'liker_id') WHERE type='like'
-    // so duplicate inserts are silently rejected by Postgres — no client-side check needed.
-    await createNotification(workoutOwnerId, 'like', 'New like',
-      '❤️ ' + likerName + ' liked your workout.',
-      { workout_id: String(workoutId), liker_id: currentUser.id });
-  } catch(e){ /* duplicate rejected by DB unique constraint — expected */ }
+    await sb.from('notifications').upsert({
+      user_id: workoutOwnerId,
+      type: 'like',
+      title: 'New like',
+      body: '\u2764\uFE0F ' + likerName + ' liked your workout.',
+      data: { workout_id: String(workoutId), liker_id: currentUser.id },
+      post_id: String(workoutId),
+      actor_id: currentUser.id,
+      dedup_key: dedupKey,
+      read: false
+    }, { onConflict: 'user_id,dedup_key' });
+  } catch(e){ console.error('notifyWorkoutLike:', e); }
 }
 
 function notifyWorkoutComment(workoutOwnerId, workoutId, workoutTs, commenterName, isReply, commentId){
-  createNotification(workoutOwnerId, isReply ? 'comment_reply' : 'comment',
-    isReply ? 'New reply' : 'New comment',
-    '💬 '+commenterName+(isReply ? ' replied to your comment.' : ' commented on your workout.'),
-    { workout_id: workoutId, workout_owner_id: workoutOwnerId, ts: workoutTs, comment_id: commentId });
+  if(!workoutOwnerId || workoutOwnerId === currentUser?.id) return;
+  if(!commentId) return;
+  var dedupKey = 'comment:' + String(commentId);
+  sb.from('notifications').upsert({
+    user_id: workoutOwnerId,
+    type: isReply ? 'comment_reply' : 'comment',
+    title: isReply ? 'New reply' : 'New comment',
+    body: '\uD83D\uDCAC ' + commenterName + (isReply ? ' replied to your comment.' : ' commented on your workout.'),
+    data: { workout_id: workoutId, comment_id: commentId },
+    post_id: String(workoutId),
+    actor_id: currentUser.id,
+    comment_id: String(commentId),
+    dedup_key: dedupKey,
+    read: false
+  }, { onConflict: 'user_id,dedup_key' }).then(function(){});
 }
 
 function notifyFriendRequest(addresseeId, requesterName){
@@ -3315,7 +3333,7 @@ async function deleteComment(commentId, workoutIdx){
     // Remove notifications tied to these comments using RPC for reliable
     // jsonb field matching (direct filter syntax can silently fail on UUIDs)
     idsToClean.forEach(function(cid){
-      sb.rpc('delete_notifications_by_data', { p_key: 'comment_id', p_value: String(cid) })
+      sb.rpc('delete_notification_by_dedup', { p_dedup_key: 'comment:' + String(cid) })
         .then(function(res){ if(res.error) console.error('Comment notif cleanup failed:', res.error.message); });
     });
     loadNotifUnreadCount();
@@ -3475,10 +3493,9 @@ async function doUnlike(btn, workoutId){
   await sb.from('workout_likes').delete()
     .eq('workout_id', workoutId)
     .eq('user_id', currentUser.id);
-  // Delete this specific like notification via service-role RPC to bypass RLS
-  sb.rpc('delete_like_notification', {
-    p_workout_id: String(workoutId),
-    p_liker_id: currentUser.id
+  // Delete by dedup_key — RPC bypasses RLS since notification belongs to owner not liker
+  sb.rpc('delete_notification_by_dedup', {
+    p_dedup_key: 'like:' + String(workoutId) + ':' + currentUser.id
   }).then(function(){ loadNotifUnreadCount(); });
 }
 
