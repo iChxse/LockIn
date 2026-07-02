@@ -2006,7 +2006,7 @@ async function notifyWorkoutLike(workoutOwnerId, workoutId, likerName){
       p_liker_id: currentUser.id,
       p_liker_name: likerName
     });
-    if(error) console.error('notifyWorkoutLike error:', error.message);
+    if(error){ console.error('notifyWorkoutLike error:', error.message); alert('Like notif error: ' + error.message); }
   } catch(e){ console.error('notifyWorkoutLike error:', e); }
 }
 
@@ -3464,7 +3464,9 @@ async function doLike(btn, workoutId, i){
   btn.dataset.count = newCount;
   await sb.from('workout_likes').insert({workout_id: workoutId, user_id: currentUser.id});
   var ownerId = btn.dataset.owner;
-  if(ownerId) notifyWorkoutLike(ownerId, workoutId, currentProfile.name || 'Someone');
+  if(ownerId && currentUser && currentProfile){
+    notifyWorkoutLike(ownerId, workoutId, currentProfile.name || currentUser.email || 'Someone');
+  }
 }
 
 async function doUnlike(btn, workoutId){
@@ -3477,10 +3479,15 @@ async function doUnlike(btn, workoutId){
   await sb.from('workout_likes').delete()
     .eq('workout_id', workoutId)
     .eq('user_id', currentUser.id);
-  // Remove the like notification so recipient's center stays accurate
-  var dedupKey = 'like:' + String(workoutId) + ':' + currentUser.id;
-  sb.from('notifications').delete().eq('dedup_key', dedupKey)
-    .then(function(){ loadNotifUnreadCount(); });
+  // Remove the like notification via RPC — the notification belongs to the
+  // workout owner so direct delete is blocked by RLS for the liker.
+  sb.rpc('delete_like_notification', {
+    p_workout_id: String(workoutId),
+    p_liker_id: currentUser.id
+  }).then(function(res){
+    if(res.error) console.error('Unlike notif cleanup error:', res.error.message);
+    loadNotifUnreadCount();
+  });
 }
 
 async function postComment(workoutId, i){
