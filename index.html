@@ -1997,20 +1997,16 @@ async function createNotification(userId, type, title, body, data){
 // from the last 24h and update it in place rather than spamming a new row.
 async function notifyWorkoutLike(workoutOwnerId, workoutId, likerName){
   if(!workoutOwnerId || workoutOwnerId === currentUser?.id) return;
-  // dedup_key = "like:{workoutId}:{likerId}" — unique per liker per workout.
-  // upsert with ignoreDuplicates means spamming like can never create more than
-  // one notification row regardless of timing or how many times they like/unlike/like.
-  var dedupKey = 'like:' + String(workoutId) + ':' + currentUser.id;
   try {
-    await sb.from('notifications').upsert({
-      user_id: workoutOwnerId,
-      type: 'like',
-      title: 'New like',
-      body: '❤️ ' + likerName + ' liked your workout.',
-      data: { workout_id: String(workoutId), liker_id: currentUser.id },
-      dedup_key: dedupKey,
-      read: false
-    }, { onConflict: 'user_id,dedup_key', ignoreDuplicates: true });
+    // Uses a DB function to atomically insert with ON CONFLICT DO NOTHING
+    // so spam-liking can never create duplicates regardless of timing.
+    var { error } = await sb.rpc('notify_like', {
+      p_owner_id: workoutOwnerId,
+      p_workout_id: String(workoutId),
+      p_liker_id: currentUser.id,
+      p_liker_name: likerName
+    });
+    if(error) console.error('notifyWorkoutLike error:', error.message);
   } catch(e){ console.error('notifyWorkoutLike error:', e); }
 }
 
