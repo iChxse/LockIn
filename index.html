@@ -1428,40 +1428,69 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
 
 <!-- Profile modal -->
 <div class="modal-bg" id="profile-modal"><div class="modal">
-  <div class="modal-title">Profile</div>
-  <div class="profile-pic-wrap" onclick="document.getElementById('avatar-file-inp').click()">
-    <div class="profile-pic-circle" id="profile-pic-preview"></div>
-    <div class="profile-pic-edit"><i class="ti ti-pencil"></i></div>
+  <!-- Tab switcher -->
+  <div style="display:flex;gap:0;background:var(--bs);border-radius:var(--r2);padding:3px;margin-bottom:1.25rem;">
+    <button id="pmod-tab-profile" onclick="switchProfileModalTab('profile')" style="flex:1;padding:7px;border:none;border-radius:var(--r2);font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font);background:var(--bp);color:var(--tp);transition:all .15s;">Profile</button>
+    <button id="pmod-tab-prefs" onclick="switchProfileModalTab('prefs')" style="flex:1;padding:7px;border:none;border-radius:var(--r2);font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font);background:none;color:var(--ts);transition:all .15s;">Preferences</button>
   </div>
-  <input type="file" id="avatar-file-inp" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none;" onchange="handleAvatarUpload(event)">
-  <div class="modal-lbl">Your name</div>
-  <input type="text" class="modal-inp" id="profile-name-inp" placeholder="Your name">
-  <div class="modal-lbl">Username</div>
-  <input type="text" class="modal-inp" id="profile-username-inp" placeholder="e.g. alexlifts" oninput="this.value=this.value.toLowerCase().replace(/[^a-z0-9_]/g,'')">
-  <div style="font-size:11px;color:var(--ts);margin-top:-16px;margin-bottom:1.25rem;">Your unique @username for finding friends</div>
-  <div class="modal-lbl">Email</div>
-  <div style="font-size:14px;color:var(--ts);margin-bottom:1.25rem;" id="profile-email-display"></div>
-  <div class="toggle-row">
-    <span class="toggle-lbl">Dark mode</span>
-    <label class="toggle-switch">
-      <input type="checkbox" id="dark-mode-toggle" onchange="toggleTheme()">
-      <div class="toggle-track"></div>
-    </label>
+
+  <!-- Profile tab -->
+  <div id="pmod-content-profile">
+    <div class="profile-pic-wrap" onclick="document.getElementById('avatar-file-inp').click()">
+      <div class="profile-pic-circle" id="profile-pic-preview"></div>
+      <div class="profile-pic-edit"><i class="ti ti-pencil"></i></div>
+    </div>
+    <input type="file" id="avatar-file-inp" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none;" onchange="handleAvatarUpload(event)">
+    <div class="modal-lbl">Your name</div>
+    <input type="text" class="modal-inp" id="profile-name-inp" placeholder="Your name">
+    <div class="modal-lbl">Username</div>
+    <input type="text" class="modal-inp" id="profile-username-inp" placeholder="e.g. alexlifts" oninput="this.value=this.value.toLowerCase().replace(/[^a-z0-9_]/g,'')">
+    <div style="font-size:11px;color:var(--ts);margin-top:-16px;margin-bottom:1.25rem;">Your unique @username for finding friends</div>
+    <div class="modal-lbl">Email</div>
+    <div style="font-size:14px;color:var(--ts);margin-bottom:1.25rem;" id="profile-email-display"></div>
+    <div class="modal-actions" style="justify-content:space-between;margin-top:1.25rem;">
+      <button class="modal-btn danger" onclick="doSignOut()">Sign out</button>
+      <div style="display:flex;gap:8px;">
+        <button class="modal-btn" onclick="closeModal('profile-modal')">Cancel</button>
+        <button class="modal-btn primary" onclick="saveProfile()">Save</button>
+      </div>
+    </div>
   </div>
-  <div class="toggle-row">
-    <span class="toggle-lbl">Daily workout reminder</span>
-    <label class="toggle-switch">
-      <input type="checkbox" id="reminder-toggle" onchange="onReminderToggleChange()">
-      <div class="toggle-track"></div>
-    </label>
-  </div>
-  <div id="reminder-time-row" style="display:none;margin-top:-8px;margin-bottom:1.25rem;">
-    <div class="modal-lbl">Reminder time</div>
-    <input type="time" class="modal-inp" id="reminder-time-inp" value="18:00">
-  </div>
-  <div class="modal-actions" style="justify-content:space-between;margin-top:1.25rem;">
-    <button class="modal-btn danger" onclick="doSignOut()">Sign out</button>
-    <div style="display:flex;gap:8px;">
+
+  <!-- Preferences tab -->
+  <div id="pmod-content-prefs" style="display:none;">
+    <div class="toggle-row">
+      <span class="toggle-lbl">Dark mode</span>
+      <label class="toggle-switch">
+        <input type="checkbox" id="dark-mode-toggle" onchange="toggleTheme()">
+        <div class="toggle-track"></div>
+      </label>
+    </div>
+    <div class="toggle-row" style="align-items:center;gap:12px;">
+      <div style="flex:1;min-width:0;">
+        <span class="toggle-lbl">Default sets per exercise</span>
+        <div style="font-size:11px;color:var(--ts);margin-top:2px;">How many sets to start with when you add a new exercise</div>
+      </div>
+      <select class="modal-inp" id="default-sets-inp" style="width:auto;padding:5px 10px;margin:0;flex-shrink:0;">
+        <option value="1">1</option>
+        <option value="2">2</option>
+        <option value="3" selected>3</option>
+        <option value="4">4</option>
+        <option value="5">5</option>
+      </select>
+    </div>
+    <div class="toggle-row">
+      <span class="toggle-lbl">Daily workout reminder</span>
+      <label class="toggle-switch">
+        <input type="checkbox" id="reminder-toggle" onchange="onReminderToggleChange()">
+        <div class="toggle-track"></div>
+      </label>
+    </div>
+    <div id="reminder-time-row" style="display:none;margin-top:-8px;margin-bottom:1.25rem;">
+      <div class="modal-lbl">Reminder time</div>
+      <input type="time" class="modal-inp" id="reminder-time-inp" value="18:00">
+    </div>
+    <div class="modal-actions" style="justify-content:flex-end;margin-top:1.25rem;">
       <button class="modal-btn" onclick="closeModal('profile-modal')">Cancel</button>
       <button class="modal-btn primary" onclick="saveProfile()">Save</button>
     </div>
@@ -1845,6 +1874,7 @@ async function openNotifPanel(){
 function closeNotifPanel(){
   document.getElementById('notif-panel').classList.remove('open');
   document.body.style.overflow = '';
+  clearNativeAppBadge();
 }
 
 function renderNotifList(){
@@ -1954,6 +1984,7 @@ async function markAllNotifsRead(){
   // against the update below and could read stale unread counts.
   var badge = document.getElementById('notif-bell-badge');
   if(badge) badge.style.display = 'none';
+  clearNativeAppBadge();
   await sb.from('notifications').update({ read: true }).eq('user_id', currentUser.id).eq('read', false);
 }
 
@@ -1973,27 +2004,29 @@ async function createNotification(userId, type, title, body, data){
 async function notifyWorkoutLike(workoutOwnerId, workoutId, likerName){
   if(!workoutOwnerId || workoutOwnerId === currentUser?.id) return;
   try {
-    var since = new Date(Date.now() - 24*60*60*1000).toISOString();
+    // Check if THIS liker has already generated a notification for this workout
+    // — no time limit, no read-status filter. Like → unlike → like should
+    // never produce more than one notification total.
     var { data: existing } = await sb.from('notifications')
       .select('*')
       .eq('user_id', workoutOwnerId)
       .eq('type', 'like')
-      .eq('read', false)
-      .gte('created_at', since)
       .filter('data->>workout_id', 'eq', String(workoutId))
       .maybeSingle();
     if(existing){
+      // Notification already exists — update the liker list if this person
+      // isn't already in it, but don't create a duplicate.
       var names = (existing.data && existing.data.likers) || [existing.data.first_liker];
-      if(!names.includes(likerName)) names.push(likerName);
-      var bodyText = names.length === 1
-        ? '❤️ '+names[0]+' liked your workout.'
-        : names.length === 2
-          ? '❤️ '+names[0]+' and '+names[1]+' liked your workout.'
-          : '❤️ '+names[0]+' and '+(names.length-1)+' others liked your workout.';
+      if(names.includes(likerName)) return; // already notified, do nothing
+      names.push(likerName);
+      var bodyText = names.length === 2
+        ? '❤️ '+names[0]+' and '+names[1]+' liked your workout.'
+        : '❤️ '+names[0]+' and '+(names.length-1)+' others liked your workout.';
       await sb.from('notifications').update({
         body: bodyText,
         data: Object.assign({}, existing.data, { likers: names }),
-        created_at: new Date().toISOString() // bump to top
+        read: false, // bump back to unread since someone new liked it
+        created_at: new Date().toISOString()
       }).eq('id', existing.id);
     } else {
       await createNotification(workoutOwnerId, 'like', 'New like',
@@ -2099,6 +2132,11 @@ async function onAuthSuccess(user){
     profile = { id: user.id, name, email: user.email };
   }
   currentProfile = profile;
+  // Apply user preferences loaded from profile
+  if(profile.default_sets) {
+    _defaultSets = profile.default_sets;
+    localStorage.setItem('wl_default_sets', String(_defaultSets));
+  }
   updateGreeting();
   await loadFromSupabase();
   // ── XP: always derive from history on login to stay in sync ──
@@ -2129,56 +2167,30 @@ async function onAuthSuccess(user){
 // (`npm install @capacitor/push-notifications && npx cap sync ios`).
 // Capacitor automatically exposes installed plugins on window.Capacitor.Plugins
 // — no bundler or CDN import needed since this is a single-file web app.
-function showPushDebug(msg){
-  var el = document.getElementById('push-debug-overlay');
-  if(!el){
-    el = document.createElement('div');
-    el.id = 'push-debug-overlay';
-    el.style.cssText = 'position:fixed;bottom:90px;left:8px;right:8px;background:rgba(0,0,0,0.92);color:#0f0;font-size:11px;font-family:monospace;padding:10px;border-radius:8px;z-index:9999;max-height:200px;overflow-y:auto;white-space:pre-wrap;';
-    document.body.appendChild(el);
-  }
-  el.textContent += msg + '\n';
-  el.scrollTop = el.scrollHeight;
-}
-
+// Assumes @capacitor/push-notifications is installed via npm and synced
+// (`npm install @capacitor/push-notifications && npx cap sync ios`).
+// Capacitor automatically exposes installed plugins on window.Capacitor.Plugins
+// — no bundler or CDN import needed since this is a single-file web app.
 async function registerPushNotifications(){
-  showPushDebug('--- registerPushNotifications start ---');
-  showPushDebug('isNative: ' + (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()));
-  if(!window.Capacitor || !window.Capacitor.isNativePlatform || !window.Capacitor.isNativePlatform()){
-    showPushDebug('STOP: not running as native platform (browser?)');
-    return;
-  }
+  if(!window.Capacitor || !window.Capacitor.isNativePlatform || !window.Capacitor.isNativePlatform()) return;
   const PushNotifications = window.Capacitor.Plugins && window.Capacitor.Plugins.PushNotifications;
-  showPushDebug('PushNotifications plugin found: ' + !!PushNotifications);
   if(!PushNotifications){
-    showPushDebug('STOP: PushNotifications plugin missing from window.Capacitor.Plugins');
     console.warn('PushNotifications plugin not found — did you run npm install @capacitor/push-notifications && npx cap sync ios?');
     return;
   }
   try {
     const permStatus = await PushNotifications.checkPermissions();
-    showPushDebug('Current permission: ' + JSON.stringify(permStatus));
     if(permStatus.receive !== 'granted'){
       const req = await PushNotifications.requestPermissions();
-      showPushDebug('Requested permission result: ' + JSON.stringify(req));
-      if(req.receive !== 'granted'){
-        showPushDebug('STOP: permission not granted');
-        return;
-      }
+      if(req.receive !== 'granted') return;
     }
     // Register listeners BEFORE calling register() — if a token arrives
     // before the listener exists, the event is missed entirely.
     PushNotifications.addListener('registration', async function(token){
-      showPushDebug('GOT TOKEN: ' + (token?.value ? token.value.slice(0,20)+'...' : 'EMPTY'));
-      if(!currentUser || !token?.value){
-        showPushDebug('STOP: no currentUser or empty token');
-        return;
-      }
-      const { error } = await sb.from('push_tokens').upsert({ user_id: currentUser.id, token: token.value, platform: 'ios' }, { onConflict: 'user_id,token' });
-      showPushDebug('Saved to push_tokens: ' + (error ? 'ERROR - '+error.message : 'SUCCESS'));
+      if(!currentUser || !token?.value) return;
+      await sb.from('push_tokens').upsert({ user_id: currentUser.id, token: token.value, platform: 'ios' }, { onConflict: 'user_id,token' });
     });
     PushNotifications.addListener('registrationError', function(err){
-      showPushDebug('REGISTRATION ERROR: ' + JSON.stringify(err));
       console.error('Push registration error:', err);
     });
     // Push arrives while app is open/foregrounded — refresh badge immediately
@@ -2197,17 +2209,44 @@ async function registerPushNotifications(){
         });
       }
     });
-
-    showPushDebug('Calling PushNotifications.register()...');
     await PushNotifications.register();
-    showPushDebug('register() call completed — waiting for registration event');
   } catch(e){
-    showPushDebug('EXCEPTION: ' + (e && e.message ? e.message : String(e)));
     console.error('Push notification setup failed:', e);
   }
 }
 
-// ── Profile modal ──
+// ── iOS home screen badge clearing ──────────────────────────────────────
+// The iOS app icon badge (set by APNs) doesn't auto-clear when the user
+// reads notifications inside the app — we have to explicitly reset it.
+// Uses the Capacitor PushNotifications plugin since it exposes the same
+// badge API, or falls back to the older Badge plugin if present.
+// Called whenever the user clears/reads notifications or brings app to foreground.
+function clearNativeAppBadge(){
+  if(!window.Capacitor || !window.Capacitor.isNativePlatform || !window.Capacitor.isNativePlatform()) return;
+  // PushNotifications.removeAllDeliveredNotifications() clears the iOS
+  // notification centre entries AND resets the app icon badge to 0.
+  var PushNotifications = window.Capacitor.Plugins && window.Capacitor.Plugins.PushNotifications;
+  if(PushNotifications && PushNotifications.removeAllDeliveredNotifications){
+    PushNotifications.removeAllDeliveredNotifications();
+  }
+  // Also try the Badge plugin if it's available (belt-and-suspenders)
+  var Badge = window.Capacitor.Plugins && window.Capacitor.Plugins.Badge;
+  if(Badge && Badge.set) Badge.set({ count: 0 });
+}
+
+// Listen for app coming to the foreground (user opens app from home screen)
+// and clear the badge immediately so stale counts don't linger.
+(function setupAppForegroundListener(){
+  if(!window.Capacitor || !window.Capacitor.isNativePlatform || !window.Capacitor.isNativePlatform()) return;
+  var App = window.Capacitor.Plugins && window.Capacitor.Plugins.App;
+  if(!App || !App.addListener) return;
+  App.addListener('appStateChange', function(state){
+    if(state.isActive){
+      clearNativeAppBadge();
+      loadNotifUnreadCount(); // also refresh the in-app bell badge
+    }
+  });
+})();
 function updateProfileConsistencyCard(){
   // Find the consistency card on the profile tab and update it in-place.
   // Uses the global history array so it's always current.
@@ -2437,8 +2476,19 @@ function utcTimeToLocal(utcHHMM){
   return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
 }
 
+function switchProfileModalTab(tab){
+  var isProfile = tab === 'profile';
+  document.getElementById('pmod-content-profile').style.display = isProfile ? '' : 'none';
+  document.getElementById('pmod-content-prefs').style.display = isProfile ? 'none' : '';
+  document.getElementById('pmod-tab-profile').style.background = isProfile ? 'var(--bp)' : 'none';
+  document.getElementById('pmod-tab-profile').style.color = isProfile ? 'var(--tp)' : 'var(--ts)';
+  document.getElementById('pmod-tab-prefs').style.background = isProfile ? 'none' : 'var(--bp)';
+  document.getElementById('pmod-tab-prefs').style.color = isProfile ? 'var(--ts)' : 'var(--tp)';
+}
+
 function openProfileModal(){
   if(!currentProfile) return;
+  switchProfileModalTab('profile');
   document.getElementById('profile-name-inp').value = currentProfile.name || '';
   document.getElementById('profile-username-inp').value = currentProfile.username || '';
   document.getElementById('profile-email-display').textContent = currentProfile.email || currentUser?.email || '';
@@ -2446,11 +2496,11 @@ function openProfileModal(){
   var remToggle = document.getElementById('reminder-toggle');
   var remTimeRow = document.getElementById('reminder-time-row');
   var remTimeInp = document.getElementById('reminder-time-inp');
-  var remEnabled = currentProfile.reminder_enabled !== false; // default true
+  var remEnabled = currentProfile.reminder_enabled !== false;
   remToggle.checked = remEnabled;
   remTimeRow.style.display = remEnabled ? '' : 'none';
-  // reminder_time is stored in UTC — convert to local for the picker
   remTimeInp.value = utcTimeToLocal(currentProfile.reminder_time || '18:00');
+  document.getElementById('default-sets-inp').value = String(_defaultSets);
   const ppEl = document.getElementById('profile-pic-preview');
   if(ppEl){ if(currentProfile.avatar_url){ ppEl.innerHTML='<img class="avatar-img" src="'+currentProfile.avatar_url+'" alt="avatar">'; } else { ppEl.innerHTML='<span>'+((currentProfile.name||'?').charAt(0).toUpperCase())+'</span>'; } }
   openModal('profile-modal');
@@ -2473,14 +2523,17 @@ async function saveProfile(){
   }
   const reminderEnabled = document.getElementById('reminder-toggle').checked;
   const reminderTimeLocal = document.getElementById('reminder-time-inp').value || '18:00';
+  const newDefaultSets = parseInt(document.getElementById('default-sets-inp').value) || 3;
+  _defaultSets = newDefaultSets;
+  localStorage.setItem('wl_default_sets', String(newDefaultSets));
   // Convert local picker time to UTC before saving — the daily-reminder
   // cron only ever compares against UTC, so this conversion is what makes
   // reminders fire at the right real-world hour for users outside UTC.
   const reminderTimeUTC = localTimeToUTC(reminderTimeLocal);
-  await sb.from('profiles').update({ name, username: username || null, reminder_enabled: reminderEnabled, reminder_time: reminderTimeUTC }).eq('id', currentUser.id);
+  await sb.from('profiles').update({ name, username: username || null, reminder_enabled: reminderEnabled, reminder_time: reminderTimeUTC, default_sets: newDefaultSets }).eq('id', currentUser.id);
   const { data: fresh } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
   if(fresh) currentProfile = fresh;
-  else { currentProfile.name = name; currentProfile.username = username; currentProfile.reminder_enabled = reminderEnabled; currentProfile.reminder_time = reminderTimeUTC; }
+  else { currentProfile.name = name; currentProfile.username = username; currentProfile.reminder_enabled = reminderEnabled; currentProfile.reminder_time = reminderTimeUTC; currentProfile.default_sets = newDefaultSets; }
   updateGreeting();
   closeModal('profile-modal');
 }
@@ -3835,6 +3888,10 @@ function toggleAddCardioCustom(){
 var _cardioActivities = ['Running','Walking','Incline Walk','Cycling','Stairmaster','Elliptical','Rowing','Treadmill','Assault Bike','Jump Rope','Hiking'];
 var _cardioTimers = {};
 
+// ── User preferences ────────────────────────────────────────────────────
+// Stored in localStorage so they persist across sessions without a DB round-trip.
+var _defaultSets = parseInt(localStorage.getItem('wl_default_sets') || '3');
+
 function getCardioIcon(name){
   var icons = {running:'🏃',walking:'🚶',cycling:'🚴',stairmaster:'🪜',elliptical:'🏃',rowing:'🚣',treadmill:'🏃','assault bike':'🚴',hiking:'🥾','jump rope':'🪃','incline walk':'🚶'};
   return icons[(name||'').toLowerCase()] || '🏃';
@@ -4098,7 +4155,8 @@ function pickEx(name){
 
 function addSingle(name){
   if(blocks.find(b => b.type==='single' && b.exercises[0].name===name)) return;
-  blocks.push({type:'single', exercises:[{name, sets:[{w:'',r:''}]}]});
+  var sets = Array.from({length: _defaultSets}, function(){ return {w:'',r:''}; });
+  blocks.push({type:'single', exercises:[{name, sets}]});
   renderBlocks();
 }
 
@@ -4116,8 +4174,8 @@ function pickSS(name){
   } else {
     if(name === ssFirst) return;
     blocks.push({type:'superset', exercises:[
-      {name:ssFirst, sets:[{w:'',r:''}]},
-      {name, sets:[{w:'',r:''}]}
+      {name:ssFirst, sets: Array.from({length: _defaultSets}, function(){ return {w:'',r:''}; })},
+      {name, sets: Array.from({length: _defaultSets}, function(){ return {w:'',r:''}; })}
     ]});
     ssFirst = null;
     document.getElementById('ss-pending').style.display = 'none';
