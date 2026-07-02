@@ -1839,7 +1839,8 @@ async function loadNotifUnreadCount(){
     var { count } = await sb.from('notifications')
       .select('id', { count: 'exact', head: true })
       .eq('user_id', currentUser.id)
-      .eq('read', false);
+      .eq('read', false)
+      .eq('hidden', false);
     var badge = document.getElementById('notif-bell-badge');
     if(badge){
       if(count && count > 0){ badge.textContent = count > 99 ? '99+' : count; badge.style.display = 'flex'; }
@@ -1857,6 +1858,7 @@ async function openNotifPanel(){
     var { data } = await sb.from('notifications')
       .select('*')
       .eq('user_id', currentUser.id)
+      .eq('hidden', false)
       .order('created_at', { ascending: false })
       .limit(50);
     _notifCache = data || [];
@@ -1998,8 +2000,8 @@ async function createNotification(userId, type, title, body, data){
 async function notifyWorkoutLike(workoutOwnerId, workoutId, likerName){
   if(!workoutOwnerId || workoutOwnerId === currentUser?.id) return;
   try {
-    // Uses a DB function to atomically insert with ON CONFLICT DO NOTHING
-    // so spam-liking can never create duplicates regardless of timing.
+    // notify_like RPC: inserts with ON CONFLICT DO NOTHING (first like),
+    // or un-hides if they previously unliked (subsequent likes).
     var { error } = await sb.rpc('notify_like', {
       p_owner_id: workoutOwnerId,
       p_workout_id: String(workoutId),
@@ -3479,13 +3481,13 @@ async function doUnlike(btn, workoutId){
   await sb.from('workout_likes').delete()
     .eq('workout_id', workoutId)
     .eq('user_id', currentUser.id);
-  // Remove the like notification via RPC — the notification belongs to the
-  // workout owner so direct delete is blocked by RLS for the liker.
-  sb.rpc('delete_like_notification', {
+  // Hide the like notification rather than deleting it — keeping the row
+  // preserves the unique dedup_key so re-liking doesn't spam a new notification.
+  sb.rpc('hide_like_notification', {
     p_workout_id: String(workoutId),
     p_liker_id: currentUser.id
   }).then(function(res){
-    if(res.error) console.error('Unlike notif cleanup error:', res.error.message);
+    if(res.error) console.error('Unlike notif hide error:', res.error.message);
     loadNotifUnreadCount();
   });
 }
