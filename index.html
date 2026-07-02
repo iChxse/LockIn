@@ -1471,13 +1471,7 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
         <span class="toggle-lbl">Default sets per exercise</span>
         <div style="font-size:11px;color:var(--ts);margin-top:2px;">How many sets to start with when you add a new exercise</div>
       </div>
-      <select class="modal-inp" id="default-sets-inp" style="width:auto;padding:5px 10px;margin:0;flex-shrink:0;">
-        <option value="1">1</option>
-        <option value="2">2</option>
-        <option value="3" selected>3</option>
-        <option value="4">4</option>
-        <option value="5">5</option>
-      </select>
+      <input type="number" id="default-sets-inp" min="1" max="20" inputmode="numeric" value="3" style="width:60px;padding:6px 8px;border:1px solid var(--bo3);border-radius:var(--r1);background:var(--input-bg);color:var(--tp);font-size:15px;font-weight:500;text-align:center;flex-shrink:0;">
     </div>
     <div class="toggle-row">
       <span class="toggle-lbl">Daily workout reminder</span>
@@ -1488,7 +1482,7 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
     </div>
     <div id="reminder-time-row" style="display:none;margin-top:-8px;margin-bottom:1.25rem;">
       <div class="modal-lbl">Reminder time</div>
-      <input type="time" class="modal-inp" id="reminder-time-inp" value="18:00">
+      <input type="time" class="modal-inp" id="reminder-time-inp" value="18:00" style="width:auto;max-width:160px;">
     </div>
     <div class="modal-actions" style="justify-content:flex-end;margin-top:1.25rem;">
       <button class="modal-btn" onclick="closeModal('profile-modal')">Cancel</button>
@@ -2523,7 +2517,7 @@ async function saveProfile(){
   }
   const reminderEnabled = document.getElementById('reminder-toggle').checked;
   const reminderTimeLocal = document.getElementById('reminder-time-inp').value || '18:00';
-  const newDefaultSets = parseInt(document.getElementById('default-sets-inp').value) || 3;
+  const newDefaultSets = Math.max(1, parseInt(document.getElementById('default-sets-inp').value) || 3);
   _defaultSets = newDefaultSets;
   localStorage.setItem('wl_default_sets', String(newDefaultSets));
   // Convert local picker time to UTC before saving — the daily-reminder
@@ -3342,14 +3336,12 @@ async function deleteComment(commentId, workoutIdx){
     var idsToClean = [commentId].concat((replies||[]).map(function(r){ return r.id; }));
     await sb.from('workout_comments').delete().eq('parent_id', commentId);
     await sb.from('workout_comments').delete().eq('id', commentId);
-    // Remove any notifications tied to these comments so they don't linger
-    // for the recipient after the comment itself is gone.
+    // Remove notifications tied to these comments using RPC for reliable
+    // jsonb field matching (direct filter syntax can silently fail on UUIDs)
     idsToClean.forEach(function(cid){
-      sb.from('notifications').delete().filter('data->>comment_id', 'eq', String(cid)).then(function(res){
-        if(res.error) console.error('Notification cleanup failed:', res.error.message);
-      });
+      sb.rpc('delete_notifications_by_data', { p_key: 'comment_id', p_value: String(cid) })
+        .then(function(res){ if(res.error) console.error('Comment notif cleanup failed:', res.error.message); });
     });
-    // Refresh badge in case one of the deleted notifications was our own
     loadNotifUnreadCount();
     var nextEl = el.nextElementSibling;
     if(nextEl && nextEl.classList.contains('comment-replies')) nextEl.remove();
@@ -3483,6 +3475,8 @@ document.addEventListener('click', function(e){
   }
 });
 
+var _likeNotifTimers = {}; // keyed by workoutId
+
 async function doLike(btn, workoutId, i){
   const currentCount = parseInt(btn.dataset.count) || 0;
   const newCount = currentCount + 1;
@@ -3491,11 +3485,22 @@ async function doLike(btn, workoutId, i){
   btn.dataset.liked = '1';
   btn.dataset.count = newCount;
   await sb.from('workout_likes').insert({workout_id: workoutId, user_id: currentUser.id});
+  // Debounce notification — only send after 2s of the like being stable.
+  // If the user rapidly likes/unlikes, the timer resets and no notification fires.
   var ownerId = btn.dataset.owner;
-  if(ownerId) notifyWorkoutLike(ownerId, workoutId, currentProfile.name || 'Someone');
+  if(ownerId){
+    clearTimeout(_likeNotifTimers[workoutId]);
+    _likeNotifTimers[workoutId] = setTimeout(function(){
+      notifyWorkoutLike(ownerId, workoutId, currentProfile.name || 'Someone');
+      delete _likeNotifTimers[workoutId];
+    }, 2000);
+  }
 }
 
 async function doUnlike(btn, workoutId){
+  // Cancel any pending like notification — user changed their mind
+  clearTimeout(_likeNotifTimers[workoutId]);
+  delete _likeNotifTimers[workoutId];
   const currentCount = parseInt(btn.dataset.count) || 0;
   const newCount = Math.max(0, currentCount - 1);
   btn.className = 'feed-pill-btn';
@@ -3505,6 +3510,20 @@ async function doUnlike(btn, workoutId){
   await sb.from('workout_likes').delete()
     .eq('workout_id', workoutId)
     .eq('user_id', currentUser.id);
+  // Remove the like notification for this workout — the recipient shouldn't
+  // see a "liked your workout" from someone who subsequently unliked it.
+  var likerName = currentProfile.name || '';
+  sb.from('notifications')
+    .delete()
+    .eq('type', 'like')
+    .filter('data->>workout_id', 'eq', String(workoutId))
+    .then(function(res){
+      if(res.error){
+        // Fallback to RPC if filter syntax fails
+        sb.rpc('delete_notifications_by_data', { p_key: 'workout_id', p_value: String(workoutId) });
+      }
+    });
+  loadNotifUnreadCount();
 }
 
 async function postComment(workoutId, i){
