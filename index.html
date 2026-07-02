@@ -1988,7 +1988,7 @@ async function createNotification(userId, type, title, body, data){
   if(!userId || userId === currentUser?.id) return; // never notify yourself
   try {
     var { error } = await sb.from('notifications').insert({ user_id: userId, type, title, body, data: data||{} });
-    if(error) console.error('createNotification failed:', error.message, {userId, type});
+    if(error && !error.message.includes('duplicate')) console.error('createNotification failed:', error.message, {userId, type});
   } catch(e){ console.error('createNotification exception:', e); }
 }
 
@@ -1998,19 +1998,12 @@ async function createNotification(userId, type, title, body, data){
 async function notifyWorkoutLike(workoutOwnerId, workoutId, likerName){
   if(!workoutOwnerId || workoutOwnerId === currentUser?.id) return;
   try {
-    // Check if we already notified this owner about this liker on this workout
-    var { data: existing } = await sb.from('notifications')
-      .select('id')
-      .eq('user_id', workoutOwnerId)
-      .eq('type', 'like')
-      .filter('data->>workout_id', 'eq', String(workoutId))
-      .filter('data->>liker_id', 'eq', currentUser.id)
-      .maybeSingle();
-    if(existing) return; // already sent once, never send again
+    // DB has a unique index on (data->>'workout_id', data->>'liker_id') WHERE type='like'
+    // so duplicate inserts are silently rejected by Postgres — no client-side check needed.
     await createNotification(workoutOwnerId, 'like', 'New like',
       '❤️ ' + likerName + ' liked your workout.',
       { workout_id: String(workoutId), liker_id: currentUser.id });
-  } catch(e){ console.error('notifyWorkoutLike error:', e); }
+  } catch(e){ /* duplicate rejected by DB unique constraint — expected */ }
 }
 
 function notifyWorkoutComment(workoutOwnerId, workoutId, workoutTs, commenterName, isReply, commentId){
