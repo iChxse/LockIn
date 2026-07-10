@@ -94,7 +94,7 @@ input, select, button, textarea { font-family: var(--font); }
 .app {
   max-width: 480px;
   margin: 0 auto;
-  padding: env(safe-area-inset-top) 1rem calc(var(--bottom-nav-h) + env(safe-area-inset-bottom, 0px) + 1.25rem);
+  padding: env(safe-area-inset-top) 1rem calc(var(--bottom-nav-h) + env(safe-area-inset-bottom, 0px) + 2rem);
   min-height: 100vh;
   position: relative;
 }
@@ -116,12 +116,29 @@ input, select, button, textarea { font-family: var(--font); }
 .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--success); flex-shrink: 0; box-shadow: 0 0 8px rgba(52, 199, 89, 0.45); }
 .sync-dot.saving { background: var(--dropset); box-shadow: 0 0 8px rgba(251, 191, 36, 0.45); }
 .sync-dot.error { background: var(--danger); box-shadow: 0 0 8px rgba(255, 69, 58, 0.45); }
-
-
+/* ── Notification bell (top-right of activity feed header) ── */
+.notif-bell-badge {
+  position: absolute; top: -3px; right: -3px; min-width: 15px; height: 15px;
+  background: #E24B4A; color: #fff; font-size: 9px; font-weight: 700;
+  border-radius: 10px; display: flex; align-items: center; justify-content: center;
+  padding: 0 3px; border: 1.5px solid var(--bs); pointer-events:none;
+}
+.notif-panel { position: fixed; inset: 0; background: var(--bs); z-index: 150; display: none; flex-direction: column; max-width: 480px; margin: 0 auto; }
+.notif-panel.open { display: flex; }
+.notif-panel-hdr { display:flex; align-items:center; gap:10px; padding: 12px 16px; border-bottom: 0.5px solid var(--bo3); flex-shrink:0; }
+.notif-panel-title { font-size: 17px; font-weight: 700; color: var(--tp); flex: 1; }
+.notif-panel-body { flex: 1; overflow-y: auto; padding: 8px 0 24px; }
+.notif-row { display:flex; gap:12px; padding:13px 16px; border-bottom:0.5px solid var(--bo3); cursor:pointer; position:relative; }
+.notif-row.unread { background: rgba(124,124,255,0.06); }
+.notif-row.unread::before { content:''; position:absolute; left:6px; top:50%; transform:translateY(-50%); width:6px; height:6px; border-radius:50%; background:var(--accent); }
+.notif-icon { font-size: 20px; flex-shrink:0; width:30px; text-align:center; line-height:1.4; }
+.notif-text { flex:1; min-width:0; }
+.notif-title { font-size: 13px; color: var(--tp); line-height:1.4; }
+.notif-time { font-size: 11px; color: var(--tm); margin-top:3px; }
 .tabs { display: none; }
 .bottom-bar {
   position: fixed;
-  bottom: env(keyboard-inset-height, 0px);
+  bottom: 0;
   left: 50%;
   transform: translateX(-50%);
   width: 100%;
@@ -195,10 +212,14 @@ input, select, button, textarea { font-family: var(--font); }
 #tab-log:not([style*="display: none"]) #blocks-list:empty { display: none; }
 #tab-log:not([style*="display: none"]) > div:last-child {
   margin-top: 4px;
-  margin-bottom: 0 !important;
   padding-top: 12px;
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem);
   background: linear-gradient(to bottom, transparent 0%, var(--bs) 28%);
 }
+.block-drag-wrapper { position: relative; }
+.block-drag-wrapper > .block-drag-handle { opacity: 0; transition: opacity 0.15s; }
+.block-drag-wrapper:hover > .block-drag-handle,
+.block-drag-wrapper:active > .block-drag-handle { opacity: 1; }
 .exercise-card {
   background: var(--bp);
   border: 1px solid var(--bo3);
@@ -1257,7 +1278,10 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
         <div style="font-size:22px;font-weight:800;color:var(--tp);letter-spacing:-0.02em;">Lock In.</div>
         <div style="display:flex;align-items:center;gap:8px;justify-content:flex-end;flex-shrink:0;">
           <button id="add-friends-btn" onclick="openManageFriendsModal()" style="display:none;background:var(--bp);border:0.5px solid var(--bo3);border-radius:var(--r1);cursor:pointer;color:var(--ts);font-size:13px;padding:4px 10px;align-items:center;gap:5px;flex-shrink:0;line-height:1;"><i class="ti ti-user-plus"></i> Friends</button>
-
+          <button id="notif-bell-btn" onclick="openNotifPanel()" style="display:none;position:relative;background:var(--bp);border:0.5px solid var(--bo3);border-radius:50%;width:32px;height:32px;cursor:pointer;color:var(--ts);align-items:center;justify-content:center;flex-shrink:0;">
+            <i class="ti ti-bell" style="font-size:16px;"></i>
+            <span class="notif-bell-badge" id="notif-bell-badge" style="display:none;">0</span>
+          </button>
       </div>
       </div>
     </div>
@@ -1268,6 +1292,16 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
 </div>
 
 <!-- iOS-style bottom tab bar -->
+<div class="notif-panel" id="notif-panel">
+  <div class="statusbarspacer"></div>
+  <div class="notif-panel-hdr">
+    <button onclick="closeNotifPanel()" style="background:none;border:none;color:var(--accent);font-size:14px;font-weight:600;font-family:var(--font);cursor:pointer;display:flex;align-items:center;gap:4px;"><i class="ti ti-arrow-left"></i> Back</button>
+    <div class="notif-panel-title">Notifications</div>
+    <button onclick="markAllNotifsRead()" style="background:none;border:none;color:var(--ts);font-size:13px;font-family:var(--font);cursor:pointer;">Mark all read</button>
+  </div>
+  <div class="notif-panel-body" id="notif-panel-body"></div>
+</div>
+
 <div class="bottom-bar">
   <button class="btab active" id="btab-friends" onclick="switchTab('friends')">
     <i class="ti ti-activity"></i>
@@ -1486,7 +1520,7 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 });
 
 // ── App version — update this with every release ──────────
-const APP_VERSION = '1.5.3';
+const APP_VERSION = '1.5.4';
 
 // Keep session alive across tab/app restores
 sb.auth.onAuthStateChange(function(event, session){
@@ -1670,6 +1704,10 @@ async function doResetPassword(){
 
 async function doSignOut(){
   await sb.auth.signOut();
+  document.getElementById('notif-bell-btn').style.display = 'none';
+  closeNotifPanel();
+  stopNotifPolling();
+
   // ── Clear all user state ──
   currentUser = null;
   currentProfile = null;
@@ -1783,9 +1821,302 @@ async function checkAppVersion(){
   }
 }
 
+// ════════════════════════════════════════════════════════════
+// ── Notification system ──────────────────────────────────────
+// ════════════════════════════════════════════════════════════
+var _notifPollInterval = null;
+var _notifCache = [];
+
+function startNotifPolling(){
+  stopNotifPolling();
+  // Poll every 45s for new notifications + unread count while app is open.
+  // (Native push notifications cover the "app closed" case — see push setup notes.)
+  _notifPollInterval = setInterval(loadNotifUnreadCount, 45000);
+}
+function stopNotifPolling(){
+  if(_notifPollInterval){ clearInterval(_notifPollInterval); _notifPollInterval = null; }
+}
+
+async function loadNotifUnreadCount(){
+  if(!currentUser) return;
+  try {
+    var { count } = await sb.from('notifications')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', currentUser.id)
+      .eq('read', false);
+    var badge = document.getElementById('notif-bell-badge');
+    if(badge){
+      if(count && count > 0){ badge.textContent = count > 99 ? '99+' : count; badge.style.display = 'flex'; }
+      else { badge.style.display = 'none'; }
+    }
+  } catch(e){ /* silent — notifications are non-critical */ }
+}
+
+async function openNotifPanel(){
+  document.getElementById('notif-panel').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  var body = document.getElementById('notif-panel-body');
+  body.innerHTML = '<div class="tab-loader"><div class="tab-loader-ring"></div></div>';
+  try {
+    var { data } = await sb.from('notifications')
+      .select('*')
+      .eq('user_id', currentUser.id)
+      .order('created_at', { ascending: false })
+      .limit(50);
+    _notifCache = data || [];
+    renderNotifList();
+  } catch(e){
+    body.innerHTML = '<div class="empty" style="padding:2rem 0;">Couldn\'t load notifications.</div>';
+  }
+}
+function closeNotifPanel(){
+  document.getElementById('notif-panel').classList.remove('open');
+  document.body.style.overflow = '';
+  clearNativeAppBadge();
+}
+
+function renderNotifList(){
+  var body = document.getElementById('notif-panel-body');
+  if(!_notifCache.length){
+    body.innerHTML = '<div class="empty" style="padding:3rem 1rem;text-align:center;"><i class="ti ti-bell-off" style="font-size:32px;display:block;margin-bottom:10px;color:var(--tm);"></i>No notifications yet.<br><span style="font-size:12px;color:var(--tm);">Likes, comments, and friend activity will show up here.</span></div>';
+    return;
+  }
+  body.innerHTML = _notifCache.map(function(n, i){
+    var icon = NOTIF_ICONS[n.type] || '🔔';
+    var timeStr = formatNotifTime(n.created_at);
+    return '<div class="notif-row'+(n.read?'':' unread')+'" onclick="onNotifTap('+i+')">' +
+      '<div class="notif-icon">'+icon+'</div>' +
+      '<div class="notif-text">' +
+        '<div class="notif-title">'+n.body+'</div>' +
+        '<div class="notif-time">'+timeStr+'</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+var NOTIF_ICONS = {
+  like: '❤️', comment: '💬', comment_reply: '💬',
+  friend_request: '🤝', friend_accept: '✅', tag: '👥',
+  leaderboard: '🏆', reminder: '💪'
+};
+
+function formatNotifTime(ts){
+  var d = new Date(ts), now = new Date();
+  var diffMs = now - d, diffMin = Math.floor(diffMs/60000), diffHr = Math.floor(diffMin/60), diffDay = Math.floor(diffHr/24);
+  if(diffMin < 1) return 'Just now';
+  if(diffMin < 60) return diffMin+'m ago';
+  if(diffHr < 24) return diffHr+'h ago';
+  if(diffDay < 7) return diffDay+'d ago';
+  return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+}
+
+async function onNotifTap(i){
+  var n = _notifCache[i];
+  if(!n) return;
+  if(!n.read){
+    n.read = true;
+    renderNotifList();
+    decrementNotifBadge();
+    sb.from('notifications').update({ read: true }).eq('id', n.id).then(function(){});
+  }
+  closeNotifPanel();
+  deepLinkNotif(n);
+}
+
+function decrementNotifBadge(){
+  var badge = document.getElementById('notif-bell-badge');
+  if(!badge) return;
+  var cur = parseInt(badge.textContent) || 0;
+  var next = Math.max(0, cur - 1);
+  if(next === 0){ badge.style.display = 'none'; }
+  else { badge.textContent = next; }
+}
+
+function deepLinkNotif(n){
+  var data = n.data || {};
+  switch(n.type){
+    case 'like':
+    case 'comment':
+    case 'comment_reply':
+    case 'tag':
+      switchTab('friends');
+      if(data.workout_id){
+        // Feed may need a moment to render after switching tabs
+        var attempts = 0;
+        var tryOpen = function(){
+          attempts++;
+          var card = document.querySelector('.activity-card[data-workout-id="'+data.workout_id+'"]');
+          if(card){
+            card.scrollIntoView({behavior:'smooth', block:'center'});
+            card.style.outline = '2px solid var(--accent)';
+            setTimeout(function(){ card.style.outline = ''; }, 1500);
+            if(n.type==='comment' || n.type==='comment_reply'){
+              var idx = parseInt((card.id||'').replace('acard-',''));
+              if(!isNaN(idx)) toggleComments(idx);
+            }
+          } else if(attempts < 10){
+            setTimeout(tryOpen, 300); // feed still loading — retry briefly
+          }
+        };
+        setTimeout(tryOpen, 300);
+      }
+      break;
+    case 'friend_request':
+    case 'friend_accept':
+      openManageFriendsModal();
+      break;
+    case 'leaderboard':
+      switchTab('friends');
+      setTimeout(function(){ switchLBTab('consistency'); }, 200);
+      break;
+    default:
+      break;
+  }
+}
+
+async function markAllNotifsRead(){
+  if(!currentUser) return;
+  _notifCache.forEach(function(n){ n.read = true; });
+  renderNotifList();
+  // Set badge to 0 immediately — querying Supabase right now would race
+  // against the update below and could read stale unread counts.
+  var badge = document.getElementById('notif-bell-badge');
+  if(badge) badge.style.display = 'none';
+  clearNativeAppBadge();
+  await sb.from('notifications').update({ read: true }).eq('user_id', currentUser.id).eq('read', false);
+}
+
+// ── Creating notifications (called at the moment of the social action) ──
+// Each call is fire-and-forget; failures never block the underlying action.
+async function createNotification(userId, type, title, body, data){
+  if(!userId || userId === currentUser?.id) return; // never notify yourself
+  try {
+    var { error } = await sb.from('notifications').insert({ user_id: userId, type, title, body, data: data||{} });
+    if(error && !error.message.includes('duplicate')) console.error('createNotification failed:', error.message, {userId, type});
+  } catch(e){ console.error('createNotification exception:', e); }
+}
+
+// Likes: group multiple recent likers into one notification when possible.
+// Strategy: check for an existing unread 'like' notification on this workout
+// from the last 24h and update it in place rather than spamming a new row.
+async function notifyWorkoutLike(workoutOwnerId, workoutId, likerName){
+  if(!workoutOwnerId || workoutOwnerId === currentUser?.id) return;
+  var dedupKey = 'like:' + String(workoutId) + ':' + currentUser.id;
+  try {
+    await sb.from('notifications').upsert({
+      user_id: workoutOwnerId,
+      type: 'like',
+      title: 'New like',
+      body: '\u2764\uFE0F ' + likerName + ' liked your workout.',
+      data: { workout_id: String(workoutId), liker_id: currentUser.id },
+      post_id: String(workoutId),
+      actor_id: currentUser.id,
+      dedup_key: dedupKey,
+      read: false
+    }, { onConflict: 'user_id,dedup_key' });
+  } catch(e){ console.error('notifyWorkoutLike:', e); }
+}
+
+function notifyWorkoutComment(workoutOwnerId, workoutId, workoutTs, commenterName, isReply, commentId){
+  if(!workoutOwnerId || workoutOwnerId === currentUser?.id) return;
+  if(!commentId) return;
+  var dedupKey = 'comment:' + String(commentId);
+  sb.from('notifications').upsert({
+    user_id: workoutOwnerId,
+    type: isReply ? 'comment_reply' : 'comment',
+    title: isReply ? 'New reply' : 'New comment',
+    body: '\uD83D\uDCAC ' + commenterName + (isReply ? ' replied to your comment.' : ' commented on your workout.'),
+    data: { workout_id: workoutId, comment_id: commentId },
+    post_id: String(workoutId),
+    actor_id: currentUser.id,
+    comment_id: String(commentId),
+    dedup_key: dedupKey,
+    read: false
+  }, { onConflict: 'user_id,dedup_key' }).then(function(){});
+}
+
+function notifyFriendRequest(addresseeId, requesterName){
+  createNotification(addresseeId, 'friend_request', 'Friend request',
+    '🤝 '+requesterName+' sent you a friend request.', {});
+}
+
+function notifyFriendAccept(requesterId, accepterName){
+  createNotification(requesterId, 'friend_accept', 'Friend request accepted',
+    '✅ '+accepterName+' accepted your friend request.', {});
+}
+
+function notifyWorkoutTag(taggedUserId, taggerName, workoutId, workoutTs){
+  createNotification(taggedUserId, 'tag', 'Tagged in a workout',
+    '👥 '+taggerName+' tagged you in a workout.',
+    { workout_id: workoutId, ts: workoutTs });
+}
+
+// ── Leaderboard change detection ──
+// Compares the user's current Consistency rank among friends against the
+// last-seen rank stored on their profile, and notifies on meaningful moves
+// (became #1, entered top 3, or jumped 3+ places). Runs once per session on
+// login — cheap enough not to need a server-side cron for v1.
+async function checkLeaderboardChanges(){
+  if(!currentUser) return;
+  try {
+    var { data: friendships } = await sb.from('friendships')
+      .select('requester_id,addressee_id')
+      .or('requester_id.eq.'+currentUser.id+',addressee_id.eq.'+currentUser.id)
+      .eq('status','accepted');
+    var friendIds = (friendships||[]).map(function(f){ return f.requester_id===currentUser.id ? f.addressee_id : f.requester_id; });
+    if(!friendIds.length) return;
+    var allIds = [currentUser.id].concat(friendIds);
+
+    var { data: profiles } = await sb.from('profiles').select('id,name').in('id', allIds);
+    var { data: workouts } = await sb.from('workouts').select('user_id,ts').in('user_id', allIds);
+    if(!workouts) return;
+
+    // Consistency = active days in last 30
+    var since = new Date(Date.now() - 30*24*60*60*1000);
+    var activeDays = {};
+    workouts.forEach(function(w){
+      if(new Date(w.ts) < since) return;
+      var key = w.user_id+':'+new Date(w.ts).toDateString();
+      activeDays[key] = true;
+    });
+    var counts = {};
+    allIds.forEach(function(id){ counts[id] = 0; });
+    Object.keys(activeDays).forEach(function(k){ var id = k.split(':')[0]; counts[id] = (counts[id]||0)+1; });
+
+    var ranked = allIds.slice().sort(function(a,b){ return counts[b]-counts[a]; });
+    var myNewRank = ranked.indexOf(currentUser.id) + 1;
+
+    var prevRanks = (currentProfile && currentProfile.last_leaderboard_rank) || {};
+    var myOldRank = prevRanks.consistency;
+
+    if(myOldRank && myOldRank !== myNewRank){
+      var nameOf = {}; (profiles||[]).forEach(function(p){ nameOf[p.id]=p.name; });
+      var msg = null;
+      if(myNewRank === 1 && myOldRank !== 1){
+        msg = '👑 You\'re now #1 on the Consistency leaderboard.';
+      } else if(myOldRank - myNewRank >= 3){
+        msg = '⬆️ You climbed '+(myOldRank-myNewRank)+' places on the leaderboard.';
+      } else if(myNewRank <= 3 && myOldRank > 3){
+        msg = '📈 You moved up to #'+myNewRank+' among your friends.';
+      } else if(myNewRank === myOldRank - 1 && myNewRank <= 5){
+        // Check who specifically passed/was passed for the most personal message
+        var passerId = ranked[myNewRank-2]; // the person now just above us... approximate
+        var passerName = nameOf[passerId];
+        msg = passerName ? '🏆 '+passerName+' is now ahead of you on the Consistency leaderboard.' : '📈 Your leaderboard position changed.';
+      }
+      if(msg) createNotification(currentUser.id, 'leaderboard', 'Leaderboard update', msg, {});
+    }
+
+    var newPrefs = Object.assign({}, prevRanks, { consistency: myNewRank });
+    await sb.from('profiles').update({ last_leaderboard_rank: newPrefs }).eq('id', currentUser.id);
+    if(currentProfile) currentProfile.last_leaderboard_rank = newPrefs;
+  } catch(e){ /* non-critical — never block app load */ }
+}
+
 async function onAuthSuccess(user){
   currentUser = user;
   document.getElementById('auth-screen').classList.remove('show');
+  // Load or create profile
   let { data: profile } = await sb.from('profiles').select('*').eq('id', user.id).maybeSingle();
   if(!profile){
     const name = user.user_metadata?.name || user.email.split('@')[0];
@@ -1793,25 +2124,121 @@ async function onAuthSuccess(user){
     profile = { id: user.id, name, email: user.email };
   }
   currentProfile = profile;
-  if(profile.default_sets){
+  // Apply user preferences loaded from profile
+  if(profile.default_sets) {
     _defaultSets = profile.default_sets;
     localStorage.setItem('wl_default_sets', String(_defaultSets));
   }
   updateGreeting();
   await loadFromSupabase();
+  // ── XP: always derive from history on login to stay in sync ──
+  // This is fast (pure JS, no extra network calls beyond the Supabase
+  // write) and ensures users coming from the old increment system, or
+  // who deleted/edited workouts while offline, are always correct.
   await backfillXp();
   await restoreExercisesFromHistory();
   renderDayChips();
   renderFeed();
   setTimeout(restoreTimer, 100);
+  // Compute and show streak in header
   var _ud = new Set(); history.forEach(function(e){ _ud.add(new Date(e.ts).toDateString()); });
   var _sc = new Date(); _sc.setHours(0,0,0,0); var _s = 0;
   while(_ud.has(_sc.toDateString())){ _s++; _sc.setDate(_sc.getDate()-1); }
   renderHeaderStreak(_s);
   await checkAppVersion();
+  document.getElementById('notif-bell-btn').style.display = 'flex';
+  await loadNotifUnreadCount();
+  startNotifPolling();
+  checkLeaderboardChanges();
+  registerPushNotifications();
   hideLoadingScreen();
 }
 
+// ── Native push registration (Capacitor only — no-ops in browser) ──
+// Assumes @capacitor/push-notifications is installed via npm and synced
+// (`npm install @capacitor/push-notifications && npx cap sync ios`).
+// Capacitor automatically exposes installed plugins on window.Capacitor.Plugins
+// — no bundler or CDN import needed since this is a single-file web app.
+// Assumes @capacitor/push-notifications is installed via npm and synced
+// (`npm install @capacitor/push-notifications && npx cap sync ios`).
+// Capacitor automatically exposes installed plugins on window.Capacitor.Plugins
+// — no bundler or CDN import needed since this is a single-file web app.
+async function registerPushNotifications(){
+  if(!window.Capacitor || !window.Capacitor.isNativePlatform || !window.Capacitor.isNativePlatform()) return;
+  const PushNotifications = window.Capacitor.Plugins && window.Capacitor.Plugins.PushNotifications;
+  if(!PushNotifications){
+    console.warn('PushNotifications plugin not found — did you run npm install @capacitor/push-notifications && npx cap sync ios?');
+    return;
+  }
+  try {
+    const permStatus = await PushNotifications.checkPermissions();
+    if(permStatus.receive !== 'granted'){
+      const req = await PushNotifications.requestPermissions();
+      if(req.receive !== 'granted') return;
+    }
+    // Register listeners BEFORE calling register() — if a token arrives
+    // before the listener exists, the event is missed entirely.
+    PushNotifications.addListener('registration', async function(token){
+      if(!currentUser || !token?.value) return;
+      await sb.from('push_tokens').upsert({ user_id: currentUser.id, token: token.value, platform: 'ios' }, { onConflict: 'user_id,token' });
+    });
+    PushNotifications.addListener('registrationError', function(err){
+      console.error('Push registration error:', err);
+    });
+    // Push arrives while app is open/foregrounded — refresh badge immediately
+    PushNotifications.addListener('pushNotificationReceived', function(){
+      loadNotifUnreadCount();
+    });
+    // Tapping a native push notification while app is backgrounded/closed
+    PushNotifications.addListener('pushNotificationActionPerformed', function(action){
+      var data = action.notification?.data;
+      if(data && data.notif_id){
+        sb.from('notifications').select('*').eq('id', data.notif_id).maybeSingle().then(function(res){
+          if(res.data){
+            sb.from('notifications').update({ read: true }).eq('id', res.data.id).then(function(){});
+            deepLinkNotif(res.data);
+          }
+        });
+      }
+    });
+    await PushNotifications.register();
+  } catch(e){
+    console.error('Push notification setup failed:', e);
+  }
+}
+
+// ── iOS home screen badge clearing ──────────────────────────────────────
+// The iOS app icon badge (set by APNs) doesn't auto-clear when the user
+// reads notifications inside the app — we have to explicitly reset it.
+// Uses the Capacitor PushNotifications plugin since it exposes the same
+// badge API, or falls back to the older Badge plugin if present.
+// Called whenever the user clears/reads notifications or brings app to foreground.
+function clearNativeAppBadge(){
+  if(!window.Capacitor || !window.Capacitor.isNativePlatform || !window.Capacitor.isNativePlatform()) return;
+  // PushNotifications.removeAllDeliveredNotifications() clears the iOS
+  // notification centre entries AND resets the app icon badge to 0.
+  var PushNotifications = window.Capacitor.Plugins && window.Capacitor.Plugins.PushNotifications;
+  if(PushNotifications && PushNotifications.removeAllDeliveredNotifications){
+    PushNotifications.removeAllDeliveredNotifications();
+  }
+  // Also try the Badge plugin if it's available (belt-and-suspenders)
+  var Badge = window.Capacitor.Plugins && window.Capacitor.Plugins.Badge;
+  if(Badge && Badge.set) Badge.set({ count: 0 });
+}
+
+// Listen for app coming to the foreground (user opens app from home screen)
+// and clear the badge immediately so stale counts don't linger.
+(function setupAppForegroundListener(){
+  if(!window.Capacitor || !window.Capacitor.isNativePlatform || !window.Capacitor.isNativePlatform()) return;
+  var App = window.Capacitor.Plugins && window.Capacitor.Plugins.App;
+  if(!App || !App.addListener) return;
+  App.addListener('appStateChange', function(state){
+    if(state.isActive){
+      clearNativeAppBadge();
+      loadNotifUnreadCount(); // also refresh the in-app bell badge
+    }
+  });
+})();
 function updateProfileConsistencyCard(){
   // Find the consistency card on the profile tab and update it in-place.
   // Uses the global history array so it's always current.
@@ -2215,7 +2642,12 @@ async function saveToSupabase(newEntry){
         const localEntry = history.find(function(e){ return e.ts === newEntry.ts; });
         if(localEntry) localEntry.id = inserted.id;
         localStorage.setItem('wl_history', JSON.stringify(history.slice(0,100)));
-
+        // Notify any tagged friends
+        if(newEntry.tagged && newEntry.tagged.length){
+          newEntry.tagged.forEach(function(t){
+            notifyWorkoutTag(t.id, currentProfile.name || 'Someone', inserted.id, newEntry.ts);
+          });
+        }
       }
     }
     const { error: exErr } = await sb.from('exercise_lists').upsert({ user_id: currentUser.id, exercises: EX, cardio_activities: _cardioActivities }, { onConflict: 'user_id' });
@@ -2374,20 +2806,6 @@ function renderStats(){
   var longestMins = timedWorkouts.length ? Math.max.apply(null, timedWorkouts.map(function(e){ return Math.round(e.duration_seconds/60); })) : 0;
   function fmtMins(m){ if(!m) return '—'; if(m<60) return m+' min'; var h=Math.floor(m/60),r=m%60; return r>0?h+'h '+r+'m':h+'h'; }
 
-  // ── Last 8 weeks bar chart ──
-  var weeks = [];
-  for(var i=7; i>=0; i--){
-    var ws = new Date(now); ws.setDate(now.getDate() - now.getDay() - i*7); ws.setHours(0,0,0,0);
-    var we = new Date(ws); we.setDate(ws.getDate()+7);
-    var count = history.filter(function(e){ var d2=new Date(e.ts); return d2>=ws && d2<we; }).length;
-    weeks.push({count:count, lbl:(ws.getMonth()+1)+'/'+(ws.getDate())});
-  }
-  var maxCount = Math.max.apply(null, weeks.map(function(w){return w.count;})) || 1;
-  var barHTML = weeks.map(function(w){
-    var pct = Math.round((w.count/maxCount)*100);
-    return '<div class="bar-col"><div class="bar-fill" style="height:'+pct+'%;"></div><div class="bar-lbl">'+w.lbl+'</div></div>';
-  }).join('');
-
   renderHeaderStreak(0);
 
   el.innerHTML =
@@ -2419,11 +2837,6 @@ function renderStats(){
         '<div class="stat-item"><div class="stat-item-val">'+fmtMins(avgMins)+'</div><div class="stat-item-lbl">Avg session</div></div>' +
         '<div class="stat-item"><div class="stat-item-val">'+fmtMins(longestMins)+'</div><div class="stat-item-lbl">Longest</div></div>' +
       '</div>' +
-    '</div>' +
-    // ── Bar chart ──
-    '<div class="stat-card">' +
-      '<div class="stat-card-title">Workouts per week (last 8 weeks)</div>' +
-      '<div class="bar-chart">'+barHTML+'</div>' +
     '</div>';
 }
 
@@ -2897,11 +3310,18 @@ async function deleteComment(commentId, workoutIdx){
   showConfirm('Delete comment', msg, 'Delete', async function(){
     var el = document.getElementById('comment-'+commentId);
     if(!el) return;
+    // Collect reply ids first so we can clean up their notifications too
+    var { data: replies } = await sb.from('workout_comments').select('id').eq('parent_id', commentId);
+    var idsToClean = [commentId].concat((replies||[]).map(function(r){ return r.id; }));
     await sb.from('workout_comments').delete().eq('parent_id', commentId);
     await sb.from('workout_comments').delete().eq('id', commentId);
     // Remove notifications tied to these comments using RPC for reliable
     // jsonb field matching (direct filter syntax can silently fail on UUIDs)
-
+    idsToClean.forEach(function(cid){
+      sb.rpc('delete_notification_by_dedup', { p_dedup_key: 'comment:' + String(cid) })
+        .then(function(res){ if(res.error) console.error('Comment notif cleanup failed:', res.error.message); });
+    });
+    loadNotifUnreadCount();
     var nextEl = el.nextElementSibling;
     if(nextEl && nextEl.classList.contains('comment-replies')) nextEl.remove();
     var wrapEl = document.getElementById('reply-wrap-'+commentId);
@@ -2951,7 +3371,12 @@ async function submitReply(parentId, workoutIdx){
 
   var newId = data ? data.id : 'tmp-'+Date.now();
 
-
+  // Notify the parent comment's author (if it's not yourself)
+  sb.from('workout_comments').select('user_id').eq('id', parentId).maybeSingle().then(function(res){
+    if(res.data && res.data.user_id){
+      notifyWorkoutComment(res.data.user_id, workout.id, workout.ts, currentProfile.name || 'Someone', true, newId);
+    }
+  });
   var name = currentProfile.name || 'You';
   var delBtn = '<button class="comment-del-btn" onclick="deleteComment(\'' + newId + '\',' + workoutIdx + ')" title="Delete"><i class="ti ti-trash" style="font-size:10px;"></i></button>';
 
@@ -3037,7 +3462,10 @@ async function doLike(btn, workoutId, i){
   btn.dataset.liked = '1';
   btn.dataset.count = newCount;
   await sb.from('workout_likes').insert({workout_id: workoutId, user_id: currentUser.id});
-
+  var ownerId = btn.dataset.owner;
+  if(ownerId && currentUser && currentProfile){
+    notifyWorkoutLike(ownerId, workoutId, currentProfile.name || currentUser.email || 'Someone');
+  }
 }
 
 async function doUnlike(btn, workoutId){
@@ -3050,7 +3478,10 @@ async function doUnlike(btn, workoutId){
   await sb.from('workout_likes').delete()
     .eq('workout_id', workoutId)
     .eq('user_id', currentUser.id);
-
+  // Delete by dedup_key — RPC bypasses RLS since notification belongs to owner not liker
+  sb.rpc('delete_notification_by_dedup', {
+    p_dedup_key: 'like:' + String(workoutId) + ':' + currentUser.id
+  }).then(function(){ loadNotifUnreadCount(); });
 }
 
 async function postComment(workoutId, i){
@@ -3063,6 +3494,12 @@ async function postComment(workoutId, i){
     .insert({workout_id: workoutId, user_id: currentUser.id, body})
     .select('id').single();
   const newCid = newData ? newData.id : 'tmp-'+Date.now();
+
+  // Notify the workout owner (skip if commenting on your own post)
+  var feedW = (window._feedWorkouts || [])[i];
+  if(feedW && feedW.user_id){
+  notifyWorkoutComment(feedW.user_id, workoutId, feedW.ts, currentProfile.name || 'Someone', false, newCid);
+  }
 
   const section = document.getElementById('acomments-'+i);
   const scrollDiv = document.getElementById('acomments-scroll-'+i);
@@ -3948,11 +4385,12 @@ function renderBlocks(){
   const el = document.getElementById('blocks-list');
   if(!blocks.length){ el.innerHTML=''; return; }
   el.innerHTML = blocks.map((b,bi) => {
+    var blockHtml = '';
     if(b.type === 'cardio'){
       const c = b.cardio;
       const actIcon = getCardioIcon(c.name);
       const h = c.hours||0, m = c.minutes||0, s = c.seconds||0;
-      return `<div class="exercise-card" style="border-color:rgba(34,197,94,0.35);">
+      blockHtml = `<div class="exercise-card" style="border-color:rgba(34,197,94,0.35);">
         <div class="ex-header">
           <span class="ex-name">${actIcon} ${c.name} <span style="font-size:10px;font-weight:700;background:rgba(34,197,94,0.12);color:#22c55e;padding:2px 8px;border-radius:var(--pill);border:0.5px solid rgba(34,197,94,0.3);letter-spacing:.04em;text-transform:uppercase;">Cardio</span></span>
           <button class="remove-btn" onclick="confirmRemoveBlock(${bi})"><i class="ti ti-x"></i></button>
@@ -3999,7 +4437,7 @@ function renderBlocks(){
       const noteHtml = (b.note || b._editingNote)
         ? `<div class="ex-note-input-row"><input type="text" id="note-inp-${bi}" value="${(b.note||'').replace(/"/g,'&quot;')}" placeholder="e.g. Shoulder hurting today..." onblur="autoSaveExNote(${bi})"><button class="icon-btn" onclick="removeExNote(${bi})" style="color:var(--ts);padding:4px 7px;display:${b.note?'':'none'};" id="note-del-${bi}"><i class="ti ti-trash"></i></button></div>`
         : '';
-      return `<div class="exercise-card">
+      blockHtml = `<div class="exercise-card">
         <div class="ex-header">
           <span class="ex-name">${ex.name}${assistedBadge}</span>
           <div style="display:flex;align-items:center;gap:2px;">
@@ -4024,7 +4462,7 @@ function renderBlocks(){
     }
     if(b.type === 'superset'){
       const [e1,e2] = b.exercises;
-      return `<div class="superset-card">
+      blockHtml = `<div class="superset-card">
         <div class="superset-label"><span><i class="ti ti-arrows-exchange"></i> Superset</span>
         <button class="remove-btn" onclick="confirmRemoveBlock(${bi})"><i class="ti ti-x"></i></button></div>
         <div class="superset-ex"><div class="ex-header"><span class="ex-name">${e1.name}</span><button class="ex-info-btn" onclick="openExInfo('${e1.name.replace(/'/g,"\\'")}')"><i class="ti ti-chart-bar"></i> Stats</button></div>${renderSetTable(e1,bi,0)}</div>
@@ -4038,7 +4476,7 @@ function renderBlocks(){
       const noteHtml = (b.note || b._editingNote)
         ? `<div class="ex-note-input-row"><input type="text" id="note-inp-${bi}" value="${(b.note||'').replace(/"/g,'&quot;')}" placeholder="e.g. Shoulder hurting today..." onblur="autoSaveExNote(${bi})"><button class="icon-btn" onclick="removeExNote(${bi})" style="color:var(--ts);padding:4px 7px;display:${b.note?'':'none'};" id="note-del-${bi}"><i class="ti ti-trash"></i></button></div>`
         : '';
-      return `<div class="dropset-card">
+      blockHtml = `<div class="dropset-card">
         <div class="ex-header">
           <span class="ex-name">${ex.name} <span class="ex-badge"><i class="ti ti-arrow-down"></i> Dropset</span>${assistedBadge}</span>
           <div style="display:flex;align-items:center;gap:2px;">
@@ -4062,7 +4500,102 @@ function renderBlocks(){
         <button class="add-ds-btn" onclick="addDS(${bi})"><i class="ti ti-plus"></i> Add set</button>
       </div>`;
     }
+
+    return '<div class="block-drag-wrapper" data-bi="'+bi+'" draggable="true" style="position:relative;">' +
+      '<div class="block-drag-handle" style="position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:10;cursor:grab;color:var(--bo2);font-size:16px;padding:2px 8px;touch-action:none;" title="Drag to reorder"><i class="ti ti-grip-horizontal"></i></div>' +
+      blockHtml +
+    '</div>';
   }).join('');
+  initBlockDrag();
+}
+
+function initBlockDrag(){
+  var list = document.getElementById('blocks-list');
+  if(!list) return;
+  var dragSrcIdx = null;
+  var wrappers = list.querySelectorAll('.block-drag-wrapper');
+  wrappers.forEach(function(wrapper){
+    wrapper.addEventListener('dragstart', function(e){
+      dragSrcIdx = parseInt(wrapper.dataset.bi);
+      wrapper.style.opacity = '0.4';
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    wrapper.addEventListener('dragend', function(){
+      wrapper.style.opacity = '';
+      list.querySelectorAll('.block-drag-wrapper').forEach(function(w){ w.style.outline = ''; });
+    });
+    wrapper.addEventListener('dragover', function(e){
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      list.querySelectorAll('.block-drag-wrapper').forEach(function(w){ w.style.outline = ''; });
+      wrapper.style.outline = '2px solid var(--accent)';
+    });
+    wrapper.addEventListener('dragleave', function(){
+      wrapper.style.outline = '';
+    });
+    wrapper.addEventListener('drop', function(e){
+      e.preventDefault();
+      wrapper.style.outline = '';
+      var targetIdx = parseInt(wrapper.dataset.bi);
+      if(dragSrcIdx === null || dragSrcIdx === targetIdx) return;
+      // Reorder the blocks array
+      var moved = blocks.splice(dragSrcIdx, 1)[0];
+      blocks.splice(targetIdx, 0, moved);
+      dragSrcIdx = null;
+      renderBlocks();
+      renderExSelect();
+    });
+
+    // Touch drag support for iOS
+    var handle = wrapper.querySelector('.block-drag-handle');
+    if(!handle) return;
+    var touchSrcIdx = null, touchClone = null, touchOffsetY = 0;
+    handle.addEventListener('touchstart', function(e){
+      touchSrcIdx = parseInt(wrapper.dataset.bi);
+      var touch = e.touches[0];
+      var rect = wrapper.getBoundingClientRect();
+      touchOffsetY = touch.clientY - rect.top;
+      touchClone = wrapper.cloneNode(true);
+      touchClone.style.cssText = 'position:fixed;left:'+rect.left+'px;top:'+rect.top+'px;width:'+rect.width+'px;opacity:0.8;z-index:9999;pointer-events:none;';
+      document.body.appendChild(touchClone);
+      wrapper.style.opacity = '0.3';
+      e.preventDefault();
+    }, {passive:false});
+    handle.addEventListener('touchmove', function(e){
+      if(touchClone === null) return;
+      var touch = e.touches[0];
+      touchClone.style.top = (touch.clientY - touchOffsetY) + 'px';
+      // Highlight target
+      list.querySelectorAll('.block-drag-wrapper').forEach(function(w){ w.style.outline = ''; });
+      var els = list.querySelectorAll('.block-drag-wrapper');
+      els.forEach(function(w){
+        var r = w.getBoundingClientRect();
+        if(touch.clientY >= r.top && touch.clientY <= r.bottom) w.style.outline = '2px solid var(--accent)';
+      });
+      e.preventDefault();
+    }, {passive:false});
+    handle.addEventListener('touchend', function(e){
+      if(touchClone){ document.body.removeChild(touchClone); touchClone = null; }
+      wrapper.style.opacity = '';
+      list.querySelectorAll('.block-drag-wrapper').forEach(function(w){ w.style.outline = ''; });
+      if(touchSrcIdx === null) return;
+      var touch = e.changedTouches[0];
+      var targetWrapper = null;
+      list.querySelectorAll('.block-drag-wrapper').forEach(function(w){
+        var r = w.getBoundingClientRect();
+        if(touch.clientY >= r.top && touch.clientY <= r.bottom) targetWrapper = w;
+      });
+      if(targetWrapper){
+        var targetIdx = parseInt(targetWrapper.dataset.bi);
+        if(touchSrcIdx !== targetIdx){
+          var moved = blocks.splice(touchSrcIdx, 1)[0];
+          blocks.splice(targetIdx, 0, moved);
+          renderBlocks(); renderExSelect();
+        }
+      }
+      touchSrcIdx = null;
+    });
+  });
 }
 
 function openSaveModal(){
@@ -4746,14 +5279,14 @@ async function sendFriendRequest(addresseeId){
   if(error) alert('Could not send request: ' + error.message);
   else {
     document.getElementById('friend-search-results').innerHTML='<div style="font-size:13px;color:#3B6D11;padding:8px 0;">Friend request sent!</div>';
-
+    notifyFriendRequest(addresseeId, currentProfile.name || 'Someone');
   }
 }
 
 async function acceptFriend(id){
   var { data: row } = await sb.from('friendships').select('requester_id').eq('id', id).maybeSingle();
   await sb.from('friendships').update({ status:'accepted' }).eq('id', id);
-
+  if(row && row.requester_id) notifyFriendAccept(row.requester_id, currentProfile.name || 'Someone');
   renderFriendsTab();
 }
 async function declineFriend(id){ await sb.from('friendships').delete().eq('id', id); renderFriendsTab(); }
@@ -6177,7 +6710,7 @@ async function viewUserProfile(userId){
     var ug = calcConsistencyGrade(workouts); var udays = calcConsistency(workouts); var upct = Math.round((udays/30)*100);
     var ugColor = ug==='S'?'#a855f7':ug==='A+'?'#3b82f6':ug==='A'?'#22c55e':ug==='B'?'#eab308':ug==='C'?'#f97316':'#6b7280';
     var ulabel = gradeLabel(ug);
-    var uConsCard = '<div onclick="openConsistencyModal(window._upmWorkouts)" style="cursor:pointer;background:var(--bs);border-radius:var(--r2);border:1.5px solid '+ugColor+';padding:12px 14px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;">' +
+    var uConsCard = '<div style="background:var(--bs);border-radius:var(--r2);border:1.5px solid '+ugColor+';padding:12px 14px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;">' +
       '<div><div style="font-size:10px;font-weight:600;color:var(--ts);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px;">Consistency Rank</div>' +
       '<div style="font-size:13px;color:var(--ts);">'+udays+'/30 active days &mdash; '+upct+'%</div></div>' +
       '<div style="font-size:22px;font-weight:800;color:'+ugColor+';line-height:1;">'+ulabel+'</div>' +
