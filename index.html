@@ -3977,40 +3977,73 @@ function toggleCardioTimerCard(bi){
   if(sec) sec.style.display = sec.style.display === 'none' ? '' : 'none';
 }
 
+// ── Cardio timer helpers ─────────────────────────────────────────────────
+// Uses the same startTs pattern as the main workout timer — stores a real
+// wall-clock timestamp so elapsed time is correct even if the app was
+// backgrounded, locked, or killed and relaunched.
+
+function _cardioTimerKey(bi){ return 'wl_ctimer_' + bi; }
+
+function _cardioTimerGetSeconds(bi){
+  var t = _cardioTimers[bi];
+  if(!t) return 0;
+  var total = t.accum || 0;
+  if(t.running && t.startTs) total += Math.floor((Date.now() - t.startTs) / 1000);
+  return total;
+}
+
+function _cardioTimerSave(bi){
+  var t = _cardioTimers[bi];
+  if(!t){ localStorage.removeItem(_cardioTimerKey(bi)); return; }
+  localStorage.setItem(_cardioTimerKey(bi), JSON.stringify({ accum: t.accum||0, startTs: t.startTs||null, running: t.running||false }));
+}
+
+function _cardioTimerUpdateDisplay(bi){
+  var s = _cardioTimerGetSeconds(bi);
+  var disp = document.getElementById('ctimer-display-'+bi);
+  if(disp) disp.textContent = String(Math.floor(s/3600)).padStart(2,'0')+':'+String(Math.floor((s%3600)/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
+}
+
 function cardioTimerCardStart(bi){
-  if(_cardioTimers[bi]) clearInterval(_cardioTimers[bi].interval);
-  _cardioTimers[bi] = { seconds:0, running:true };
-  _cardioTimers[bi].interval = setInterval(function(){
-    _cardioTimers[bi].seconds++;
-    var s = _cardioTimers[bi].seconds;
-    var disp = document.getElementById('ctimer-display-'+bi);
-    if(disp) disp.textContent = String(Math.floor(s/3600)).padStart(2,'0')+':'+String(Math.floor((s%3600)/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
-  }, 1000);
+  if(_cardioTimers[bi] && _cardioTimers[bi].interval) clearInterval(_cardioTimers[bi].interval);
+  _cardioTimers[bi] = { accum: 0, startTs: Date.now(), running: true };
+  _cardioTimerSave(bi);
+  _cardioTimers[bi].interval = setInterval(function(){ _cardioTimerUpdateDisplay(bi); }, 1000);
   document.getElementById('ctimer-start-'+bi).style.display='none';
   document.getElementById('ctimer-pause-'+bi).style.display='';
   document.getElementById('ctimer-finish-'+bi).style.display='';
 }
 
 function cardioTimerCardPause(bi){
-  if(_cardioTimers[bi]) clearInterval(_cardioTimers[bi].interval);
+  var t = _cardioTimers[bi];
+  if(!t) return;
+  if(t.interval) clearInterval(t.interval);
+  // Freeze accumulated seconds at this moment
+  t.accum = _cardioTimerGetSeconds(bi);
+  t.startTs = null;
+  t.running = false;
+  _cardioTimerSave(bi);
+  _cardioTimerUpdateDisplay(bi);
   document.getElementById('ctimer-pause-'+bi).style.display='none';
   document.getElementById('ctimer-resume-'+bi).style.display='';
 }
 
 function cardioTimerCardResume(bi){
-  _cardioTimers[bi].interval = setInterval(function(){
-    _cardioTimers[bi].seconds++;
-    var s=_cardioTimers[bi].seconds;
-    var disp=document.getElementById('ctimer-display-'+bi);
-    if(disp) disp.textContent=String(Math.floor(s/3600)).padStart(2,'0')+':'+String(Math.floor((s%3600)/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
-  },1000);
+  var t = _cardioTimers[bi];
+  if(!t) return;
+  t.startTs = Date.now();
+  t.running = true;
+  _cardioTimerSave(bi);
+  if(t.interval) clearInterval(t.interval);
+  t.interval = setInterval(function(){ _cardioTimerUpdateDisplay(bi); }, 1000);
   document.getElementById('ctimer-resume-'+bi).style.display='none';
   document.getElementById('ctimer-pause-'+bi).style.display='';
 }
 
 function cardioTimerCardFinish(bi){
-  if(_cardioTimers[bi]) clearInterval(_cardioTimers[bi].interval);
-  var s = _cardioTimers[bi] ? _cardioTimers[bi].seconds : 0;
+  var t = _cardioTimers[bi];
+  if(t && t.interval) clearInterval(t.interval);
+  var s = _cardioTimerGetSeconds(bi);
   var h=Math.floor(s/3600), m=Math.floor((s%3600)/60), sec=s%60;
   if(blocks[bi] && blocks[bi].type==='cardio'){
     blocks[bi].cardio.hours=h; blocks[bi].cardio.minutes=m; blocks[bi].cardio.seconds=sec;
@@ -4026,11 +4059,14 @@ function cardioTimerCardFinish(bi){
   if(finishBtn) finishBtn.style.display='none';
   if(resetBtn) resetBtn.style.display='';
   delete _cardioTimers[bi];
+  localStorage.removeItem(_cardioTimerKey(bi));
 }
 
 function cardioTimerCardReset(bi){
-  if(_cardioTimers[bi]) clearInterval(_cardioTimers[bi].interval);
+  var t = _cardioTimers[bi];
+  if(t && t.interval) clearInterval(t.interval);
   delete _cardioTimers[bi];
+  localStorage.removeItem(_cardioTimerKey(bi));
   var disp=document.getElementById('ctimer-display-'+bi);
   if(disp) disp.textContent='00:00:00';
   var startBtn=document.getElementById('ctimer-start-'+bi);
@@ -4043,6 +4079,47 @@ function cardioTimerCardReset(bi){
   if(resumeBtn) resumeBtn.style.display='none';
   if(finishBtn) finishBtn.style.display='none';
   if(resetBtn) resetBtn.style.display='none';
+}
+
+// Called after renderBlocks() — restores any in-progress cardio timers
+// that were running when the app was backgrounded or relaunched.
+function restoreCardioTimers(){
+  blocks.forEach(function(b, bi){
+    if(b.type !== 'cardio') return;
+    var saved = localStorage.getItem(_cardioTimerKey(bi));
+    if(!saved) return;
+    try {
+      var t = JSON.parse(saved);
+      if(!t.running && !t.accum) return;
+      _cardioTimers[bi] = { accum: t.accum||0, startTs: t.startTs||null, running: t.running||false };
+      _cardioTimerUpdateDisplay(bi);
+      // Show the timer section
+      var sec = document.getElementById('ctimer-section-'+bi);
+      if(sec) sec.style.display = '';
+      // Restore button state
+      var startBtn=document.getElementById('ctimer-start-'+bi);
+      var pauseBtn=document.getElementById('ctimer-pause-'+bi);
+      var resumeBtn=document.getElementById('ctimer-resume-'+bi);
+      var finishBtn=document.getElementById('ctimer-finish-'+bi);
+      var resetBtn=document.getElementById('ctimer-reset-'+bi);
+      if(t.running){
+        if(startBtn) startBtn.style.display='none';
+        if(pauseBtn) pauseBtn.style.display='';
+        if(finishBtn) finishBtn.style.display='';
+        if(resumeBtn) resumeBtn.style.display='none';
+        if(resetBtn) resetBtn.style.display='none';
+        // Restart the interval
+        _cardioTimers[bi].interval = setInterval(function(){ _cardioTimerUpdateDisplay(bi); }, 1000);
+      } else {
+        // Was paused
+        if(startBtn) startBtn.style.display='none';
+        if(pauseBtn) pauseBtn.style.display='none';
+        if(resumeBtn) resumeBtn.style.display='';
+        if(finishBtn) finishBtn.style.display='';
+        if(resetBtn) resetBtn.style.display='none';
+      }
+    } catch(e){}
+  });
 }
 
 function toggleAddCat(){
@@ -4507,6 +4584,7 @@ function renderBlocks(){
     '</div>';
   }).join('');
   initBlockDrag();
+  restoreCardioTimers();
 }
 
 function initBlockDrag(){
@@ -4618,6 +4696,10 @@ function saveWorkout(){
   document.getElementById('timer-btn').classList.remove('running');
   document.getElementById('timer-reset-btn').style.display = 'none';
   localStorage.removeItem('wl_timer');
+  // Clear any persisted cardio timers
+  blocks.forEach(function(b, bi){ localStorage.removeItem('wl_ctimer_' + bi); });
+  Object.keys(_cardioTimers).forEach(function(k){ if(_cardioTimers[k] && _cardioTimers[k].interval) clearInterval(_cardioTimers[k].interval); });
+  _cardioTimers = {};
 
   const d = new Date();
 
