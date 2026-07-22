@@ -1241,6 +1241,10 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
           </div>
           <div class="add-inline-row" id="add-ex-row">
             <input type="text" id="new-ex-inp" placeholder="Exercise name..." onkeydown="if(event.key==='Enter')addCustomEx();if(event.key==='Escape')toggleAddEx()">
+            <select id="new-ex-type" style="padding:4px 6px;border:1px solid var(--bo3);border-radius:var(--r1);background:var(--input-bg);color:var(--tp);font-size:12px;cursor:pointer;">
+              <option value="reps">Reps</option>
+              <option value="duration">Timed</option>
+            </select>
             <button class="icon-btn" onclick="addCustomEx()">Add</button>
             <button class="icon-btn" onclick="toggleAddEx()" style="color:var(--ts);"><i class="ti ti-x"></i></button>
           </div>
@@ -1348,7 +1352,11 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
   <input type="text" class="modal-inp" id="edit-ex-name" placeholder="Exercise name">
   <div class="modal-lbl">Category</div>
   <select class="modal-sel" id="edit-ex-cat"></select>
-  <div class="modal-hint">More options coming soon — photo, notes.</div>
+  <div class="modal-lbl">Tracking type</div>
+  <select class="modal-sel" id="edit-ex-type">
+    <option value="reps">Reps (weight × reps)</option>
+    <option value="duration">Timed (weight × duration)</option>
+  </select>
   <div class="modal-actions">
     <button class="modal-btn" onclick="closeModal('edit-ex-modal')">Cancel</button>
     <button class="modal-btn primary" onclick="confirmEditEx()">Save</button>
@@ -2559,11 +2567,14 @@ async function loadFromSupabase(){
       // Server is the sole source of truth — never merge stale localStorage on top.
       EX = eRes.data.exercises;
     }
+    if(eRes.data?.ex_meta){ EX_META = eRes.data.ex_meta; }
     if(eRes.data?.cardio_activities && Array.isArray(eRes.data.cardio_activities)){
       _cardioActivities = eRes.data.cardio_activities;
     }
     localStorage.setItem('wl_history', JSON.stringify(history.slice(0,100)));
     localStorage.setItem('wl_exercises', JSON.stringify(EX));
+    localStorage.setItem('wl_ex_meta', JSON.stringify(EX_META));
+    localStorage.setItem('wl_ex_meta', JSON.stringify(EX_META));
     setSS('ok','Synced');
   } catch(e){
     load();
@@ -2613,6 +2624,7 @@ async function saveToSupabase(newEntry){
   // Always save to localStorage first
   localStorage.setItem('wl_history', JSON.stringify(history.slice(0,100)));
   localStorage.setItem('wl_exercises', JSON.stringify(EX));
+    localStorage.setItem('wl_ex_meta', JSON.stringify(EX_META));
   if(!navigator.onLine){
     if(newEntry){
       const pending = JSON.parse(localStorage.getItem('wl_pending') || '[]');
@@ -2650,7 +2662,7 @@ async function saveToSupabase(newEntry){
         }
       }
     }
-    const { error: exErr } = await sb.from('exercise_lists').upsert({ user_id: currentUser.id, exercises: EX, cardio_activities: _cardioActivities }, { onConflict: 'user_id' });
+    const { error: exErr } = await sb.from('exercise_lists').upsert({ user_id: currentUser.id, exercises: EX, ex_meta: EX_META, cardio_activities: _cardioActivities }, { onConflict: 'user_id' });
     if(exErr) console.error('Exercise save error:', exErr);
     setSS('ok','Saved');
   } catch(e){
@@ -2959,8 +2971,8 @@ async function renderFeed(){
     const preview = exNames.slice(0,3).join(', ') + (exNames.length>3 ? ' +' + (exNames.length-3) + ' more' : '');
 
     const detailBlocks = w.blocks.map(function(b){
-      if(b.type==='cardio'){var c=b.cardio||{};var h=c.hours||0,m=c.minutes||0,s=c.seconds||0;var dur=(h>0?h+'h ':'')+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');return '<div class="hist-block"><div class="hist-name">'+getCardioIcon(c.name)+' '+c.name+' <span style="font-size:11px;background:rgba(34,197,94,0.12);color:#22c55e;padding:2px 7px;border-radius:20px;font-weight:600;">Cardio</span></div><div class="hist-sets">'+(dur!=='00:00'?dur:'No duration')+(c.notes?'<br><em style="color:var(--ts);">'+c.notes+'</em>':'')+'</div></div>';}if(b.type==='single'){const ex=b.exercises[0];const lines=ex.sets.map(function(s,j){return 'Set '+(j+1)+': '+fw(s.w)+' \xd7 '+fr(s.r)+' reps'+(s.warmup?' <span class=\"ex-warmup-badge\">Warm-up</span>':'');}).join('<br>');var ab=b.assisted?'<span class="ex-assisted-badge"><i class="ti ti-arrow-down-right"></i> Assisted</span>':'';var nb=b.note?'<div class="ex-note">"'+b.note+'"</div>':'';return '<div class="hist-block"><div class="hist-name">'+ex.name+ab+'</div>'+nb+'<div class="hist-sets">'+lines+'</div></div>';}
-      if(b.type==='superset'){const e1=b.exercises[0],e2=b.exercises[1],ms=Math.max(e1.sets.length,e2.sets.length);const lines=Array.from({length:ms},function(_,j){const s1=e1.sets[j],s2=e2.sets[j];return 'Set '+(j+1)+': '+(s1?fw(s1.w)+' \xd7 '+fr(s1.r)+' reps':'—')+' / '+(s2?fw(s2.w)+' \xd7 '+fr(s2.r)+' reps':'—');}).join('<br>');var ab=b.assisted?'<span class="ex-assisted-badge"><i class="ti ti-arrow-down-right"></i> Assisted</span>':'';var nb=b.note?'<div class="ex-note">"'+b.note+'"</div>':'';return '<div class="hist-block"><div class="hist-name">'+e1.name+' / '+e2.name+' <span style="font-size:11px;background:#1a1a5c;color:#7a7ae0;padding:2px 7px;border-radius:20px;font-weight:500;"><i class="ti ti-arrows-exchange"></i> Superset</span>'+ab+'</div>'+nb+'<div class="hist-sets">'+lines+'</div></div>';}
+      if(b.type==='cardio'){var c=b.cardio||{};var h=c.hours||0,m=c.minutes||0,s=c.seconds||0;var dur=(h>0?h+'h ':'')+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');return '<div class="hist-block"><div class="hist-name">'+getCardioIcon(c.name)+' '+c.name+' <span style="font-size:11px;background:rgba(34,197,94,0.12);color:#22c55e;padding:2px 7px;border-radius:20px;font-weight:600;">Cardio</span></div><div class="hist-sets">'+(dur!=='00:00'?dur:'No duration')+(c.notes?'<br><em style="color:var(--ts);">'+c.notes+'</em>':'')+'</div></div>';}if(b.type==='single'){const ex=b.exercises[0];var _t=ex.tracking_type||exGetType(ex.name);const lines=ex.sets.map(function(s,j){return fmtSetLine(s,j,_t);}).join('<br>');var ab=b.assisted?'<span class="ex-assisted-badge"><i class="ti ti-arrow-down-right"></i> Assisted</span>':'';var nb=b.note?'<div class="ex-note">"'+b.note+'"</div>':'';return '<div class="hist-block"><div class="hist-name">'+ex.name+ab+'</div>'+nb+'<div class="hist-sets">'+lines+'</div></div>';}
+      if(b.type==='superset'){const e1=b.exercises[0],e2=b.exercises[1],ms=Math.max(e1.sets.length,e2.sets.length);var _t1=e1.tracking_type||exGetType(e1.name),_t2=e2.tracking_type||exGetType(e2.name);const lines=Array.from({length:ms},function(_,j){const s1=e1.sets[j],s2=e2.sets[j];return 'Set '+(j+1)+': '+(s1?fmtSetLine(s1,j,_t1).replace('Set '+(j+1)+': ',''):'—')+' / '+(s2?fmtSetLine(s2,j,_t2).replace('Set '+(j+1)+': ',''):'—');}).join('<br>');var ab=b.assisted?'<span class="ex-assisted-badge"><i class="ti ti-arrow-down-right"></i> Assisted</span>':'';var nb=b.note?'<div class="ex-note">"'+b.note+'"</div>':'';return '<div class="hist-block"><div class="hist-name">'+e1.name+' / '+e2.name+' <span style="font-size:11px;background:#1a1a5c;color:#7a7ae0;padding:2px 7px;border-radius:20px;font-weight:500;"><i class="ti ti-arrows-exchange"></i> Superset</span>'+ab+'</div>'+nb+'<div class="hist-sets">'+lines+'</div></div>';}
       if(b.type==='dropset'){const ex=b.exercises[0];const lines=ex.dropSets.map(function(drops,j){return 'Set '+(j+1)+': '+drops.map(function(d){return fw(d.w)+' \xd7 '+fr(d.r)+' reps';}).join(' \u2192 ');}).join('<br>');var ab=b.assisted?'<span class="ex-assisted-badge"><i class="ti ti-arrow-down-right"></i> Assisted</span>':'';var nb=b.note?'<div class="ex-note">"'+b.note+'"</div>':'';return '<div class="hist-block"><div class="hist-name">'+ex.name+' <span style="font-size:11px;background:#FEF3E2;color:#A05C00;padding:2px 7px;border-radius:20px;font-weight:500;">\u2193 Dropset</span>'+ab+'</div>'+nb+'<div class="hist-sets">'+lines+'</div></div>';}
       return '';
     }).join('');
@@ -3577,6 +3589,7 @@ async function importExercisesIntoEX(blocks, sourceExMap){
 
   if(changed){
     localStorage.setItem('wl_exercises', JSON.stringify(EX));
+    localStorage.setItem('wl_ex_meta', JSON.stringify(EX_META));
     await saveToSupabase(null);
   }
 }
@@ -3587,7 +3600,7 @@ function copyFeedWorkout(i){
   blocks = entry.blocks.map(b => {
     if(b.type==='cardio') return {type:'cardio', exercises:[], cardio:Object.assign({},b.cardio,{hours:b.cardio?.hours||0,minutes:b.cardio?.minutes||0,seconds:b.cardio?.seconds||0,notes:b.cardio?.notes||''})};
     if(b.type==='dropset') return {type:'dropset', exercises:[{name:b.exercises[0].name, dropSets:b.exercises[0].dropSets.map(ds=>ds.map(()=>({w:'',r:''})))}]};
-    return {type:b.type, exercises:(b.exercises||[]).map(ex=>({name:ex.name, sets:(ex.sets||[]).map(()=>({w:'',r:''}))}))};
+    return {type:b.type, exercises:(b.exercises||[]).map(ex=>{var _t=ex.tracking_type||exGetType(ex.name);return {name:ex.name, sets:(ex.sets||[]).map(()=>emptySet(_t)), tracking_type:_t};})};
   });
   if(entry.label) document.getElementById('day-inp').value = entry.label;
   // Fetch source user's exercise map for correct category import
@@ -3690,6 +3703,39 @@ const DEF = {
 };
 
 let EX = JSON.parse(JSON.stringify(DEF));
+// EX_META stores per-exercise metadata: { "Exercise Name": { tracking_type: "reps"|"duration" } }
+// All exercises default to "reps" — only explicitly created timed exercises have "duration".
+// Stored alongside EX in exercise_lists.ex_meta and localStorage wl_ex_meta.
+let EX_META = {};
+
+// ── EX_META helpers ──────────────────────────────────────────────────────
+function exGetType(name){ return (EX_META[name] && EX_META[name].tracking_type) || 'reps'; }
+function exIsTimed(name){ return exGetType(name) === 'duration'; }
+function exSetType(name, type){ if(!EX_META[name]) EX_META[name]={}; EX_META[name].tracking_type = type; }
+
+// Format integer seconds as M:SS or 0:SS
+function fmtDur(secs){
+  if(!secs && secs !== 0) return '—';
+  var s = Math.round(Number(secs)) || 0;
+  return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');
+}
+// Parse "M:SS", "SS", minutes+seconds from a string → integer seconds
+function parseDur(str){
+  if(str === '' || str === null || str === undefined) return null;
+  str = String(str).trim();
+  if(str.includes(':')){ var parts=str.split(':'); return Math.max(0,parseInt(parts[0]||0)*60+parseInt(parts[1]||0)); }
+  return Math.max(0, parseInt(str)||0);
+}
+// Empty set for each type
+function emptySet(type){
+  return type==='duration' ? {w:'', d_target:30, d_done:null} : {w:'', r:''};
+}
+// Has meaningful data?
+function setHasData(s, type){
+  if(type==='duration') return s.d_done !== null && s.d_done !== undefined && s.d_done !== '';
+  return (parseFloat(s.w)||0) > 0 || (parseFloat(s.r)||0) > 0;
+}
+
 let blocks = [], activeCat = 'Chest', mode = null, ssFirst = null;
 let selEx = null, history = [], stimer = null;
 let delExName = null, editExName = null, delCatName = null;
@@ -3717,13 +3763,24 @@ function updateGreeting() {
 
 function fw(w){ return w ? w+' lbs' : '—'; }
 function fr(r){ return r || '—'; }
+function fmtSetLine(s, j, type){
+  var prefix = 'Set '+(j+1)+': ';
+  var warmupBadge = s.warmup ? ' <span class="ex-warmup-badge">Warm-up</span>' : '';
+  if(type === 'duration'){
+    var dur = (s.d_done !== null && s.d_done !== undefined && s.d_done !== '') ? s.d_done : s.d_target;
+    return prefix + (parseFloat(s.w) > 0 ? fw(String(s.w)) + ' × ' : '') + fmtDur(dur) + warmupBadge;
+  }
+  return prefix + fw(s.w) + ' × ' + fr(s.r) + ' reps' + warmupBadge;
+}
 
 function load(){
   try {
     const h = localStorage.getItem('wl_history');
     const e = localStorage.getItem('wl_exercises');
+    const m = localStorage.getItem('wl_ex_meta');
     if(h) history = JSON.parse(h);
     if(e) EX = JSON.parse(e);
+    if(m) EX_META = JSON.parse(m);
   } catch(err){ setSS('error','Load error'); }
   if(!EX[activeCat]) activeCat = Object.keys(EX)[0];
 }
@@ -3733,6 +3790,8 @@ function save(){
   try {
     localStorage.setItem('wl_history', JSON.stringify(history.slice(0,100)));
     localStorage.setItem('wl_exercises', JSON.stringify(EX));
+    localStorage.setItem('wl_ex_meta', JSON.stringify(EX_META));
+    localStorage.setItem('wl_ex_meta', JSON.stringify(EX_META));
     setSS('ok','Saved');
   } catch(err){ setSS('error','Save failed'); }
 }
@@ -4174,9 +4233,8 @@ function getExUsageMap(){
 function invalidateExUsageCache(){ _exUsageCache = null; }
 
 function renderExSelect(){
-  const list = (EX[activeCat] || []).slice(); // copy, don't mutate EX
+  const list = (EX[activeCat] || []).slice();
   const usage = getExUsageMap();
-  // Sort by count desc, then by lastTs desc (most recent tiebreaker), then alphabetical
   list.sort(function(a, b){
     var ca = (usage[a]||{}).count||0, cb = (usage[b]||{}).count||0;
     if(cb !== ca) return cb - ca;
@@ -4184,20 +4242,80 @@ function renderExSelect(){
     if(tb !== ta) return tb > ta ? 1 : -1;
     return a.localeCompare(b);
   });
-  const added = new Set(blocks.flatMap(b => b.exercises ? (b.exercises||[]).map(e => e.name) : []));
+  var addedReps = new Set(), addedTimed = new Set();
+  blocks.forEach(function(b){
+    if(!b.exercises) return;
+    b.exercises.forEach(function(e){
+      var t = e.tracking_type || exGetType(e.name);
+      if(t === 'duration') addedTimed.add(e.name);
+      else addedReps.add(e.name);
+    });
+  });
+  // Build a set of exercise names that have BOTH types in history
+  var hasBothTypes = new Set();
+  var allHistory = history || [];
+  allHistory.forEach(function(e){
+    e.blocks.forEach(function(b){
+      if(!b.exercises) return;
+      var repsSeen = new Set(), timedSeen = new Set();
+      b.exercises.forEach(function(ex){
+        var t = ex.tracking_type || exGetType(ex.name);
+        if(t === 'duration') timedSeen.add(ex.name);
+        else repsSeen.add(ex.name);
+      });
+    });
+  });
+  // Also check EX_META — if an exercise was ever saved as both types
+  list.forEach(function(name){
+    // Check if exercise name appears in history with both types
+    var seenReps = false, seenTimed = false;
+    allHistory.forEach(function(e){
+      e.blocks.forEach(function(b){
+        if(!b.exercises) return;
+        b.exercises.forEach(function(ex){
+          if(ex.name !== name) return;
+          var t = ex.tracking_type || 'reps';
+          if(t === 'duration') seenTimed = true;
+          else seenReps = true;
+        });
+      });
+    });
+    if(seenReps && seenTimed) hasBothTypes.add(name);
+  });
+
   const sel = document.getElementById('ex-select');
-  sel.innerHTML = list.map(ex =>
-    `<option value="${ex}"${added.has(ex)?' disabled':''} >${ex}${added.has(ex)?' ✓':''}</option>`
-  ).join('');
+  var options = [];
+  list.forEach(function(ex){
+    if(hasBothTypes.has(ex)){
+      // Show two separate entries
+      var repsAdded = addedReps.has(ex);
+      var timedAdded = addedTimed.has(ex);
+      options.push('<option value="'+ex+'||reps"'+(repsAdded?' disabled':'')+'>'+ex+' | Reps'+(repsAdded?' ✓':'')+'</option>');
+      options.push('<option value="'+ex+'||duration"'+(timedAdded?' disabled':'')+'>'+ex+' | Timed'+(timedAdded?' ✓':'')+'</option>');
+    } else {
+      var type = exGetType(ex);
+      var alreadyAdded = type === 'duration' ? addedTimed.has(ex) : addedReps.has(ex);
+      var bothAdded = addedReps.has(ex) && addedTimed.has(ex);
+      options.push('<option value="'+ex+'"'+(bothAdded?' disabled':'')+'>'+ ex+(alreadyAdded?' ✓':'')+'</option>');
+    }
+  });
+  sel.innerHTML = options.join('');
 }
 
 function esc(s){ return s.replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
 
 function pickExFromSelect(){
-  const name = document.getElementById('ex-select').value;
-  if(!name) return;
-  if(mode === 'normal'){ addSingle(name); renderExSelect(); }
-  else if(mode === 'superset'){ pickSS(name); }
+  const raw = document.getElementById('ex-select').value;
+  if(!raw) return;
+  // Value may be encoded as "Exercise Name||reps" or "Exercise Name||duration"
+  var parts = raw.split('||');
+  var name = parts[0];
+  var type = parts[1] || null; // null means use EX_META default
+  if(mode === 'normal'){
+    if(type) addSingleWithType(name, type);
+    else addSingle(name);
+    renderExSelect();
+  } else if(mode === 'superset'){ pickSS(name); }
   else if(mode === 'dropset'){ addDropset(name); renderExSelect(); }
 }
 
@@ -4208,9 +4326,22 @@ function pickEx(name){
 }
 
 function addSingle(name){
-  if(blocks.find(b => b.type==='single' && b.exercises[0].name===name)) return;
-  var sets = Array.from({length: _defaultSets}, function(){ return {w:'',r:''}; });
-  blocks.push({type:'single', exercises:[{name, sets}]});
+  var existingBlocks = blocks.filter(b => b.type==='single' && b.exercises[0].name===name);
+  // Both reps and duration versions already present — nothing more to add
+  var hasReps = existingBlocks.some(b => (b.exercises[0].tracking_type||'reps') === 'reps');
+  var hasDuration = existingBlocks.some(b => (b.exercises[0].tracking_type||'reps') === 'duration');
+  if(hasReps && hasDuration) return;
+  // Pick whichever type isn't in blocks yet; fall back to EX_META default
+  var type;
+  if(existingBlocks.length === 0){
+    type = exGetType(name); // first add — use EX_META default
+  } else if(hasReps){
+    type = 'duration'; // reps already there, add timed version
+  } else {
+    type = 'reps'; // timed already there, add reps version
+  }
+  var sets = Array.from({length: _defaultSets}, function(){ return emptySet(type); });
+  blocks.push({type:'single', exercises:[{name, sets, tracking_type: type}]});
   renderBlocks();
 }
 
@@ -4228,8 +4359,8 @@ function pickSS(name){
   } else {
     if(name === ssFirst) return;
     blocks.push({type:'superset', exercises:[
-      {name:ssFirst, sets: Array.from({length: _defaultSets}, function(){ return {w:'',r:''}; })},
-      {name, sets: Array.from({length: _defaultSets}, function(){ return {w:'',r:''}; })}
+      {name:ssFirst, sets: Array.from({length: _defaultSets}, function(){ return emptySet(exGetType(ssFirst)); }), tracking_type: exGetType(ssFirst)},
+      {name, sets: Array.from({length: _defaultSets}, function(){ return emptySet(exGetType(name)); }), tracking_type: exGetType(name)}
     ]});
     ssFirst = null;
     document.getElementById('ss-pending').style.display = 'none';
@@ -4241,25 +4372,62 @@ function cancelSS(){ ssFirst=null; document.getElementById('ss-pending').style.d
 
 async function restoreExercisesFromHistory(){
   if(!history.length) return;
-  // Build a set of all exercises currently in the list (any category)
-  var allKnown = new Set();
-  Object.keys(EX).forEach(function(cat){ EX[cat].forEach(function(ex){ allKnown.add(ex); }); });
-  // We only want to restore exercises that were previously in a named category
-  // Don't auto-add unknowns to "Other" — that caused the wrong category issue
-  // Instead just ensure nothing is lost from existing categories
-  // Nothing to do here — the merge in loadFromSupabase handles this
+  // ── EX_META backfill for existing users ──────────────────────────────
+  // Any exercise that appears in history with reps data (s.r field) and
+  // has no EX_META entry defaults to 'reps'. This ensures all pre-existing
+  // workouts saved before timed exercises existed are never misclassified.
+  // An exercise explicitly set to 'duration' in EX_META is never overridden.
+  var seenReps = new Set();
+  history.forEach(function(e){
+    e.blocks.forEach(function(b){
+      if(!b.exercises) return;
+      b.exercises.forEach(function(ex){
+        // If any set has an r field (even empty string), it was logged as reps
+        if(!ex.tracking_type || ex.tracking_type === 'reps'){
+          var hasRepsField = (ex.sets||[]).some(function(s){ return s.r !== undefined; });
+          if(hasRepsField) seenReps.add(ex.name);
+        }
+      });
+    });
+  });
+  var changed = false;
+  seenReps.forEach(function(name){
+    if(!EX_META[name]){
+      exSetType(name, 'reps');
+      changed = true;
+    }
+  });
+  if(changed){
+    localStorage.setItem('wl_ex_meta', JSON.stringify(EX_META));
+    // Sync to Supabase silently
+    if(currentUser) saveToSupabase(null);
+  }
 }
 
 async function addCustomEx(){
   const inp = document.getElementById('new-ex-inp'), name = inp.value.trim();
   if(!name) return;
+  const typeEl = document.getElementById('new-ex-type');
+  const trackingType = typeEl ? typeEl.value : 'reps';
   if(!EX[activeCat].includes(name)) EX[activeCat].push(name);
+  // Only update EX_META if this is a brand new exercise (not overriding an existing type)
+  if(!EX_META[name]) exSetType(name, trackingType);
   renderExSelect();
-  pickEx(name);
+  // Add directly with the chosen type, bypassing EX_META lookup
+  addSingleWithType(name, trackingType);
   inp.value = '';
   document.getElementById('add-ex-row').classList.remove('open');
   localStorage.setItem('wl_exercises', JSON.stringify(EX));
+  localStorage.setItem('wl_ex_meta', JSON.stringify(EX_META));
   await saveToSupabase(null);
+}
+
+function addSingleWithType(name, type){
+  // Check if exact name+type combo already in blocks
+  if(blocks.find(b => b.type==='single' && b.exercises[0].name===name && (b.exercises[0].tracking_type||'reps')===type)) return;
+  var sets = Array.from({length: _defaultSets}, function(){ return emptySet(type); });
+  blocks.push({type:'single', exercises:[{name, sets, tracking_type: type}]});
+  renderBlocks(); renderExSelect();
 }
 
 async function addCategory(){
@@ -4269,6 +4437,7 @@ async function addCategory(){
   document.getElementById('add-cat-row').classList.remove('open');
   activeCat = name;
   localStorage.setItem('wl_exercises', JSON.stringify(EX));
+    localStorage.setItem('wl_ex_meta', JSON.stringify(EX_META));
   renderCatSelect();
   await saveToSupabase(null);
 }
@@ -4350,8 +4519,8 @@ function confirmRemoveBlock(bi){
   if(b.type === 'cardio'){ blocks.splice(bi,1); renderBlocks(); return; }
   var hasData = false;
   b.exercises.forEach(function(ex){
-    if(ex.dropSets){ ex.dropSets.forEach(function(ds){ ds.forEach(function(d){ if(d.w||d.r) hasData=true; }); }); }
-    else { (ex.sets||[]).forEach(function(s){ if(s.w||s.r) hasData=true; }); }
+    if(ex.dropSets){ ex.dropSets.forEach(function(ds){ ds.forEach(function(d){ if(d.w||d.r||(d.d_done!=null&&d.d_done!=='')||d.d_target) hasData=true; }); }); }
+    else { (ex.sets||[]).forEach(function(s){ if(s.w||s.r||(s.d_done!=null&&s.d_done!=='')||s.d_target) hasData=true; }); }
   });
   if(hasData){
     var name = b.exercises[0] ? b.exercises[0].name : 'this exercise';
@@ -4363,7 +4532,12 @@ function confirmRemoveBlock(bi){
   blocks.splice(bi,1); renderBlocks(); renderExSelect();
 }
 
-function addSet(bi,ei){ blocks[bi].exercises[ei].sets.push({w:'',r:''}); renderBlocks(); }
+function addSet(bi,ei){
+  var ex = blocks[bi].exercises[ei];
+  var type = ex.tracking_type || exGetType(ex.name);
+  ex.sets.push(emptySet(type));
+  renderBlocks();
+}
 function openSetMenu(e, bi, ei, si){
   e.stopPropagation();
   document.querySelectorAll('.set-ctx-menu').forEach(function(m){ m.remove(); });
@@ -4416,25 +4590,142 @@ function remDrop(bi,di,dri){ if(blocks[bi].exercises[0].dropSets[di].length<=2)r
 function updDrop(bi,di,dri,f,v){ blocks[bi].exercises[0].dropSets[di][dri][f]=v; }
 
 function renderSetTable(ex, bi, ei){
+  var type = ex.tracking_type || exGetType(ex.name);
+  var isDuration = type === 'duration';
+  var header = isDuration
+    ? '<thead><tr><th>Set</th><th>Weight (lbs)</th><th></th><th>Duration</th><th></th></tr></thead>'
+    : '<thead><tr><th>Set</th><th>Weight (lbs)</th><th></th><th>Reps</th><th></th></tr></thead>';
   const rows = ex.sets.map(function(s,j){
-    const wuCell = s.warmup
-      ? '<span class="ex-warmup-badge" style="font-size:9px;padding:1px 5px;">W</span>'
-      : String(j+1);
     const trClass = s.warmup ? 'warmup-row' : '';
-    const wTitle = s.warmup ? 'Remove warm-up' : 'Mark as warm-up';
+    var valueCell;
+    if(isDuration){
+      var dVal = s.d_done !== null && s.d_done !== undefined && s.d_done !== '' ? fmtDur(s.d_done) : (s.d_target ? fmtDur(s.d_target) : '');
+      valueCell = '<td><input class="set-inp r-inp" type="text" inputmode="numeric" enterkeyhint="done" placeholder="0:30" value="'+dVal+'" id="r-'+bi+'-'+ei+'-'+j+'" oninput="updSetDur('+bi+','+ei+','+j+',this.value)" onkeydown="if(event.key===\'Enter\'){event.preventDefault();var nw=document.getElementById(\'w-'+bi+'-'+ei+'-'+(j+1)+'\');if(nw)nw.focus();}"></td>';
+    } else {
+      valueCell = '<td><input class="set-inp r-inp" type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="next" placeholder="0" value="'+s.r+'" id="r-'+bi+'-'+ei+'-'+j+'" oninput="updSet('+bi+','+ei+','+j+',\'r\',this.value)" onkeydown="if(event.key===\'Enter\'){event.preventDefault();var nw=document.getElementById(\'w-'+bi+'-'+ei+'-'+(j+1)+'\');if(nw)nw.focus();}"></td>';
+    }
     return '<tr class="'+trClass+'">' +
       '<td class="set-num">'+(s.warmup ? '<span class="ex-warmup-badge" style="font-size:9px;padding:1px 5px;">W</span>' : String(j+1))+'</td>' +
       '<td><input class="set-inp w-inp" type="text" inputmode="decimal" pattern="[0-9]*" enterkeyhint="next" placeholder="0" value="'+s.w+'" id="w-'+bi+'-'+ei+'-'+j+'" oninput="updSet('+bi+','+ei+','+j+',\'w\',this.value)" onkeydown="if(event.key===\'Enter\'){event.preventDefault();var r=document.getElementById(\'r-'+bi+'-'+ei+'-'+j+'\');if(r)r.focus();}"></td>' +
       '<td class="xlbl">×</td>' +
-      '<td><input class="set-inp r-inp" type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="next" placeholder="0" value="'+s.r+'" id="r-'+bi+'-'+ei+'-'+j+'" oninput="updSet('+bi+','+ei+','+j+',\'r\',this.value)" onkeydown="if(event.key===\'Enter\'){event.preventDefault();var nw=document.getElementById(\'w-'+bi+'-'+ei+'-'+(j+1)+'\');if(nw)nw.focus();}"></td>' +
+      valueCell +
       (j===0 ?
       '<td><button class="del-set-btn" onclick="openSetMenu(event,'+bi+','+ei+','+j+')"><i class="ti ti-dots"></i></button></td>' :
       '<td><button class="del-set-btn" onclick="remSet('+bi+','+ei+','+j+')"><i class="ti ti-minus"></i></button></td>'
     ) +
     '</tr>';
   }).join('');
-  return '<table class="sets-table"><thead><tr><th>Set</th><th>Weight (lbs)</th><th></th><th>Reps</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>' +
+  return '<table class="sets-table">'+header+'<tbody>'+rows+'</tbody></table>' +
     '<button class="add-set-btn" onclick="addSet('+bi+','+ei+')"><i class="ti ti-plus"></i> Add set</button>';
+}
+
+var _exCountdowns = {}; // key: "bi-ei" → { interval, remaining, target, phase: 'countdown'|'running'|'done' }
+
+function renderExCountdown(bi, ei){
+  var id = 'excd-'+bi+'-'+ei;
+  return '<div class="ex-countdown" id="'+id+'" style="margin-top:12px;border-top:0.5px solid var(--bo3);padding-top:12px;">' +
+    '<div style="display:flex;align-items:center;gap:10px;">' +
+      // Target input
+      '<div style="display:flex;flex-direction:column;align-items:center;gap:3px;">' +
+        '<span style="font-size:10px;color:var(--ts);text-transform:uppercase;letter-spacing:.05em;">Target</span>' +
+        '<input type="text" id="'+id+'-dur" placeholder="0:30" inputmode="numeric" value="" style="width:58px;padding:6px 4px;border:1px solid var(--bo3);border-radius:var(--r1);background:var(--input-bg);color:var(--tp);font-size:15px;font-weight:700;text-align:center;font-family:var(--font);">' +
+      '</div>' +
+      // Big countdown display
+      '<div id="'+id+'-display" style="flex:1;font-size:32px;font-weight:800;color:var(--tp);text-align:center;letter-spacing:-0.02em;font-family:var(--font);">—</div>' +
+      // Buttons
+      '<button id="'+id+'-play" onclick="exCountdownStart('+bi+','+ei+')" style="background:var(--accent);border:none;color:#fff;border-radius:50%;width:44px;height:44px;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="ti ti-player-play-filled"></i></button>' +
+      '<button id="'+id+'-reset" onclick="exCountdownReset('+bi+','+ei+')" style="background:var(--input-bg);border:1px solid var(--bo3);color:var(--ts);border-radius:50%;width:44px;height:44px;font-size:18px;cursor:pointer;display:none;align-items:center;justify-content:center;flex-shrink:0;"><i class="ti ti-refresh"></i></button>' +
+    '</div>' +
+    '<div id="'+id+'-status" style="font-size:11px;color:var(--ts);margin-top:6px;text-align:center;min-height:14px;"></div>' +
+  '</div>';
+}
+
+function exCountdownStart(bi, ei){
+  var id = 'excd-'+bi+'-'+ei;
+  var durInp = document.getElementById(id+'-dur');
+  var target = parseDur(durInp ? durInp.value : '') || 30;
+  if(!target || target <= 0) target = 30;
+
+  // Cancel any existing timer for this card
+  if(_exCountdowns[id]) { clearInterval(_exCountdowns[id].interval); }
+
+  var display = document.getElementById(id+'-display');
+  var playBtn = document.getElementById(id+'-play');
+  var resetBtn = document.getElementById(id+'-reset');
+  var status = document.getElementById(id+'-status');
+
+  // Phase 1: 3-2-1 countdown
+  var countdown = 3;
+  if(display){ display.textContent = countdown; display.style.color = 'var(--dropset)'; }
+  if(status){ status.textContent = 'Get ready...'; }
+  if(playBtn){ playBtn.innerHTML = '<i class="ti ti-player-stop-filled"></i>'; playBtn.onclick = function(){ exCountdownStop(bi, ei); }; }
+  if(resetBtn){ resetBtn.style.display = 'none'; }
+
+  _exCountdowns[id] = { phase: 'countdown', target: target };
+  _exCountdowns[id].interval = setInterval(function(){
+    countdown--;
+    if(countdown > 0){
+      if(display) display.textContent = countdown;
+    } else {
+      // Switch to main timer
+      clearInterval(_exCountdowns[id].interval);
+      _exCountdowns[id].phase = 'running';
+      var remaining = target;
+      if(display){ display.textContent = fmtDur(remaining); display.style.color = 'var(--accent)'; }
+      if(status){ status.textContent = 'Go!'; }
+      _exCountdowns[id].interval = setInterval(function(){
+        remaining--;
+        if(display) display.textContent = fmtDur(remaining);
+        if(remaining <= 0){
+          clearInterval(_exCountdowns[id].interval);
+          _exCountdowns[id].phase = 'done';
+          if(display){ display.textContent = fmtDur(target); display.style.color = 'var(--success)'; }
+          if(status){ status.textContent = '✓ Done — tap a set\'s duration box to log it'; }
+          if(playBtn){ playBtn.innerHTML = '<i class="ti ti-player-play-filled"></i>'; playBtn.onclick = function(){ exCountdownStart(bi, ei); }; }
+          if(resetBtn){ resetBtn.style.display = 'flex'; }
+          if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Haptics){
+            window.Capacitor.Plugins.Haptics.impact({style:'medium'}).catch(function(){});
+          }
+          // Auto-fill the first empty duration set on this exercise
+          var ex = blocks[bi] && blocks[bi].exercises[ei];
+          if(ex && ex.sets){
+            for(var si=0; si<ex.sets.length; si++){
+              var s = ex.sets[si];
+              if(s.d_done === null || s.d_done === undefined || s.d_done === ''){
+                updSetDur(bi, ei, si, fmtDur(target));
+                var inp = document.getElementById('r-'+bi+'-'+ei+'-'+si);
+                if(inp) inp.value = fmtDur(target);
+                break;
+              }
+            }
+          }
+        }
+      }, 1000);
+    }
+  }, 1000);
+}
+
+function exCountdownStop(bi, ei){
+  var id = 'excd-'+bi+'-'+ei;
+  if(_exCountdowns[id]){ clearInterval(_exCountdowns[id].interval); delete _exCountdowns[id]; }
+  var display = document.getElementById(id+'-display');
+  var playBtn = document.getElementById(id+'-play');
+  var resetBtn = document.getElementById(id+'-reset');
+  var status = document.getElementById(id+'-status');
+  if(display){ display.textContent = '—'; display.style.color = 'var(--tp)'; }
+  if(status){ status.textContent = ''; }
+  if(playBtn){ playBtn.innerHTML = '<i class="ti ti-player-play-filled"></i>'; playBtn.onclick = function(){ exCountdownStart(bi, ei); }; }
+  if(resetBtn){ resetBtn.style.display = 'none'; }
+}
+
+function exCountdownReset(bi, ei){
+  exCountdownStop(bi, ei);
+}
+
+function updSetDur(bi, ei, si, val){
+  var secs = parseDur(val);
+  blocks[bi].exercises[ei].sets[si].d_done = secs;
+  blocks[bi].exercises[ei].sets[si].d_target = secs;
 }
 
 
@@ -4461,6 +4752,11 @@ function renderDSBody(ex, bi){
 function renderBlocks(){
   const el = document.getElementById('blocks-list');
   if(!blocks.length){ el.innerHTML=''; return; }
+  // Build a map of exercise names that appear more than once (so we can show type badges)
+  var nameCounts = {};
+  blocks.forEach(function(b){
+    if(b.exercises) b.exercises.forEach(function(ex){ nameCounts[ex.name] = (nameCounts[ex.name]||0) + 1; });
+  });
   el.innerHTML = blocks.map((b,bi) => {
     var blockHtml = '';
     if(b.type === 'cardio'){
@@ -4511,12 +4807,16 @@ function renderBlocks(){
     if(b.type === 'single'){
       const ex = b.exercises[0];
       const assistedBadge = b.assisted ? '<span class="ex-assisted-badge"><i class="ti ti-arrow-down-right"></i> Assisted</span>' : '';
+      const exType = ex.tracking_type || exGetType(ex.name);
       const noteHtml = (b.note || b._editingNote)
         ? `<div class="ex-note-input-row"><input type="text" id="note-inp-${bi}" value="${(b.note||'').replace(/"/g,'&quot;')}" placeholder="e.g. Shoulder hurting today..." onblur="autoSaveExNote(${bi})"><button class="icon-btn" onclick="removeExNote(${bi})" style="color:var(--ts);padding:4px 7px;display:${b.note?'':'none'};" id="note-del-${bi}"><i class="ti ti-trash"></i></button></div>`
         : '';
+      const typeBadge = nameCounts[ex.name] > 1
+        ? `<span style="font-size:10px;font-weight:700;color:var(--ts);margin-left:5px;">${exType === 'duration' ? '· Timed' : '· Reps'}</span>`
+        : '';
       blockHtml = `<div class="exercise-card">
         <div class="ex-header">
-          <span class="ex-name">${ex.name}${assistedBadge}</span>
+          <span class="ex-name">${ex.name}${typeBadge}${assistedBadge}</span>
           <div style="display:flex;align-items:center;gap:2px;">
             <button class="ex-info-btn" onclick="openExInfo('${ex.name.replace(/'/g,"\\'")}')"><i class="ti ti-chart-bar"></i> Stats</button>
             <div class="ex-menu-wrap">
@@ -4535,6 +4835,7 @@ function renderBlocks(){
         </div>
         ${noteHtml}
         ${renderSetTable(ex,bi,0)}
+        ${(ex.tracking_type||exGetType(ex.name))==='duration' ? renderExCountdown(bi,0) : ''}
       </div>`;
     }
     if(b.type === 'superset'){
@@ -4899,6 +5200,8 @@ function openEditEx(name){
   document.getElementById('edit-ex-cat').innerHTML = Object.keys(EX).map(cat =>
     `<option value="${cat}" ${cat===cc?'selected':''}>${cat}</option>`
   ).join('');
+  const typeEl = document.getElementById('edit-ex-type');
+  if(typeEl) typeEl.value = exGetType(name);
   openModal('edit-ex-modal');
   setTimeout(()=>document.getElementById('edit-ex-name').focus(), 50);
 }
@@ -4906,6 +5209,7 @@ function openEditEx(name){
 async function confirmEditEx(){
   const nn = document.getElementById('edit-ex-name').value.trim();
   const nc = document.getElementById('edit-ex-cat').value;
+  const nt = (document.getElementById('edit-ex-type')||{}).value || 'reps';
   if(!nn||!editExName) return;
   const oldName = editExName;
   const oc = findCat(oldName);
@@ -4916,6 +5220,12 @@ async function confirmEditEx(){
       else EX[oc][idx] = nn;
     }
   }
+  // Migrate EX_META key if name changed
+  if(oldName !== nn){
+    const oldMeta = EX_META[oldName];
+    if(oldMeta){ EX_META[nn] = oldMeta; delete EX_META[oldName]; }
+  }
+  exSetType(nn, nt);
   // Update in local history
   history.forEach(e => e.blocks.forEach(b => b.exercises.forEach(ex => { if(ex.name===oldName) ex.name=nn; })));
   if(selEx===oldName) selEx=nn;
@@ -4933,19 +5243,32 @@ async function confirmEditEx(){
 // Lookup tab
 function getAllData(){
   const map = {};
+  // First pass: find which exercise names have multiple types in history
+  var nameTypes = {};
+  history.forEach(e => e.blocks.forEach(b => {
+    b.exercises.forEach(ex => {
+      var type = ex.tracking_type || 'reps';
+      if(!nameTypes[ex.name]) nameTypes[ex.name] = new Set();
+      nameTypes[ex.name].add(type);
+    });
+  }));
+  // Second pass: build map, keying by "name||type" when both types exist, else just "name"
   history.forEach(e => e.blocks.forEach(b => {
     const assisted = b.assisted || false;
     const note = b.note || null;
     b.exercises.forEach(ex => {
-      if(!map[ex.name]) map[ex.name]=[];
+      var type = ex.tracking_type || exGetType(ex.name);
+      var hasBoth = nameTypes[ex.name] && nameTypes[ex.name].size > 1;
+      var key = hasBoth ? ex.name + '||' + type : ex.name;
+      if(!map[key]) map[key]=[];
       if(ex.dropSets){
         ex.dropSets.forEach(ds => {
-          const v = ds.filter(d => d.w||d.r);
-          if(v.length) map[ex.name].push({date:e.date, sets:v.map(d=>({weight:d.w,reps:d.r,warmup:d.warmup||false})), assisted, note});
+          const v = ds.filter(d => d.w||d.r||(d.d_done!=null&&d.d_done!=='')||d.d_target);
+          if(v.length) map[key].push({date:e.date, sets:v.map(d=>({weight:d.w,reps:d.r,warmup:d.warmup||false,d_done:d.d_done,tracking_type:type})), assisted, note, tracking_type:type});
         });
       } else {
-        const v = (ex.sets||[]).filter(s => s.w||s.r);
-        if(v.length) map[ex.name].push({date:e.date, sets:v.map(s=>({weight:s.w,reps:s.r,warmup:s.warmup||false})), assisted, note});
+        const v = (ex.sets||[]).filter(s => s.w||s.r||(s.d_done!=null&&s.d_done!=='')||s.d_target);
+        if(v.length) map[key].push({date:e.date, sets:v.map(s=>({weight:s.w,reps:s.r,warmup:s.warmup||false,d_done:s.d_done,d_target:s.d_target,tracking_type:type})), assisted, note, tracking_type:type});
       }
     });
   }));
@@ -5001,21 +5324,42 @@ function buildExMapFromHistory(workouts){
 // exMap: optional category→exercises map. If not provided, uses current user's EX.
 function renderPBsIntoEl(workouts, el, exMap){
   var pbMap = {};
+  // First pass: find which names have multiple types
+  var nameTypes = {};
+  workouts.forEach(function(entry){
+    entry.blocks.forEach(function(b){
+      b.exercises.forEach(function(ex){
+        var type = ex.tracking_type || 'reps';
+        if(!nameTypes[ex.name]) nameTypes[ex.name] = new Set();
+        nameTypes[ex.name].add(type);
+      });
+    });
+  });
   workouts.forEach(function(entry){
     entry.blocks.forEach(function(b){
       var assisted = b.assisted || false;
       b.exercises.forEach(function(ex){
-        if(!pbMap[ex.name]) pbMap[ex.name]={bestW:assisted?Infinity:0,bestR:0,date:'',assisted:assisted};
+        var type = ex.tracking_type || exGetType(ex.name);
+        var hasBoth = nameTypes[ex.name] && nameTypes[ex.name].size > 1;
+        var key = hasBoth ? ex.name + '||' + type : ex.name;
+        if(!pbMap[key]) pbMap[key]={bestW:assisted?Infinity:0,bestR:0,bestDur:0,date:'',assisted:assisted,type:type};
         var sets=ex.dropSets?[].concat.apply([],ex.dropSets):(ex.sets||[]);
         if(!sets.length) return;
-        var bestSet=sets.reduce(function(best,s){
-          var w=parseFloat(s.w)||0,r=parseFloat(s.r)||0,bw=parseFloat(best.w)||0,br=parseFloat(best.r)||0;
-          if(assisted) return w<bw||(w===bw&&r>br)?s:best;
-          return w>bw||(w===bw&&r>br)?s:best;
-        }, sets[0]);
-        var compW=parseFloat(bestSet.w)||0, bestR=parseFloat(bestSet.r)||0;
-        var isBetter=assisted?(compW<pbMap[ex.name].bestW||(compW===pbMap[ex.name].bestW&&bestR>pbMap[ex.name].bestR)):(compW>pbMap[ex.name].bestW||(compW===pbMap[ex.name].bestW&&bestR>pbMap[ex.name].bestR));
-        if(isBetter){pbMap[ex.name].bestW=compW;pbMap[ex.name].bestR=bestR;pbMap[ex.name].date=entry.date;pbMap[ex.name].assisted=assisted;}
+        if(type === 'duration'){
+          sets.forEach(function(s){
+            var dur = parseFloat(s.d_done||s.d_target)||0;
+            if(dur > pbMap[key].bestDur){ pbMap[key].bestDur=dur; pbMap[key].bestW=parseFloat(s.w)||0; pbMap[key].date=entry.date; }
+          });
+        } else {
+          var bestSet=sets.reduce(function(best,s){
+            var w=parseFloat(s.w)||0,r=parseFloat(s.r)||0,bw=parseFloat(best.w)||0,br=parseFloat(best.r)||0;
+            if(assisted) return w<bw||(w===bw&&r>br)?s:best;
+            return w>bw||(w===bw&&r>br)?s:best;
+          }, sets[0]);
+          var compW=parseFloat(bestSet.w)||0, bestR=parseFloat(bestSet.r)||0;
+          var isBetter=assisted?(compW<pbMap[key].bestW||(compW===pbMap[key].bestW&&bestR>pbMap[key].bestR)):(compW>pbMap[key].bestW||(compW===pbMap[key].bestW&&bestR>pbMap[key].bestR));
+          if(isBetter){pbMap[key].bestW=compW;pbMap[key].bestR=bestR;pbMap[key].date=entry.date;pbMap[key].assisted=assisted;}
+        }
       });
     });
   });
@@ -5030,7 +5374,6 @@ function renderPBsIntoEl(workouts, el, exMap){
     var exCatMap = exMap || buildExMapFromHistory(workouts);
     var catOrder = Object.keys(exCatMap).filter(function(c){ return c !== 'Other'; });
 
-    // Build lowercase lookup for case-insensitive matching
     var lowerCatMap = {};
     catOrder.forEach(function(cat){
       (exCatMap[cat]||[]).forEach(function(ex){
@@ -5039,38 +5382,42 @@ function renderPBsIntoEl(workouts, el, exMap){
     });
 
     var catGroups={};
-    function fuzzyFindCat(name){
-      var n = name.toLowerCase();
-      // 1. Exact match
+    function fuzzyFindCat(key){
+      var n = exKeyName(key).toLowerCase();
       if(lowerCatMap[n]) return lowerCatMap[n];
-      // 2. The PB name contains a known exercise name as a substring
-      var keys = Object.keys(lowerCatMap);
-      for(var i=0;i<keys.length;i++){
-        if(n.includes(keys[i]) || keys[i].includes(n)) return lowerCatMap[keys[i]];
+      var keys2 = Object.keys(lowerCatMap);
+      for(var i=0;i<keys2.length;i++){
+        if(n.includes(keys2[i]) || keys2[i].includes(n)) return lowerCatMap[keys2[i]];
       }
       return null;
     }
-    allPbNames.forEach(function(name){
-      if(q&&!name.toLowerCase().includes(q)) return;
-      var cat = fuzzyFindCat(name);
+    allPbNames.forEach(function(key){
+      if(q&&!exKeyLabel(key).toLowerCase().includes(q)) return;
+      var cat = fuzzyFindCat(key);
       if(cat){
         if(!catGroups[cat]) catGroups[cat]=[];
-        catGroups[cat].push(name);
+        catGroups[cat].push(key);
       } else {
         if(!catGroups['Other']) catGroups['Other']=[];
-        catGroups['Other'].push(name);
+        catGroups['Other'].push(key);
       }
     });
     var activeCats=catOrder.filter(function(c){return catGroups[c];});
     if(catGroups['Other']) activeCats.push('Other');
     if(!activeCats.length) return '<div class="empty">No results.</div>';
     return activeCats.map(function(cat){
-      var exRows=catGroups[cat].map(function(name){
-        var pb=pbMap[name];
-        var pbVal=pb.bestW>0?fw(String(pb.bestW))+' × '+fr(String(pb.bestR))+' reps':fr(String(pb.bestR))+' reps';
+      var exRows=catGroups[cat].map(function(key){
+        var pb=pbMap[key];
+        var pbType = pb.type || exGetType(exKeyName(key));
+        var pbVal;
+        if(pbType === 'duration'){
+          pbVal = pb.bestW > 0 ? fw(String(pb.bestW)) + ' × ' + fmtDur(pb.bestDur) : fmtDur(pb.bestDur);
+        } else {
+          pbVal=pb.bestW>0?fw(String(pb.bestW))+' × '+fr(String(pb.bestR))+' reps':fr(String(pb.bestR))+' reps';
+        }
         return '<div class="ex-item" style="flex-direction:column;align-items:flex-start;gap:1px;padding:10px 14px;">'+
           '<div style="display:flex;align-items:center;justify-content:space-between;width:100%;">'+
-            '<span class="ex-item-name">'+name+(pb.assisted?' <span class="ex-assisted-badge" style="font-size:10px;"><i class="ti ti-arrow-down-right"></i></span>':'')+'</span>'+
+            '<span class="ex-item-name">'+exKeyLabel(key)+(pb.assisted?' <span class="ex-assisted-badge" style="font-size:10px;"><i class="ti ti-arrow-down-right"></i></span>':'')+'</span>'+
             '<span style="font-size:12px;font-weight:700;color:var(--accent);">'+pbVal+'</span>'+
           '</div>'+
           '<span style="font-size:11px;color:var(--ts);">'+pb.date+'</span>'+
@@ -5101,16 +5448,24 @@ function renderPBsIntoEl(workouts, el, exMap){
   if(inp) inp.addEventListener('input',function(){document.getElementById(rid).innerHTML=buildList(this.value);});
 }
 
+// Helper: parse a compound "name||type" key into display label
+function exKeyLabel(key){
+  var parts = key.split('||');
+  if(parts.length === 1) return key;
+  return parts[0] + ' · ' + (parts[1] === 'duration' ? 'Timed' : 'Reps');
+}
+function exKeyName(key){ return key.split('||')[0]; }
+
 function renderLookup(){
   const q = (document.getElementById('ex-search').value||'').toLowerCase();
   const data = getAllData();
   const el = document.getElementById('lookup-content');
 
   if(q){
-    const names = Object.keys(data).filter(function(n){return n.toLowerCase().includes(q);}).sort();
-    if(!names.length){ el.innerHTML='<div class="empty"><i class="ti ti-barbell" style="font-size:32px;display:block;margin-bottom:8px"></i>No matches</div>'; return; }
-    if(!selEx||!names.includes(selEx)) selEx=names[0];
-    renderLookupDetail(el, data, names);
+    const keys = Object.keys(data).filter(function(k){ return exKeyLabel(k).toLowerCase().includes(q); }).sort();
+    if(!keys.length){ el.innerHTML='<div class="empty"><i class="ti ti-barbell" style="font-size:32px;display:block;margin-bottom:8px"></i>No matches</div>'; return; }
+    if(!selEx||!keys.includes(selEx)) selEx=keys[0];
+    renderLookupDetail(el, data, keys);
     return;
   }
 
@@ -5122,27 +5477,31 @@ function renderLookup(){
   const catNames = Object.keys(EX);
   if(!catNames.length){ el.innerHTML='<div class="empty"><i class="ti ti-barbell" style="font-size:32px;display:block;margin-bottom:8px"></i>Log some workouts first</div>'; return; }
 
+  // Build list of all data keys that belong to each category
   el.innerHTML = catNames.map(function(cat){
-    const exsInCat = (EX[cat]||[]).filter(function(ex){ return data[ex]&&data[ex].length>0; });
-    if(!exsInCat.length) return '';
+    var keysInCat = Object.keys(data).filter(function(key){
+      var name = exKeyName(key);
+      return (EX[cat]||[]).includes(name);
+    });
+    if(!keysInCat.length) return '';
     return '<div class="lookup-cat-section">' +
       '<div class="lookup-cat-hdr" onclick="toggleLookupCat(this)">' +
         '<span style="font-size:14px;font-weight:500;color:var(--tp);">'+cat+'</span>' +
         '<div style="display:flex;align-items:center;gap:8px;">' +
-          '<span style="font-size:12px;color:var(--ts);">'+exsInCat.length+' exercises</span>' +
+          '<span style="font-size:12px;color:var(--ts);">'+keysInCat.length+' exercises</span>' +
           '<i class="ti ti-chevron-down" style="color:var(--ts);font-size:16px;transition:transform .2s;"></i>' +
         '</div>' +
       '</div>' +
       '<div class="lookup-cat-body" style="display:none;">' +
-        exsInCat.map(function(ex){
-          return '<div class="ex-item" data-ex="'+esc(ex)+'" onclick="selExercise(this.dataset.ex)">' +
-            '<span class="ex-item-name">'+ex+'</span>' +
-            '<span class="ex-item-count">'+(data[ex]||[]).length+'x</span>' +
+        keysInCat.map(function(key){
+          return '<div class="ex-item" data-ex="'+esc(key)+'" onclick="selExercise(this.dataset.ex)">' +
+            '<span class="ex-item-name">'+exKeyLabel(key)+'</span>' +
+            '<span class="ex-item-count">'+(data[key]||[]).length+'x</span>' +
           '</div>';
         }).join('') +
       '</div>' +
     '</div>';
-  }).join('');
+  }).filter(Boolean).join('');
 
   // Auto-open first category with data
   const first = el.querySelector('.lookup-cat-hdr');
@@ -5177,14 +5536,14 @@ function renderLookupDetail(el, data, names){
     }
   });
   const pbSess = pbIdx>=0 ? sessions[pbIdx] : null;
-  const pbBlock = pbSess ? '<div style="background:var(--bs);border-radius:var(--r1);padding:10px 12px;margin-bottom:1.25rem;"><div style="font-size:11px;color:var(--ts);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">\u{1F3C6} Personal best \u2014 '+pbSess.date+'</div>'+pbSess.sets.map(function(s,i){return '<div style="font-size:14px;color:var(--tp);line-height:1.8;">Set '+(i+1)+': <strong>'+fw(s.weight)+'</strong> &times; <strong>'+fr(s.reps)+' reps</strong>'+(s.warmup?' <span class="ex-warmup-badge">Warm-up</span>':'')+'</div>';}).join('')+'</div>' : '';
-  const listHtml = names ? '<div class="ex-list">'+names.map(function(n){var cls=n===selEx?'active':'';return '<div class="ex-item '+cls+'" data-n="'+encodeURIComponent(n)+'" onclick="selExercise(decodeURIComponent(this.dataset.n))"><span class="ex-item-name">'+n+'</span><span class="ex-item-count">'+data[n].length+'x</span></div>';}).join('')+'</div>' : ''
+  const pbBlock = pbSess ? '<div style="background:var(--bs);border-radius:var(--r1);padding:10px 12px;margin-bottom:1.25rem;"><div style="font-size:11px;color:var(--ts);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">\u{1F3C6} Personal best \u2014 '+pbSess.date+'</div>'+pbSess.sets.map(function(s,i){var _st=s.tracking_type||exGetType(selEx||'');var _dv=(_st==='duration')?((parseFloat(s.weight)>0?fw(String(s.weight))+' &times; ':'')+fmtDur(s.d_done!==null&&s.d_done!==undefined?s.d_done:s.d_target)):(fw(s.weight)+' &times; '+fr(s.reps)+' reps');return '<div style="font-size:14px;color:var(--tp);line-height:1.8;">Set '+(i+1)+': <strong>'+_dv+'</strong>'+(s.warmup?' <span class="ex-warmup-badge">Warm-up</span>':'')+'</div>';}).join('')+'</div>' : '';
+  const listHtml = names ? '<div class="ex-list">'+names.map(function(n){var cls=n===selEx?'active':'';return '<div class="ex-item '+cls+'" data-n="'+encodeURIComponent(n)+'" onclick="selExercise(decodeURIComponent(this.dataset.n))"><span class="ex-item-name">'+exKeyLabel(n)+'</span><span class="ex-item-count">'+(data[n]||[]).length+'x</span></div>';}).join('')+'</div>' : ''
   const lastW = sessions.length ? Math.max.apply(null, sessions[0].sets.map(function(s){return parseFloat(s.weight)||0;})) : 0;
   el.innerHTML = listHtml +
     '<div class="ex-detail">' +
       '<div style="display:flex;align-items:center;gap:8px;margin-bottom:1rem;">' +
         '<button class="icon-btn" onclick="selEx=null;renderLookup()" style="font-size:12px;padding:4px 8px;"><i class="ti ti-arrow-left"></i> Back</button>' +
-        '<div class="ex-detail-name" style="margin:0;">'+selEx+'</div>' +
+        '<div class="ex-detail-name" style="margin:0;">'+exKeyLabel(selEx)+'</div>' +
       '</div>' +
       '<div class="stat-row">' +
         '<div class="stat-pill"><div class="stat-lbl">Best weight</div><div class="stat-val">'+(pbMaxW?pbMaxW+' lbs':'\u2014')+'</div></div>' +
@@ -5194,7 +5553,7 @@ function renderLookupDetail(el, data, names){
       pbBlock +
       renderProgressChart(sessions) +
       sessions.map(function(sess,si){
-        return '<div class="sess-row"><div class="sess-date">'+sess.date+(si===pbIdx?' <span style="font-size:11px;color:#3B6D11;margin-left:6px;">\u{1F3C6} PB</span>':'')+(sess.assisted?' <span class="ex-assisted-badge"><i class="ti ti-arrow-down-right"></i> Assisted</span>':'')+'</div>'+(sess.note?'<div class="ex-note">"'+sess.note+'"</div>':'')+'<div class="sess-grid">'+sess.sets.map(function(s,j){var cls='set-badge'+(si===pbIdx?' pr':'')+(s.warmup?' warmup':'');return '<span class="'+cls+'">Set '+(j+1)+': '+fw(s.weight)+' x '+fr(s.reps)+' reps</span>';}).join('')+'</div></div>';
+        return '<div class="sess-row"><div class="sess-date">'+sess.date+(si===pbIdx?' <span style="font-size:11px;color:#3B6D11;margin-left:6px;">\u{1F3C6} PB</span>':'')+(sess.assisted?' <span class="ex-assisted-badge"><i class="ti ti-arrow-down-right"></i> Assisted</span>':'')+'</div>'+(sess.note?'<div class="ex-note">"'+sess.note+'"</div>':'')+'<div class="sess-grid">'+sess.sets.map(function(s,j){var cls='set-badge'+(si===pbIdx?' pr':'')+(s.warmup?' warmup':'');var _st=s.tracking_type||exGetType(selEx||'');var _dv=(_st==='duration')?((parseFloat(s.weight)>0?fw(String(s.weight))+' x ':'')+fmtDur(s.d_done!==null&&s.d_done!==undefined?s.d_done:s.d_target)):(fw(s.weight)+' x '+fr(s.reps)+' reps');return '<span class="'+cls+'">Set '+(j+1)+': '+_dv+'</span>';}).join('')+'</div></div>';
       }).join('') +
     '</div>';
 }
@@ -5225,7 +5584,8 @@ function renderHistory(){
       const nb = b.note ? `<div class="ex-note">"${b.note}"</div>` : '';
       if(b.type==='single'){
         const ex=b.exercises[0];
-        const lines = ex.sets.map((s,i) => `Set ${i+1}: ${fw(s.w)} × ${fr(s.r)} reps${s.warmup?' <span class="ex-warmup-badge">Warm-up</span>':''}`).join('<br>');
+        var _et = ex.tracking_type || exGetType(ex.name);
+        const lines = ex.sets.map((s,i) => fmtSetLine(s, i, _et)).join('<br>');
         return `<div class="hist-block"><div class="hist-name">${ex.name}${ab}</div>${nb}<div class="hist-sets">${lines}</div></div>`;
       }
       if(b.type==='superset'){
@@ -5283,7 +5643,7 @@ function repeatWorkout(idx){
     if(b.type==='dropset'){
       return {type:'dropset', exercises:[{name:b.exercises[0].name, dropSets:b.exercises[0].dropSets.map(ds=>ds.map(()=>({w:'',r:''})))}]};
     }
-    return {type:b.type, exercises:(b.exercises||[]).map(ex=>({name:ex.name, sets:(ex.sets||[]).map(()=>({w:'',r:''}))}))};
+    return {type:b.type, exercises:(b.exercises||[]).map(ex=>{var _t=ex.tracking_type||exGetType(ex.name);return {name:ex.name, sets:(ex.sets||[]).map(()=>emptySet(_t)), tracking_type:_t};})};
   });
   if(entry.label) document.getElementById('day-inp').value = entry.label;
   renderBlocks(); renderExSelect();
@@ -5439,7 +5799,7 @@ function copyFriendWorkout(idx){
     if(b.type==='dropset'){
       return {type:'dropset', exercises:[{name:b.exercises[0].name, dropSets:b.exercises[0].dropSets.map(function(ds){ return ds.map(function(){ return {w:'',r:''}; }); })}]};
     }
-    return {type:b.type, exercises:b.exercises.map(function(ex){ return {name:ex.name, sets:(ex.sets||[]).map(function(){ return {w:'',r:''}; })}; })};
+    return {type:b.type, exercises:b.exercises.map(function(ex){ var _t=ex.tracking_type||exGetType(ex.name); return {name:ex.name, sets:(ex.sets||[]).map(function(){ return emptySet(_t); }), tracking_type:_t}; })};
   });
   if(entry.label) document.getElementById('day-inp').value = entry.label;
   closeModal('friend-history-modal');
@@ -5492,7 +5852,7 @@ function buildMonthGroups(workouts){
       b.exercises.forEach(function(ex){
         var sets = ex.dropSets ? [].concat.apply([],ex.dropSets) : (ex.sets||[]);
         months[key].totalSets += sets.length;
-        sets.forEach(function(s){ var w=parseFloat(s.w||s.weight)||0,r=parseFloat(s.r||s.reps)||0; months[key].totalVol+=w*r; });
+        sets.forEach(function(s){ if(s.d_done!=null||s.d_target) return; var w=parseFloat(s.w||s.weight)||0,r=parseFloat(s.r||s.reps)||0; months[key].totalVol+=w*r; });
       });
     });
   });
@@ -5574,8 +5934,8 @@ function buildUpmRowHtml(entry, idx){
     if(!b.exercises) return '';
     var ab = b.assisted?'<span class="ex-assisted-badge"><i class="ti ti-arrow-down-right"></i> Assisted</span>':'';
     var nb = b.note?'<div class="ex-note">"'+b.note+'"</div>':'';
-    if(b.type==='single'){var ex=b.exercises[0];var lines=ex.sets.map(function(s,i){return 'Set '+(i+1)+': '+fw(s.w)+' x '+fr(s.r)+' reps'+(s.warmup?' <span class="ex-warmup-badge">Warm-up</span>':'');}).join('<br>');return '<div class="hist-block"><div class="hist-name">'+ex.name+ab+'</div>'+nb+'<div class="hist-sets">'+lines+'</div></div>';}
-    if(b.type==='superset'){var e1=b.exercises[0],e2=b.exercises[1],ms2=Math.max(e1.sets.length,e2.sets.length);var lines=Array.from({length:ms2},function(_,i){var s1=e1.sets[i],s2=e2.sets[i];return 'Set '+(i+1)+': '+(s1?fw(s1.w)+' x '+fr(s1.r)+' reps':'—')+' / '+(s2?fw(s2.w)+' x '+fr(s2.r)+' reps':'—');}).join('<br>');return '<div class="hist-block"><div class="hist-name">'+e1.name+' / '+e2.name+' <span style="font-size:11px;background:#1a1a5c;color:#7a7ae0;padding:2px 7px;border-radius:20px;font-weight:500;"><i class="ti ti-arrows-exchange"></i> Superset</span>'+ab+'</div>'+nb+'<div class="hist-sets">'+lines+'</div></div>';}
+    if(b.type==='single'){var ex=b.exercises[0];var _t=ex.tracking_type||exGetType(ex.name);var lines=ex.sets.map(function(s,i){return fmtSetLine(s,i,_t);}).join('<br>');return '<div class="hist-block"><div class="hist-name">'+ex.name+ab+'</div>'+nb+'<div class="hist-sets">'+lines+'</div></div>';}
+    if(b.type==='superset'){var e1=b.exercises[0],e2=b.exercises[1],ms2=Math.max(e1.sets.length,e2.sets.length);var _t1=e1.tracking_type||exGetType(e1.name),_t2=e2.tracking_type||exGetType(e2.name);var lines=Array.from({length:ms2},function(_,i){var s1=e1.sets[i],s2=e2.sets[i];return 'Set '+(i+1)+': '+(s1?fmtSetLine(s1,i,_t1).replace('Set '+(i+1)+': ',''):'—')+' / '+(s2?fmtSetLine(s2,i,_t2).replace('Set '+(i+1)+': ',''):'—');}).join('<br>');return '<div class="hist-block"><div class="hist-name">'+e1.name+' / '+e2.name+' <span style="font-size:11px;background:#1a1a5c;color:#7a7ae0;padding:2px 7px;border-radius:20px;font-weight:500;"><i class="ti ti-arrows-exchange"></i> Superset</span>'+ab+'</div>'+nb+'<div class="hist-sets">'+lines+'</div></div>';}
     if(b.type==='dropset'){var ex=b.exercises[0];var lines=ex.dropSets.map(function(drops,i){return 'Set '+(i+1)+': '+drops.map(function(d){return fw(d.w)+' x '+fr(d.r)+' reps';}).join(' > ');}).join('<br>');return '<div class="hist-block"><div class="hist-name">'+ex.name+ab+'</div>'+nb+'<div class="hist-sets">'+lines+'</div></div>';}
     return '';
   }).join('');
@@ -5678,8 +6038,8 @@ function buildWktRowHtml(entry, idx){
     if(!b.exercises) return '';
     var assistedBadge = b.assisted?' <span class="ex-assisted-badge"><i class="ti ti-arrow-down-right"></i> Assisted</span>':'';
     var noteHtml = b.note?'<div class="ex-note">"'+b.note+'"</div>':'';
-    if(b.type==='single'){var ex=b.exercises[0];var lines=ex.sets.map(function(s,i){return 'Set '+(i+1)+': '+fw(s.w)+' x '+fr(s.r)+' reps'+(s.warmup?' <span class="ex-warmup-badge">Warm-up</span>':'');}).join('<br>');return '<div class="hist-block"><div class="hist-name">'+ex.name+assistedBadge+'</div>'+noteHtml+'<div class="hist-sets">'+lines+'</div></div>';}
-    if(b.type==='superset'){var e1=b.exercises[0],e2=b.exercises[1],ms=Math.max(e1.sets.length,e2.sets.length);var lines=Array.from({length:ms},function(_,i){var s1=e1.sets[i],s2=e2.sets[i];return 'Set '+(i+1)+': '+(s1?fw(s1.w)+' x '+fr(s1.r)+' reps':'—')+' / '+(s2?fw(s2.w)+' x '+fr(s2.r)+' reps':'—');}).join('<br>');return '<div class="hist-block"><div class="hist-name">'+e1.name+' / '+e2.name+' <span style="font-size:11px;background:#1a1a5c;color:#7a7ae0;padding:2px 7px;border-radius:20px;font-weight:500;"><i class="ti ti-arrows-exchange"></i> Superset</span>'+assistedBadge+'</div>'+noteHtml+'<div class="hist-sets">'+lines+'</div></div>';}
+    if(b.type==='single'){var ex=b.exercises[0];var _t=ex.tracking_type||exGetType(ex.name);var lines=ex.sets.map(function(s,i){return fmtSetLine(s,i,_t);}).join('<br>');return '<div class="hist-block"><div class="hist-name">'+ex.name+assistedBadge+'</div>'+noteHtml+'<div class="hist-sets">'+lines+'</div></div>';}
+    if(b.type==='superset'){var e1=b.exercises[0],e2=b.exercises[1],ms=Math.max(e1.sets.length,e2.sets.length);var _t1=e1.tracking_type||exGetType(e1.name),_t2=e2.tracking_type||exGetType(e2.name);var lines=Array.from({length:ms},function(_,i){var s1=e1.sets[i],s2=e2.sets[i];return 'Set '+(i+1)+': '+(s1?fmtSetLine(s1,i,_t1).replace('Set '+(i+1)+': ',''):'—')+' / '+(s2?fmtSetLine(s2,i,_t2).replace('Set '+(i+1)+': ',''):'—');}).join('<br>');return '<div class="hist-block"><div class="hist-name">'+e1.name+' / '+e2.name+' <span style="font-size:11px;background:#1a1a5c;color:#7a7ae0;padding:2px 7px;border-radius:20px;font-weight:500;"><i class="ti ti-arrows-exchange"></i> Superset</span>'+assistedBadge+'</div>'+noteHtml+'<div class="hist-sets">'+lines+'</div></div>';}
     if(b.type==='dropset'){var ex=b.exercises[0];var lines=ex.dropSets.map(function(drops,i){return 'Set '+(i+1)+': '+drops.map(function(d){return fw(d.w)+' x '+fr(d.r)+' reps';}).join(' > ');}).join('<br>');return '<div class="hist-block"><div class="hist-name">'+ex.name+assistedBadge+'</div>'+noteHtml+'<div class="hist-sets">'+lines+'</div></div>';}
     return '';
   }).join('');
@@ -5852,9 +6212,11 @@ function openEditWorkout(idx){
     </div>`;
     if(b.type === 'single'){
       const ex = b.exercises[0];
+      const exType = ex.tracking_type || exGetType(ex.name);
+      const isDuration = exType === 'duration';
       return `<div style="margin-bottom:1rem;">
         <div class="modal-lbl" style="margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;">
-          <span>${ex.name}${b.assisted?'<span class=\"ex-assisted-badge\" style=\"margin-left:6px;\"><i class=\"ti ti-arrow-down-right\"></i> Assisted</span>':''}</span>
+          <span>${exKeyLabel(isDuration ? ex.name+'||duration' : ex.name)}${b.assisted?'<span class=\"ex-assisted-badge\" style=\"margin-left:6px;\"><i class=\"ti ti-arrow-down-right\"></i> Assisted</span>':''}</span>
           <button class="icon-btn" style="font-size:12px;padding:3px 8px;${b.assisted?'color:#3B6D11;border-color:#3B6D11;':''}" onclick="toggleEditAssisted(${bi})">${b.assisted?'Remove assisted':'Mark assisted'}</button>
         </div>
         ${noteRow}
@@ -5865,11 +6227,15 @@ function openEditWorkout(idx){
           const actionBtn = si === 0
             ? '<button class="del-set-btn" onclick="openEditSetMenu(event,'+bi+',0,'+si+')" style="padding:4px 6px;"><i class="ti ti-dots"></i></button>'
             : '<button class="del-set-btn" onclick="removeEditSet('+bi+',0,'+si+')" style="padding:4px 6px;"><i class="ti ti-minus"></i></button>';
+          const durVal = (s.d_done !== null && s.d_done !== undefined && s.d_done !== '') ? fmtDur(s.d_done) : (s.d_target ? fmtDur(s.d_target) : '');
+          const valueInput = isDuration
+            ? `<input class="modal-inp" style="margin:0;flex:1;" type="text" inputmode="numeric" placeholder="0:30" value="${durVal}" oninput="editSetDurVal(${bi},0,${si},this.value)">`
+            : `<input class="modal-inp" style="margin:0;flex:1;" type="number" inputmode="numeric" placeholder="reps" value="${s.r}" oninput="editSetVal(${bi},0,${si},'r',this.value)">`;
           return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
           <span style="font-size:12px;color:var(--ts);width:40px;text-align:center;">${setLabel}</span>
-          <input class="modal-inp" style="margin:0;flex:1;" type="number" inputmode="decimal" placeholder="lbs" value="${s.w}" oninput="editSetVal(${bi},0,${si},'w',this.value)">
+          <input class="modal-inp" style="margin:0;flex:1;" type="number" inputmode="decimal" placeholder="lbs" value="${s.w||''}" oninput="editSetVal(${bi},0,${si},'w',this.value)">
           <span style="font-size:12px;color:var(--ts);">×</span>
-          <input class="modal-inp" style="margin:0;flex:1;" type="number" inputmode="numeric" placeholder="reps" value="${s.r}" oninput="editSetVal(${bi},0,${si},'r',this.value)">
+          ${valueInput}
           ${actionBtn}
         </div>`;
         }).join('')}
@@ -5878,15 +6244,25 @@ function openEditWorkout(idx){
     if(b.type === 'superset'){
       return (true?`<div style="margin-bottom:4px;display:flex;align-items:center;justify-content:space-between;"><span style="font-size:11px;color:#7a7ae0;font-weight:500;"><i class="ti ti-arrows-exchange"></i> Superset</span><button class="icon-btn" style="font-size:12px;padding:3px 8px;${b.assisted?'color:#3B6D11;border-color:#3B6D11;':''}" onclick="toggleEditAssisted(${bi})">${b.assisted?'Remove assisted':'Mark assisted'}</button></div>`:'') +
         noteRow +
-        b.exercises.map((ex, ei) => `<div style="margin-bottom:1rem;">
-        <div class="modal-lbl" style="margin-bottom:6px;">${ex.name} <span style="font-weight:400;color:var(--ts);">(Superset)</span></div>
-        ${ex.sets.map((s,si) => `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-          <span style="font-size:12px;color:var(--ts);width:40px;">Set ${si+1}</span>
-          <input class="modal-inp" style="margin:0;flex:1;" type="number" inputmode="decimal" placeholder="lbs" value="${s.w}" oninput="editSetVal(${bi},${ei},${si},'w',this.value)">
-          <span style="font-size:12px;color:var(--ts);">×</span>
-          <input class="modal-inp" style="margin:0;flex:1;" type="number" inputmode="numeric" placeholder="reps" value="${s.r}" oninput="editSetVal(${bi},${ei},${si},'r',this.value)">
-        </div>`).join('')}
-      </div>`).join('');
+        b.exercises.map((ex, ei) => {
+          const ssType = ex.tracking_type || exGetType(ex.name);
+          const ssIsDur = ssType === 'duration';
+          return `<div style="margin-bottom:1rem;">
+          <div class="modal-lbl" style="margin-bottom:6px;">${ex.name} <span style="font-weight:400;color:var(--ts);">(Superset)</span></div>
+          ${ex.sets.map((s,si) => {
+            const durVal = (s.d_done != null && s.d_done !== '') ? fmtDur(s.d_done) : (s.d_target ? fmtDur(s.d_target) : '');
+            const valInput = ssIsDur
+              ? `<input class="modal-inp" style="margin:0;flex:1;" type="text" inputmode="numeric" placeholder="0:30" value="${durVal}" oninput="editSetDurVal(${bi},${ei},${si},this.value)">`
+              : `<input class="modal-inp" style="margin:0;flex:1;" type="number" inputmode="numeric" placeholder="reps" value="${s.r||''}" oninput="editSetVal(${bi},${ei},${si},'r',this.value)">`;
+            return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+            <span style="font-size:12px;color:var(--ts);width:40px;">Set ${si+1}</span>
+            <input class="modal-inp" style="margin:0;flex:1;" type="number" inputmode="decimal" placeholder="lbs" value="${s.w||''}" oninput="editSetVal(${bi},${ei},${si},'w',this.value)">
+            <span style="font-size:12px;color:var(--ts);">×</span>
+            ${valInput}
+          </div>`;
+          }).join('')}
+        </div>`;
+        }).join('');
     }
     if(b.type === 'dropset'){
       const ex = b.exercises[0];
@@ -5983,6 +6359,14 @@ function editCardioVal(bi, field, v){
 function editSetVal(bi, ei, si, f, v){
   if(pendingEditWorkoutIdx === null) return;
   history[pendingEditWorkoutIdx].blocks[bi].exercises[ei].sets[si][f] = v;
+  localStorage.setItem('wl_history', JSON.stringify(history.slice(0,100)));
+}
+
+function editSetDurVal(bi, ei, si, v){
+  if(pendingEditWorkoutIdx === null) return;
+  var secs = parseDur(v);
+  history[pendingEditWorkoutIdx].blocks[bi].exercises[ei].sets[si].d_done = secs;
+  history[pendingEditWorkoutIdx].blocks[bi].exercises[ei].sets[si].d_target = secs;
   localStorage.setItem('wl_history', JSON.stringify(history.slice(0,100)));
 }
 
@@ -7170,21 +7554,25 @@ function getLevelFromXp(totalXp){
 // newExercises: exercises seen for the first time (never in priorHistory)
 // Neither list double-counts within the same workout.
 function detectNewPBs(newEntry, priorHistory){
-  var pbMap = {}; // exercises seen in prior history with their best set
+  var pbMap = {};
   priorHistory.forEach(function(e){
     e.blocks.forEach(function(b){
       var assisted = b.assisted || false;
       b.exercises.forEach(function(ex){
+        var type = ex.tracking_type || exGetType(ex.name);
         var sets = ex.dropSets ? [].concat.apply([], ex.dropSets) : (ex.sets || []);
         sets.forEach(function(s){
-          var w = parseFloat(s.w || s.weight) || 0;
-          var r = parseFloat(s.r || s.reps) || 0;
-          if(!pbMap[ex.name]) pbMap[ex.name] = {bestW: assisted ? Infinity : -1, bestR: 0, assisted: assisted};
-          if(assisted){
+          if(!pbMap[ex.name]) pbMap[ex.name] = {bestW: assisted ? Infinity : -1, bestR: 0, bestDur: 0, assisted: assisted, type: type};
+          if(type === 'duration'){
+            var dur = parseFloat(s.d_done||s.d_target) || 0;
+            if(dur > pbMap[ex.name].bestDur) pbMap[ex.name].bestDur = dur;
+          } else if(assisted){
+            var w = parseFloat(s.w||s.weight)||0, r = parseFloat(s.r||s.reps)||0;
             if(w < pbMap[ex.name].bestW || (w === pbMap[ex.name].bestW && r > pbMap[ex.name].bestR)){
               pbMap[ex.name].bestW = w; pbMap[ex.name].bestR = r;
             }
           } else {
+            var w = parseFloat(s.w||s.weight)||0, r = parseFloat(s.r||s.reps)||0;
             if(w > pbMap[ex.name].bestW || (w === pbMap[ex.name].bestW && r > pbMap[ex.name].bestR)){
               pbMap[ex.name].bestW = w; pbMap[ex.name].bestR = r;
             }
@@ -7194,45 +7582,48 @@ function detectNewPBs(newEntry, priorHistory){
     });
   });
 
-  var newPBs = [];       // real PBs: exercise has prior history and was beaten
-  var newExercises = []; // first time logging this exercise
+  var newPBs = [], newExercises = [];
 
   newEntry.blocks.forEach(function(b){
     var assisted = b.assisted || false;
     b.exercises.forEach(function(ex){
       if(newExercises.includes(ex.name) || newPBs.includes(ex.name)) return;
+      var type = ex.tracking_type || exGetType(ex.name);
       var sets = ex.dropSets ? [].concat.apply([], ex.dropSets) : (ex.sets || []);
       var prior = pbMap[ex.name];
 
       if(!prior){
-        // Never seen before — new exercise, not a PB
-        var hasData = sets.some(function(s){ return (parseFloat(s.w||s.weight)||0) > 0 || (parseFloat(s.r||s.reps)||0) > 0; });
-        if(hasData) newExercises.push(ex.name);
-        // Seed pbMap so multiple blocks of same new exercise in one workout don't double-count
-        sets.forEach(function(s){
-          var w = parseFloat(s.w||s.weight)||0, r = parseFloat(s.r||s.reps)||0;
-          if(!pbMap[ex.name]) pbMap[ex.name] = {bestW: assisted ? Infinity : -1, bestR: 0, assisted: assisted};
+        var hasData = sets.some(function(s){
+          return type === 'duration'
+            ? (parseFloat(s.d_done||s.d_target)||0) > 0
+            : (parseFloat(s.w||s.weight)||0) > 0 || (parseFloat(s.r||s.reps)||0) > 0;
         });
+        if(hasData) newExercises.push(ex.name);
+        pbMap[ex.name] = {bestW: assisted ? Infinity : -1, bestR: 0, bestDur: 0, assisted: assisted, type: type};
       } else {
-        // Has prior history — check if any set in this workout beats it
         var isBetter = false;
         sets.forEach(function(s){
           if(isBetter) return;
-          var w = parseFloat(s.w || s.weight) || 0;
-          var r = parseFloat(s.r || s.reps) || 0;
-          if(assisted){
-            if(w < prior.bestW || (w === prior.bestW && r > prior.bestR)) isBetter = true;
+          if(type === 'duration'){
+            var dur = parseFloat(s.d_done||s.d_target)||0;
+            if(dur > prior.bestDur) isBetter = true;
           } else {
-            if(w > prior.bestW || (w === prior.bestW && r > prior.bestR)) isBetter = true;
+            var w = parseFloat(s.w||s.weight)||0, r = parseFloat(s.r||s.reps)||0;
+            if(assisted){ if(w < prior.bestW || (w===prior.bestW && r>prior.bestR)) isBetter=true; }
+            else { if(w > prior.bestW || (w===prior.bestW && r>prior.bestR)) isBetter=true; }
           }
         });
         if(isBetter){
           newPBs.push(ex.name);
-          // Update pbMap so a second block of same exercise in same workout doesn't double-count
           sets.forEach(function(s){
-            var w = parseFloat(s.w||s.weight)||0, r = parseFloat(s.r||s.reps)||0;
-            if(assisted){ if(w < prior.bestW || (w===prior.bestW && r>prior.bestR)){ prior.bestW=w; prior.bestR=r; } }
-            else { if(w > prior.bestW || (w===prior.bestW && r>prior.bestR)){ prior.bestW=w; prior.bestR=r; } }
+            if(type==='duration'){
+              var dur = parseFloat(s.d_done||s.d_target)||0;
+              if(dur > prior.bestDur) prior.bestDur = dur;
+            } else {
+              var w = parseFloat(s.w||s.weight)||0, r = parseFloat(s.r||s.reps)||0;
+              if(assisted){ if(w<prior.bestW||(w===prior.bestW&&r>prior.bestR)){prior.bestW=w;prior.bestR=r;} }
+              else { if(w>prior.bestW||(w===prior.bestW&&r>prior.bestR)){prior.bestW=w;prior.bestR=r;} }
+            }
           });
         }
       }
