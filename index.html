@@ -278,11 +278,15 @@ input, select, button, textarea { font-family: var(--font); }
   background: var(--input-bg);
   color: var(--tp);
   text-align: center;
+  -webkit-text-align: center;
   min-width: 0;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
+.set-inp[type="number"] { text-align: center; -webkit-text-align: center; }
+.set-inp[type="number"]::-webkit-inner-spin-button,
+.set-inp[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 .set-inp:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 .xlbl { font-size: 13px; color: var(--ts); width: 16px; font-weight: 600; }
 .del-set-btn { background: none; border: none; cursor: pointer; color: var(--ts); font-size: 16px; padding: 4px 6px; opacity: 0.7; border-radius: var(--r1); }
@@ -3728,7 +3732,7 @@ function parseDur(str){
 }
 // Empty set for each type
 function emptySet(type){
-  return type==='duration' ? {w:'', d_target:30, d_done:null} : {w:'', r:''};
+  return type==='duration' ? {w:'', d_target:null, d_done:null} : {w:'', r:''};
 }
 // Has meaningful data?
 function setHasData(s, type){
@@ -4593,14 +4597,17 @@ function renderSetTable(ex, bi, ei){
   var type = ex.tracking_type || exGetType(ex.name);
   var isDuration = type === 'duration';
   var header = isDuration
-    ? '<thead><tr><th>Set</th><th>Weight (lbs)</th><th></th><th>Duration</th><th></th></tr></thead>'
+    ? '<thead><tr><th>Set</th><th>Weight (lbs)</th><th></th><th>Seconds</th><th></th></tr></thead>'
     : '<thead><tr><th>Set</th><th>Weight (lbs)</th><th></th><th>Reps</th><th></th></tr></thead>';
   const rows = ex.sets.map(function(s,j){
     const trClass = s.warmup ? 'warmup-row' : '';
     var valueCell;
     if(isDuration){
-      var dVal = s.d_done !== null && s.d_done !== undefined && s.d_done !== '' ? fmtDur(s.d_done) : (s.d_target ? fmtDur(s.d_target) : '');
-      valueCell = '<td><input class="set-inp r-inp" type="text" inputmode="numeric" enterkeyhint="done" placeholder="0:30" value="'+dVal+'" id="r-'+bi+'-'+ei+'-'+j+'" oninput="updSetDur('+bi+','+ei+','+j+',this.value)" onkeydown="if(event.key===\'Enter\'){event.preventDefault();var nw=document.getElementById(\'w-'+bi+'-'+ei+'-'+(j+1)+'\');if(nw)nw.focus();}"></td>';
+      // Store and display as plain seconds — no M:SS colon format in the input
+      var sVal = '';
+      if(s.d_done !== null && s.d_done !== undefined && s.d_done !== '') sVal = String(Math.round(Number(s.d_done)));
+      else if(s.d_target) sVal = String(Math.round(Number(s.d_target)));
+      valueCell = '<td><input class="set-inp r-inp" type="number" inputmode="numeric" pattern="[0-9]*" enterkeyhint="done" placeholder="0" value="'+sVal+'" id="r-'+bi+'-'+ei+'-'+j+'" oninput="updSetDur('+bi+','+ei+','+j+',this.value)" onkeydown="if(event.key===\'Enter\'){event.preventDefault();var nw=document.getElementById(\'w-'+bi+'-'+ei+'-'+(j+1)+'\');if(nw)nw.focus();}"></td>';
     } else {
       valueCell = '<td><input class="set-inp r-inp" type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="next" placeholder="0" value="'+s.r+'" id="r-'+bi+'-'+ei+'-'+j+'" oninput="updSet('+bi+','+ei+','+j+',\'r\',this.value)" onkeydown="if(event.key===\'Enter\'){event.preventDefault();var nw=document.getElementById(\'w-'+bi+'-'+ei+'-'+(j+1)+'\');if(nw)nw.focus();}"></td>';
     }
@@ -4643,8 +4650,9 @@ function renderExCountdown(bi, ei){
 function exCountdownStart(bi, ei){
   var id = 'excd-'+bi+'-'+ei;
   var durInp = document.getElementById(id+'-dur');
-  var target = parseDur(durInp ? durInp.value : '') || 30;
-  if(!target || target <= 0) target = 30;
+  var set = blocks[bi] && blocks[bi].exercises[ei] && blocks[bi].exercises[ei].sets[0];
+  var target = parseInt((document.getElementById(id+'-dur')||{}).value) || (set && set.d_target ? set.d_target : 0);
+  if(!target || target <= 0){ alert('Enter a target duration in seconds first.'); return; }
 
   // Cancel any existing timer for this card
   if(_exCountdowns[id]) { clearInterval(_exCountdowns[id].interval); }
@@ -4723,9 +4731,9 @@ function exCountdownReset(bi, ei){
 }
 
 function updSetDur(bi, ei, si, val){
-  var secs = parseDur(val);
-  blocks[bi].exercises[ei].sets[si].d_done = secs;
-  blocks[bi].exercises[ei].sets[si].d_target = secs;
+  var secs = Math.max(0, parseInt(val) || 0);
+  blocks[bi].exercises[ei].sets[si].d_done = secs || null;
+  blocks[bi].exercises[ei].sets[si].d_target = secs || null;
 }
 
 
@@ -7554,27 +7562,44 @@ function getLevelFromXp(totalXp){
 // newExercises: exercises seen for the first time (never in priorHistory)
 // Neither list double-counts within the same workout.
 function detectNewPBs(newEntry, priorHistory){
+  // Build a set of names that appear with multiple types across all history
+  var nameTypes = {};
+  var allEntries = priorHistory.concat([newEntry]);
+  allEntries.forEach(function(e){
+    e.blocks.forEach(function(b){
+      b.exercises.forEach(function(ex){
+        var t = ex.tracking_type || 'reps';
+        if(!nameTypes[ex.name]) nameTypes[ex.name] = new Set();
+        nameTypes[ex.name].add(t);
+      });
+    });
+  });
+  function pbKey(name, type){
+    return (nameTypes[name] && nameTypes[name].size > 1) ? name + '||' + type : name;
+  }
+
   var pbMap = {};
   priorHistory.forEach(function(e){
     e.blocks.forEach(function(b){
       var assisted = b.assisted || false;
       b.exercises.forEach(function(ex){
         var type = ex.tracking_type || exGetType(ex.name);
+        var key = pbKey(ex.name, type);
         var sets = ex.dropSets ? [].concat.apply([], ex.dropSets) : (ex.sets || []);
         sets.forEach(function(s){
-          if(!pbMap[ex.name]) pbMap[ex.name] = {bestW: assisted ? Infinity : -1, bestR: 0, bestDur: 0, assisted: assisted, type: type};
+          if(!pbMap[key]) pbMap[key] = {bestW: assisted ? Infinity : -1, bestR: 0, bestDur: 0, assisted: assisted, type: type};
           if(type === 'duration'){
             var dur = parseFloat(s.d_done||s.d_target) || 0;
-            if(dur > pbMap[ex.name].bestDur) pbMap[ex.name].bestDur = dur;
+            if(dur > pbMap[key].bestDur) pbMap[key].bestDur = dur;
           } else if(assisted){
             var w = parseFloat(s.w||s.weight)||0, r = parseFloat(s.r||s.reps)||0;
-            if(w < pbMap[ex.name].bestW || (w === pbMap[ex.name].bestW && r > pbMap[ex.name].bestR)){
-              pbMap[ex.name].bestW = w; pbMap[ex.name].bestR = r;
+            if(w < pbMap[key].bestW || (w === pbMap[key].bestW && r > pbMap[key].bestR)){
+              pbMap[key].bestW = w; pbMap[key].bestR = r;
             }
           } else {
             var w = parseFloat(s.w||s.weight)||0, r = parseFloat(s.r||s.reps)||0;
-            if(w > pbMap[ex.name].bestW || (w === pbMap[ex.name].bestW && r > pbMap[ex.name].bestR)){
-              pbMap[ex.name].bestW = w; pbMap[ex.name].bestR = r;
+            if(w > pbMap[key].bestW || (w === pbMap[key].bestW && r > pbMap[key].bestR)){
+              pbMap[key].bestW = w; pbMap[key].bestR = r;
             }
           }
         });
@@ -7587,10 +7612,11 @@ function detectNewPBs(newEntry, priorHistory){
   newEntry.blocks.forEach(function(b){
     var assisted = b.assisted || false;
     b.exercises.forEach(function(ex){
-      if(newExercises.includes(ex.name) || newPBs.includes(ex.name)) return;
       var type = ex.tracking_type || exGetType(ex.name);
+      var key = pbKey(ex.name, type);
+      if(newExercises.includes(key) || newPBs.includes(key)) return;
       var sets = ex.dropSets ? [].concat.apply([], ex.dropSets) : (ex.sets || []);
-      var prior = pbMap[ex.name];
+      var prior = pbMap[key];
 
       if(!prior){
         var hasData = sets.some(function(s){
@@ -7598,8 +7624,8 @@ function detectNewPBs(newEntry, priorHistory){
             ? (parseFloat(s.d_done||s.d_target)||0) > 0
             : (parseFloat(s.w||s.weight)||0) > 0 || (parseFloat(s.r||s.reps)||0) > 0;
         });
-        if(hasData) newExercises.push(ex.name);
-        pbMap[ex.name] = {bestW: assisted ? Infinity : -1, bestR: 0, bestDur: 0, assisted: assisted, type: type};
+        if(hasData) newExercises.push(key);
+        pbMap[key] = {bestW: assisted ? Infinity : -1, bestR: 0, bestDur: 0, assisted: assisted, type: type};
       } else {
         var isBetter = false;
         sets.forEach(function(s){
@@ -7614,7 +7640,7 @@ function detectNewPBs(newEntry, priorHistory){
           }
         });
         if(isBetter){
-          newPBs.push(ex.name);
+          newPBs.push(key);
           sets.forEach(function(s){
             if(type==='duration'){
               var dur = parseFloat(s.d_done||s.d_target)||0;
@@ -7630,7 +7656,11 @@ function detectNewPBs(newEntry, priorHistory){
     });
   });
 
-  return { newPBs: newPBs, newExercises: newExercises };
+  // Strip the ||type suffix before returning — callers expect plain exercise names
+  return {
+    newPBs: newPBs.map(function(k){ return k.split('||')[0]; }),
+    newExercises: newExercises.map(function(k){ return k.split('||')[0]; })
+  };
 }
 
 function calcXpForWorkout(entry, priorHistory){
@@ -8078,12 +8108,16 @@ function openExInfo(exName){
   _exInfoCurrentName = exName;
   document.getElementById('ex-info-name').textContent = exName;
 
-  // Build history data for this exercise
+  var type = exGetType(exName);
+  var isDuration = type === 'duration';
+
   var sessions = [];
   history.forEach(function(entry){
     entry.blocks.forEach(function(b){
       b.exercises.forEach(function(ex){
         if(ex.name !== exName) return;
+        var exType = ex.tracking_type || type;
+        if(exType !== type) return; // skip variant with different type
         var sets = ex.dropSets ? [].concat.apply([], ex.dropSets) : (ex.sets || []);
         var working = sets.filter(function(s){ return !s.warmup; });
         if(working.length) sessions.push({ date: entry.date, sets: working, assisted: b.assisted || false });
@@ -8091,45 +8125,60 @@ function openExInfo(exName){
     });
   });
 
-  // Most recent session (history is newest-first)
   var last = sessions[0] || null;
-  // PB: best set by weight (then reps)
   var pb = null;
   sessions.forEach(function(sess){
     sess.sets.forEach(function(s){
-      var w = parseFloat(s.w || s.weight) || 0;
-      var r = parseFloat(s.r || s.reps) || 0;
-      if(!pb || w > pb.w || (w === pb.w && r > pb.r)){
-        pb = { w: w, r: r, date: sess.date, assisted: sess.assisted };
+      if(isDuration){
+        var dur = parseFloat(s.d_done != null ? s.d_done : s.d_target) || 0;
+        var w = parseFloat(s.w || s.weight) || 0;
+        if(!pb || dur > pb.dur || (dur === pb.dur && w > pb.w)){
+          pb = { dur: dur, w: w, date: sess.date, assisted: sess.assisted };
+        }
+      } else {
+        var w = parseFloat(s.w || s.weight) || 0;
+        var r = parseFloat(s.r || s.reps) || 0;
+        if(!pb || w > pb.w || (w === pb.w && r > pb.r)){
+          pb = { w: w, r: r, date: sess.date, assisted: sess.assisted };
+        }
       }
     });
   });
 
   function fw(v){ return (v === '' || v == null || v == 0) ? '—' : v + ' lbs'; }
   function fr(v){ return (v === '' || v == null || v == 0) ? '—' : v + ' reps'; }
+  function fdur(v){ return (v == null || v === '' || v == 0) ? '—' : fmtDur(v); }
 
   var html = '';
 
-  // Personal Best: label → date → set info
   html += '<div>';
   html += '<div class="ex-info-section-lbl">Personal Best</div>';
   if(pb){
     html += '<div style="font-size:11px;color:var(--ts);margin-bottom:6px;">' + pb.date + (pb.assisted ? ' · Assisted' : '') + '</div>';
-    html += '<div class="ex-info-pb-row"><span>🏆 Best set</span><span class="ex-info-pb-val">' + fw(pb.w) + ' × ' + fr(pb.r) + '</span></div>';
+    var pbVal = isDuration
+      ? (pb.w > 0 ? fw(pb.w) + ' × ' + fdur(pb.dur) : fdur(pb.dur))
+      : fw(pb.w) + ' × ' + fr(pb.r);
+    html += '<div class="ex-info-pb-row"><span>🏆 Best set</span><span class="ex-info-pb-val">' + pbVal + '</span></div>';
   } else {
     html += '<div class="ex-info-empty">No PB recorded yet.</div>';
   }
   html += '</div>';
 
-  // Last Session: label → date → set rows
   html += '<div>';
   html += '<div class="ex-info-section-lbl">Last Session</div>';
   if(last){
     html += '<div style="font-size:11px;color:var(--ts);margin-bottom:6px;">' + last.date + '</div>';
     html += '<div class="ex-info-sets">' + last.sets.slice(0,5).map(function(s, i){
-      var w = parseFloat(s.w || s.weight) || 0;
-      var r = parseFloat(s.r || s.reps) || 0;
-      return '<div class="ex-info-set-row"><span class="ex-info-set-lbl">Set ' + (i+1) + '</span><span>' + fw(w) + ' × ' + fr(r) + '</span></div>';
+      var display;
+      if(isDuration){
+        var dur = s.d_done != null && s.d_done !== '' ? s.d_done : s.d_target;
+        display = (parseFloat(s.w) > 0 ? fw(s.w) + ' × ' : '') + fdur(dur);
+      } else {
+        var w = parseFloat(s.w || s.weight) || 0;
+        var r = parseFloat(s.r || s.reps) || 0;
+        display = fw(w) + ' × ' + fr(r);
+      }
+      return '<div class="ex-info-set-row"><span class="ex-info-set-lbl">Set ' + (i+1) + '</span><span>' + display + '</span></div>';
     }).join('') +
     (last.sets.length > 5 ? '<div style="font-size:11px;color:var(--ts);text-align:center;padding-top:2px;">+' + (last.sets.length-5) + ' more sets</div>' : '') +
     '</div>';
