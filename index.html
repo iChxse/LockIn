@@ -7562,27 +7562,44 @@ function getLevelFromXp(totalXp){
 // newExercises: exercises seen for the first time (never in priorHistory)
 // Neither list double-counts within the same workout.
 function detectNewPBs(newEntry, priorHistory){
+  // Build a set of names that appear with multiple types across all history
+  var nameTypes = {};
+  var allEntries = priorHistory.concat([newEntry]);
+  allEntries.forEach(function(e){
+    e.blocks.forEach(function(b){
+      b.exercises.forEach(function(ex){
+        var t = ex.tracking_type || 'reps';
+        if(!nameTypes[ex.name]) nameTypes[ex.name] = new Set();
+        nameTypes[ex.name].add(t);
+      });
+    });
+  });
+  function pbKey(name, type){
+    return (nameTypes[name] && nameTypes[name].size > 1) ? name + '||' + type : name;
+  }
+
   var pbMap = {};
   priorHistory.forEach(function(e){
     e.blocks.forEach(function(b){
       var assisted = b.assisted || false;
       b.exercises.forEach(function(ex){
         var type = ex.tracking_type || exGetType(ex.name);
+        var key = pbKey(ex.name, type);
         var sets = ex.dropSets ? [].concat.apply([], ex.dropSets) : (ex.sets || []);
         sets.forEach(function(s){
-          if(!pbMap[ex.name]) pbMap[ex.name] = {bestW: assisted ? Infinity : -1, bestR: 0, bestDur: 0, assisted: assisted, type: type};
+          if(!pbMap[key]) pbMap[key] = {bestW: assisted ? Infinity : -1, bestR: 0, bestDur: 0, assisted: assisted, type: type};
           if(type === 'duration'){
             var dur = parseFloat(s.d_done||s.d_target) || 0;
-            if(dur > pbMap[ex.name].bestDur) pbMap[ex.name].bestDur = dur;
+            if(dur > pbMap[key].bestDur) pbMap[key].bestDur = dur;
           } else if(assisted){
             var w = parseFloat(s.w||s.weight)||0, r = parseFloat(s.r||s.reps)||0;
-            if(w < pbMap[ex.name].bestW || (w === pbMap[ex.name].bestW && r > pbMap[ex.name].bestR)){
-              pbMap[ex.name].bestW = w; pbMap[ex.name].bestR = r;
+            if(w < pbMap[key].bestW || (w === pbMap[key].bestW && r > pbMap[key].bestR)){
+              pbMap[key].bestW = w; pbMap[key].bestR = r;
             }
           } else {
             var w = parseFloat(s.w||s.weight)||0, r = parseFloat(s.r||s.reps)||0;
-            if(w > pbMap[ex.name].bestW || (w === pbMap[ex.name].bestW && r > pbMap[ex.name].bestR)){
-              pbMap[ex.name].bestW = w; pbMap[ex.name].bestR = r;
+            if(w > pbMap[key].bestW || (w === pbMap[key].bestW && r > pbMap[key].bestR)){
+              pbMap[key].bestW = w; pbMap[key].bestR = r;
             }
           }
         });
@@ -7595,10 +7612,11 @@ function detectNewPBs(newEntry, priorHistory){
   newEntry.blocks.forEach(function(b){
     var assisted = b.assisted || false;
     b.exercises.forEach(function(ex){
-      if(newExercises.includes(ex.name) || newPBs.includes(ex.name)) return;
       var type = ex.tracking_type || exGetType(ex.name);
+      var key = pbKey(ex.name, type);
+      if(newExercises.includes(key) || newPBs.includes(key)) return;
       var sets = ex.dropSets ? [].concat.apply([], ex.dropSets) : (ex.sets || []);
-      var prior = pbMap[ex.name];
+      var prior = pbMap[key];
 
       if(!prior){
         var hasData = sets.some(function(s){
@@ -7606,8 +7624,8 @@ function detectNewPBs(newEntry, priorHistory){
             ? (parseFloat(s.d_done||s.d_target)||0) > 0
             : (parseFloat(s.w||s.weight)||0) > 0 || (parseFloat(s.r||s.reps)||0) > 0;
         });
-        if(hasData) newExercises.push(ex.name);
-        pbMap[ex.name] = {bestW: assisted ? Infinity : -1, bestR: 0, bestDur: 0, assisted: assisted, type: type};
+        if(hasData) newExercises.push(key);
+        pbMap[key] = {bestW: assisted ? Infinity : -1, bestR: 0, bestDur: 0, assisted: assisted, type: type};
       } else {
         var isBetter = false;
         sets.forEach(function(s){
@@ -7622,7 +7640,7 @@ function detectNewPBs(newEntry, priorHistory){
           }
         });
         if(isBetter){
-          newPBs.push(ex.name);
+          newPBs.push(key);
           sets.forEach(function(s){
             if(type==='duration'){
               var dur = parseFloat(s.d_done||s.d_target)||0;
@@ -7638,7 +7656,11 @@ function detectNewPBs(newEntry, priorHistory){
     });
   });
 
-  return { newPBs: newPBs, newExercises: newExercises };
+  // Strip the ||type suffix before returning — callers expect plain exercise names
+  return {
+    newPBs: newPBs.map(function(k){ return k.split('||')[0]; }),
+    newExercises: newExercises.map(function(k){ return k.split('||')[0]; })
+  };
 }
 
 function calcXpForWorkout(entry, priorHistory){
