@@ -2568,7 +2568,8 @@ async function saveProfile(){
   // cron only ever compares against UTC, so this conversion is what makes
   // reminders fire at the right real-world hour for users outside UTC.
   const reminderTimeUTC = localTimeToUTC(reminderTimeLocal);
-  await sb.from('profiles').update({ name, username: username || null, reminder_enabled: reminderEnabled, reminder_time: reminderTimeUTC, default_sets: newDefaultSets, weight_unit: _weightUnit }).eq('id', currentUser.id);
+  const { error: updErr } = await sb.from('profiles').update({ name, username: username || null, reminder_enabled: reminderEnabled, reminder_time: reminderTimeUTC, default_sets: newDefaultSets, weight_unit: _weightUnit }).eq('id', currentUser.id);
+  if(updErr){ console.error('Profile save error:', updErr); alert('Failed to save profile: ' + updErr.message); return; }
   const { data: fresh } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
   if(fresh) currentProfile = fresh;
   else { currentProfile.name = name; currentProfile.username = username; currentProfile.reminder_enabled = reminderEnabled; currentProfile.reminder_time = reminderTimeUTC; currentProfile.default_sets = newDefaultSets; }
@@ -2677,7 +2678,7 @@ async function saveToSupabase(newEntry){
   }
   try {
     if(newEntry){
-      const { data: inserted } = await sb.from('workouts').insert({
+      const { data: inserted, error: insErr } = await sb.from('workouts').insert({
         user_id: currentUser.id,
         date: newEntry.date,
         ts: newEntry.ts,
@@ -2688,6 +2689,7 @@ async function saveToSupabase(newEntry){
         weight_unit: newEntry.weight_unit || 'lbs',
         blocks: newEntry.blocks
       }).select('id').single();
+      if(insErr) throw insErr;
       // Store the returned id back into local history so delete works immediately
       if(inserted && inserted.id){
         const localEntry = history.find(function(e){ return e.ts === newEntry.ts; });
@@ -2706,6 +2708,7 @@ async function saveToSupabase(newEntry){
     setSS('ok','Saved');
   } catch(e){
     // Failed despite being online — queue it
+    console.error('Workout save error:', e);
     if(newEntry){
       const pending = JSON.parse(localStorage.getItem('wl_pending') || '[]');
       pending.unshift(newEntry);
