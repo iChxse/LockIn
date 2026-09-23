@@ -981,7 +981,7 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
 
 /* ── XP Modal ── */
 #xp-modal { z-index: 500; }
-#xp-modal .modal {
+#xp-modal .modal, #battle-result-modal .modal {
   max-width: 360px;
   padding: 0;
   overflow: hidden;
@@ -1204,6 +1204,10 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
 .battle-actions .modal-btn { flex:1; text-align:center; }
 .battle-pending-tag { font-size:10px; font-weight:800; color:var(--ts); background:var(--bo3); padding:3px 8px; border-radius:var(--pill); letter-spacing:.08em; flex-shrink:0; }
 .battle-wait { font-size:13px; color:var(--ts); flex:1; min-width:0; }
+.br-headline { font-size:30px; font-weight:900; color:var(--tp); letter-spacing:-0.02em; line-height:1.1; margin-bottom:6px; }
+.br-headline.won { color:var(--accent); }
+.br-scores { margin-bottom:1.1rem; }
+.br-note { font-size:13px; color:var(--ts); padding:9px 10px; background:var(--bs); border-radius:var(--r1); border:0.5px solid var(--bo3); margin-bottom:1rem; }
 .battle-leave-btn { background:none; border:none; color:var(--tm); font-size:17px; cursor:pointer; padding:2px; line-height:1; display:flex; }
 .battle-row.left { opacity:.45; }
 .battle-left-tag { font-size:11px; font-weight:700; color:var(--ts); text-transform:uppercase; letter-spacing:.06em; }
@@ -1450,6 +1454,28 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
   </div>
   <div id="bc-error" class="modal-warn" style="display:none;"></div>
   <div class="bc-summary" id="bc-summary"></div>
+</div></div>
+
+<div class="modal-bg" id="battle-result-modal"><div class="modal">
+  <div class="xp-modal-header">
+    <div class="xp-modal-title" id="br-title">Battle Over</div>
+    <div class="br-headline" id="br-headline"></div>
+    <div class="xp-modal-total-lbl" id="br-sub"></div>
+  </div>
+  <div class="xp-modal-body">
+    <div class="br-scores" id="br-scores"></div>
+    <div class="xp-section-lbl" id="br-xp-lbl">XP Earned</div>
+    <div id="br-levelup" style="display:none;" class="xp-levelup-banner">
+      <div class="xp-levelup-title">⚡ Level Up!</div>
+      <div class="xp-levelup-sub" id="br-levelup-sub"></div>
+    </div>
+    <div id="br-xp-body"></div>
+    <div class="xp-section-lbl">Badge Progress</div>
+    <div class="xp-badge-updates" id="br-badge"></div>
+  </div>
+  <div class="xp-modal-footer">
+    <button class="xp-close-btn" id="br-continue" onclick="closeBattleResult()">Continue</button>
+  </div>
 </div></div>
 
 <div class="modal-bg" id="cat-modal"><div class="modal">
@@ -7062,11 +7088,20 @@ function totalVolumeAll(h){
 // Badges are computed from a user's workout list, but battle wins live on
 // their profile. Workout rows from the DB carry user_id; local history is ours.
 var _battlesWon = {};
+function badgeOwnerId(h){ return (h && h.length) ? (h[0].user_id || (currentUser && currentUser.id)) : null; }
 function battlesWonFor(h){
-  if(!h || !h.length) return 0;
-  var uid = h[0].user_id || (currentUser && currentUser.id);
+  var uid = badgeOwnerId(h);
+  if(!uid) return 0;
   if(currentUser && uid === currentUser.id) return (currentProfile && currentProfile.battles_won) || 0;
   return _battlesWon[uid] || 0;
+}
+// Losses/draws only matter for our own total; friends' XP is read straight
+// from their profile, so their non-win count is never needed here.
+function battleXpFor(h){
+  var won = battlesWonFor(h);
+  var mine = currentUser && badgeOwnerId(h) === currentUser.id;
+  var played = mine ? ((currentProfile && currentProfile.battles_played) || 0) : won;
+  return won * BATTLE_WIN_XP + Math.max(0, played - won) * BATTLE_FINISH_XP;
 }
 
 function countTotalTags(h){
@@ -8076,6 +8111,10 @@ function getBadgeUpdates(snapBefore, snapAfter, newEntry, priorHistory){
 // speculatively award XP for undefined tiers).
 
 var BADGE_TIER_XP = 75;
+// Per battle win, and per loss/draw you scored in. Battles won by forfeit
+// aren't counted in battles_won/battles_played, so they earn nothing.
+var BATTLE_WIN_XP = 150;
+var BATTLE_FINISH_XP = 40;
 
 function calcTierRangeXp(cat, fromExclusive, toInclusive){
   // Sum XP for tiers fromExclusive+1 through toInclusive (0-based indices)
@@ -8143,10 +8182,12 @@ function calcTotalXpFromHistory(workoutHistory){
   });
 
   var badgeXpResult = calcBadgeXp(workoutHistory);
+  var battleXp = battleXpFor(workoutHistory);
   return {
-    total: workoutXp + badgeXpResult.total,
+    total: workoutXp + badgeXpResult.total + battleXp,
     workoutXp: workoutXp,
     badgeXp: badgeXpResult.total,
+    battleXp: battleXp,
     badgeBreakdown: badgeXpResult.breakdown
   };
 }
@@ -8175,7 +8216,7 @@ async function backfillXp(){
     var result = calcTotalXpFromHistory(allWorkouts || []);
     await sb.from('profiles').update({ xp: result.total }).eq('id', currentUser.id);
     if(currentProfile) currentProfile.xp = result.total;
-    console.log('XP backfill:', result.total, 'XP (', result.workoutXp, 'workout +', result.badgeXp, 'badge)');
+    console.log('XP backfill:', result.total, 'XP (', result.workoutXp, 'workout +', result.badgeXp, 'badge +', result.battleXp, 'battle)');
   } catch(e){
     console.error('XP backfill failed:', e);
     await sb.from('profiles').update({ xp: 0 }).eq('id', currentUser.id);
@@ -8786,6 +8827,7 @@ function resetBattles(){
   _battlesLoadedAt = 0; _battlesError = null; _battlePrevScores = {};
   stopBattlePolling();
   clearTimeout(_battleEndTimer);
+  _battleResultQueue = [];
   updateBattlesBadge();
 }
 
@@ -8822,7 +8864,7 @@ async function loadBattles(){
 
   var idList = Object.keys(allIds), scoringList = Object.keys(scoringIds);
   var [profRes, wRes] = await Promise.all([
-    idList.length ? sb.from('profiles').select('id,name,username,avatar_url,battles_won').in('id', idList) : Promise.resolve({data: []}),
+    idList.length ? sb.from('profiles').select('id,name,username,avatar_url,battles_won,battles_played').in('id', idList) : Promise.resolve({data: []}),
     scoringList.length
       ? sb.from('workouts').select('user_id,ts,blocks,duration_seconds,weight_unit')
           .in('user_id', scoringList)
@@ -8837,15 +8879,17 @@ async function loadBattles(){
     _battleProfiles[p.id] = p;
     _battlesWon[p.id] = p.battles_won || 0;
   });
-  // A friend's client may have frozen a battle we won since we last looked.
   var mine = (profRes.data || []).find(function(p){ return p.id === currentUser.id; });
-  if(mine) applyMyBattlesWon(mine.battles_won || 0);
   var byUser = {};
   (wRes.data || []).forEach(function(w){ (byUser[w.user_id] = byUser[w.user_id] || []).push(w); });
   _battleWorkouts = byUser;
   _battles = battles;
   _battlesLoadedAt = Date.now();
-  finalizeEndedBattles();
+  // Our win count and XP must be current before a results popup reads them.
+  // If we froze nothing, a friend's client may still have frozen one we won.
+  var froze = await finalizeEndedBattles();
+  if(froze) await syncMyBattleCounts();
+  else if(mine) await applyMyBattleCounts(mine.battles_won || 0, mine.battles_played || 0);
 }
 
 async function refreshBattles(){
@@ -8855,6 +8899,7 @@ async function refreshBattles(){
   }
   await _battlesLoading;
   renderBattleSurfaces();
+  checkBattleResults();
 }
 
 function renderBattleSurfaces(){
@@ -8928,33 +8973,37 @@ function battleRanked(b, scores){
   });
 }
 
+// Resolves true if any battle was frozen by this call.
 function finalizeEndedBattles(){
-  var now = Date.now();
+  var now = Date.now(), writes = [];
   _battles.forEach(function(b){
     if(b.status !== 'active' || b.final_scores || now < Date.parse(b.ends_at)) return;
     var scores = battleScores(b).scores;
     b.final_scores = scores;
-    sb.from('battles').update({final_scores: scores}).eq('id', b.id).is('final_scores', null)
+    writes.push(sb.from('battles').update({final_scores: scores}).eq('id', b.id).is('final_scores', null)
       .then(function(r){
-        if(r.error){ console.error('Battle finalize error:', r.error); return; }
-        syncMyBattlesWon();
-      });
+        if(r.error){ console.error('Battle finalize error:', r.error); return false; }
+        return true;
+      }));
   });
+  return Promise.all(writes).then(function(results){ return results.some(Boolean); });
 }
 
-// The DB recounts battles_won when a battle is frozen; pull ours back so the
-// Battle Tested badge and its XP update without a reload.
-async function syncMyBattlesWon(){
+// The DB recounts battles_won/played when a battle is frozen; pull ours back
+// so the Battle Tested badge and battle XP update without a reload.
+async function syncMyBattleCounts(){
   if(!currentUser) return;
-  var res = await sb.from('profiles').select('battles_won').eq('id', currentUser.id).single();
-  if(res.error){ console.error('Battles won sync error:', res.error); return; }
-  applyMyBattlesWon(res.data.battles_won || 0);
+  var res = await sb.from('profiles').select('battles_won,battles_played').eq('id', currentUser.id).single();
+  if(res.error){ console.error('Battle counts sync error:', res.error); return; }
+  await applyMyBattleCounts(res.data.battles_won || 0, res.data.battles_played || 0);
 }
 
-function applyMyBattlesWon(n){
-  if(!currentProfile || n === (currentProfile.battles_won || 0)) return;
-  currentProfile.battles_won = n;
-  backfillXp();
+async function applyMyBattleCounts(won, played){
+  if(!currentProfile) return;
+  if(won === (currentProfile.battles_won || 0) && played === (currentProfile.battles_played || 0)) return;
+  currentProfile.battles_won = won;
+  currentProfile.battles_played = played;
+  await backfillXp();
 }
 
 function battleTimeLeft(b){
@@ -9078,6 +9127,189 @@ function renderCompletedBattleCard(b){
     rows +
     '<div class="battle-meta"><strong>' + marginText + '</strong><span>' + battleDateRange(b) + '</span></div>' +
   '</div>';
+}
+
+// ── Battle results popup ──
+// Shown once per finished battle per device. Seen ids live in localStorage.
+var BATTLE_RESULTS_SEEN_PREFIX = 'wl_battle_results_seen_';
+// First run on a device: only surface results from the last few days.
+var BATTLE_RESULTS_FIRST_RUN_MS = 3 * 86400000;
+var _battleResultQueue = [];
+var _battleResultRetry = null;
+
+function battleResultsSeen(){
+  try { return JSON.parse(localStorage.getItem(BATTLE_RESULTS_SEEN_PREFIX + currentUser.id)); }
+  catch(e){ return null; }
+}
+function saveBattleResultsSeen(ids){
+  try { localStorage.setItem(BATTLE_RESULTS_SEEN_PREFIX + currentUser.id, JSON.stringify(ids)); } catch(e){}
+}
+
+function battleOutcome(b){
+  var scores = b.final_scores || {};
+  var ranked = battleRanked(b, scores);
+  var top = scores[ranked[0]] || 0, second = scores[ranked[1]] || 0;
+  var byForfeit = battleByForfeit(b);
+  var tie = !byForfeit && top === second;
+  var won = !tie && ranked[0] === currentUser.id;
+  var myScore = scores[currentUser.id] || 0;
+  return {
+    ranked: ranked, scores: scores, byForfeit: byForfeit, tie: tie, won: won, margin: top - second, top: top,
+    countsAsWin: won && !byForfeit,
+    // Mirrors battles_played - battles_won: a loss or draw you scored in.
+    earnsFinishXp: !won && !byForfeit && myScore >= 1 && !battleILeft(b)
+  };
+}
+
+function checkBattleResults(){
+  if(!currentUser || !_battlesLoadedAt || _battlesError) return;
+  var over = _battles.filter(function(b){
+    return b.status === 'active' && b.final_scores && Date.now() >= Date.parse(b.ends_at);
+  });
+  var seen = battleResultsSeen();
+  if(!Array.isArray(seen)){
+    var cutoff = Date.now() - BATTLE_RESULTS_FIRST_RUN_MS;
+    seen = over.filter(function(b){ return Date.parse(b.ends_at) < cutoff; }).map(function(b){ return b.id; });
+  }
+  seen = seen.filter(function(id){ return _battles.some(function(b){ return b.id === id; }); });
+  // A battle you left isn't a result for you.
+  over.forEach(function(b){ if(battleILeft(b) && seen.indexOf(b.id) === -1) seen.push(b.id); });
+  saveBattleResultsSeen(seen);
+
+  var fresh = over.filter(function(b){
+    return seen.indexOf(b.id) === -1 && !_battleResultQueue.some(function(q){ return q.id === b.id; });
+  }).sort(function(a, c){ return Date.parse(a.ends_at) - Date.parse(c.ends_at); });
+  if(!fresh.length) return;
+  _battleResultQueue = _battleResultQueue.concat(fresh);
+  showNextBattleResult();
+}
+
+function battleResultBlocked(){
+  var visible = function(el){ return !!el && getComputedStyle(el).display !== 'none'; };
+  // Some modals keep the open class while hidden inline, so check real visibility.
+  return Array.prototype.some.call(document.querySelectorAll('.modal-bg.open'), visible) ||
+    visible(document.getElementById('loading-screen'));
+}
+
+function showNextBattleResult(){
+  if(!_battleResultQueue.length || !currentUser) return;
+  if(battleResultBlocked()){
+    // Don't stack on top of another popup (e.g. the workout XP modal).
+    if(!_battleResultRetry) _battleResultRetry = setTimeout(function(){ _battleResultRetry = null; showNextBattleResult(); }, 2000);
+    return;
+  }
+  var b = _battleResultQueue.shift();
+  var seen = battleResultsSeen() || [];
+  if(seen.indexOf(b.id) === -1){ seen.push(b.id); saveBattleResultsSeen(seen); }
+  var later = _battleResultQueue.map(battleOutcome);
+  renderBattleResult(b,
+    later.filter(function(o){ return o.countsAsWin; }).length,
+    later.filter(function(o){ return o.earnsFinishXp; }).length);
+}
+
+function closeBattleResult(){
+  closeModal('battle-result-modal');
+  setTimeout(showNextBattleResult, 350);
+}
+
+function badgeTiersForValue(cat, val){
+  var n = cat.tiers.filter(function(t){ return val >= t.threshold; }).length;
+  if(n === cat.tiers.length){
+    var lastDef = cat.tiers.length - 1;
+    var step = lastDef > 0 ? cat.tiers[lastDef].threshold - cat.tiers[lastDef - 1].threshold : cat.tiers[0].threshold;
+    while(val >= cat.tiers[lastDef].threshold + (n - lastDef) * step) n++;
+  }
+  return n;
+}
+function badgeTierName(cat, count){
+  if(count <= 0) return cat.tiers[0].name;
+  if(count <= cat.tiers.length) return cat.tiers[count - 1].name;
+  return cat.tiers[0].name.replace(/\s+[IVXLCDM]+$/, '') + ' ' + toRoman(count);
+}
+function badgeNextThreshold(cat, count){
+  var lastDef = cat.tiers.length - 1;
+  if(count <= lastDef) return cat.tiers[count].threshold;
+  var step = lastDef > 0 ? cat.tiers[lastDef].threshold - cat.tiers[lastDef - 1].threshold : cat.tiers[0].threshold;
+  return cat.tiers[lastDef].threshold + (count - lastDef) * step;
+}
+
+// laterWins/laterFinishes: results still queued after this one. currentProfile
+// already includes them, so step back to show this battle's own before/after.
+function renderBattleResult(b, laterWins, laterFinishes){
+  var metric = BATTLE_METRICS[b.metric] || {label: b.metric, icon: 'ti-swords', unit: ['pt', 'pts']};
+  var o = battleOutcome(b);
+  var me = currentUser.id, colorOf = battleColorMap(b);
+  var cat = BADGE_CATEGORIES.find(function(c){ return c.id === 'battles'; });
+  var xpForWins = function(from, to){
+    return (to - from) * BATTLE_WIN_XP + calcTierRangeXp(cat, badgeTiersForValue(cat, from), badgeTiersForValue(cat, to));
+  };
+
+  var totalWins = (currentProfile && currentProfile.battles_won) || 0;
+  var winsAfter = Math.max(0, totalWins - laterWins);
+  var winsBefore = Math.max(0, winsAfter - (o.countsAsWin ? 1 : 0));
+  var tiersBefore = badgeTiersForValue(cat, winsBefore), tiersAfter = badgeTiersForValue(cat, winsAfter);
+  var gained = xpForWins(winsBefore, winsAfter) + (o.earnsFinishXp ? BATTLE_FINISH_XP : 0);
+  var laterXp = xpForWins(winsAfter, totalWins) + laterFinishes * BATTLE_FINISH_XP;
+  var xpAfter = ((currentProfile && currentProfile.xp) || 0) - laterXp;
+  var xpBefore = xpAfter - gained;
+
+  document.getElementById('br-title').textContent = 'Battle Over · ' + metric.label + ' · ' + battleDurLabel(b.duration_days);
+  var headline = document.getElementById('br-headline');
+  headline.textContent = o.tie ? '🤝 DRAW' : o.won ? '🏆 YOU WON' : '🏆 ' + battleFirstName(o.ranked[0]).toUpperCase() + ' WON';
+  headline.className = 'br-headline' + (o.won ? ' won' : '');
+  document.getElementById('br-sub').textContent =
+    (o.tie ? 'Tied at ' + o.top + ' ' + battlePlural(metric, o.top)
+      : o.byForfeit ? 'Won by forfeit'
+      : 'Won by ' + o.margin + ' ' + battlePlural(metric, o.margin)) + ' · ' + battleDateRange(b);
+
+  document.getElementById('br-scores').innerHTML = o.ranked.map(function(uid){
+    return '<div class="battle-row' + (!o.tie && uid === o.ranked[0] ? ' lead' : '') + '">' +
+      battleAvatar(uid, colorOf[uid]) +
+      '<div class="battle-name">' + battleEsc(battleFirstName(uid)) + (uid === me ? '<span class="battle-you">You</span>' : '') + '</div>' +
+      '<div class="battle-score">' + (o.scores[uid] || 0) + '</div>' +
+    '</div>';
+  }).join('') + battleLeftRowsHtml(b, colorOf);
+
+  var levelBefore = getLevelFromXp(xpBefore), levelAfter = getLevelFromXp(xpAfter);
+  var leveledUp = gained > 0 && levelAfter.level > levelBefore.level;
+  document.getElementById('br-levelup').style.display = leveledUp ? '' : 'none';
+  if(leveledUp) document.getElementById('br-levelup-sub').textContent = 'You reached Level ' + levelAfter.level + '!';
+  document.getElementById('br-xp-lbl').textContent = gained > 0 ? 'XP Earned · +' + gained : 'XP Earned';
+
+  var xpBody = '';
+  if(gained > 0){
+    var tierLabel = tiersBefore === 0
+      ? cat.tiers[0].icon + ' ' + badgeTierName(cat, tiersAfter) + ' unlocked'
+      : cat.tiers[0].icon + ' ' + badgeTierName(cat, tiersAfter).replace(/\s+[IVXLCDM]+$/, '') + ' ' + toRoman(tiersBefore) + ' → ' + toRoman(tiersAfter);
+    xpBody =
+      '<div class="xp-level-row"><span class="xp-level-badge">Level ' + levelAfter.level + '</span>' +
+        '<span class="xp-level-next">' + (levelAfter.nextLevelXp !== null ? formatXp(levelAfter.nextLevelXp - xpAfter) + ' XP until Level ' + (levelAfter.level + 1) : 'Max level!') + '</span></div>' +
+      '<div class="xp-bar-wrap"><div class="xp-bar-fill" id="br-bar-fill"></div></div>' +
+      '<div class="xp-bar-numbers"><span>' + formatXp(levelAfter.xpIntoLevel) + ' XP</span><span>' + formatXp(levelAfter.xpNeededForLevel) + ' XP</span></div>' +
+      '<div class="xp-breakdown">' +
+        (o.countsAsWin
+          ? '<div class="xp-breakdown-row"><span>⚔️ Battle Won</span><span class="xp-breakdown-amt">+' + BATTLE_WIN_XP + ' XP</span></div>'
+          : '<div class="xp-breakdown-row"><span>' + (o.tie ? '🤝 Battle Drawn' : '💪 Battle Finished') + '</span><span class="xp-breakdown-amt">+' + BATTLE_FINISH_XP + ' XP</span></div>') +
+        (tiersAfter > tiersBefore ? '<div class="xp-breakdown-row"><span>' + tierLabel + '</span><span class="xp-breakdown-amt">+' + (gained - BATTLE_WIN_XP) + ' XP</span></div>' : '') +
+      '</div>';
+  } else {
+    var note = o.won ? 'Forfeit wins don\'t earn XP.'
+      : 'No XP this time — score at least 1 in a battle to earn +' + BATTLE_FINISH_XP + ' XP, or +' + BATTLE_WIN_XP + ' XP for a win.';
+    xpBody = '<div class="br-note">' + note + '</div>';
+  }
+  document.getElementById('br-xp-body').innerHTML = xpBody;
+
+  var badgeName = tiersAfter > tiersBefore && tiersBefore > 0
+    ? badgeTierName(cat, tiersAfter).replace(/\s+[IVXLCDM]+$/, '') + ' ' + toRoman(tiersBefore) + ' → ' + toRoman(tiersAfter)
+    : badgeTierName(cat, tiersAfter);
+  document.getElementById('br-badge').innerHTML =
+    '<div class="xp-badge-row"><span class="xp-badge-icon">' + cat.tiers[0].icon + '</span>' +
+      '<span class="xp-badge-name">' + badgeName + '</span>' +
+      '<span class="xp-badge-prog">' + winsAfter + ' / ' + badgeNextThreshold(cat, tiersAfter) + ' wins' + (o.countsAsWin ? ' (+1)' : '') + '</span></div>';
+
+  openModal('battle-result-modal');
+  var fill = document.getElementById('br-bar-fill');
+  if(fill){ fill.style.width = '0%'; setTimeout(function(){ fill.style.width = levelAfter.progress + '%'; }, 80); }
 }
 
 function renderBattlesTab(){
