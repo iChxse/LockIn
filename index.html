@@ -1151,6 +1151,85 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
 .changelog-list { display: flex; flex-direction: column; gap: 8px; margin: 16px 0; text-align: left; }
 .changelog-item { display: flex; align-items: flex-start; gap: 10px; font-size: 13px; color: var(--tp); line-height: 1.5; }
 .changelog-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex-shrink: 0; margin-top: 6px; }
+
+/* ── Battles ── */
+.battles-hdr { display:flex; align-items:center; justify-content:space-between; padding:5px 0 12px; border-bottom:0.5px solid var(--bo3); margin-bottom:16px; }
+.battles-title { font-size:22px; font-weight:800; color:var(--tp); letter-spacing:-0.02em; }
+.battle-create-btn { display:flex; align-items:center; gap:6px; background:var(--accent); color:#fff; border:none; border-radius:var(--pill); padding:8px 14px; font-size:13px; font-weight:700; cursor:pointer; font-family:var(--font); box-shadow:0 4px 14px var(--accent-glow); transition:transform .1s; }
+.battle-create-btn:active { transform:scale(.96); }
+.battle-sec-lbl { font-size:11px; font-weight:700; color:var(--ts); text-transform:uppercase; letter-spacing:.07em; margin:4px 0 10px; display:flex; align-items:center; gap:6px; }
+.battle-sec-count { background:var(--bo3); color:var(--ts); font-size:10px; padding:1px 7px; border-radius:var(--pill); }
+.battle-card { background:var(--bp); border:1px solid var(--bo3); border-radius:var(--r3); padding:14px 16px; margin-bottom:12px; box-shadow:var(--card-shadow); }
+.battle-card.winning { border-color:rgba(79,140,255,.4); }
+.battle-card-top { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:10px; }
+.battle-type { font-size:12px; font-weight:800; color:var(--tp); text-transform:uppercase; letter-spacing:.08em; display:flex; align-items:center; gap:6px; min-width:0; }
+.battle-type i { color:var(--accent); font-size:15px; }
+.battle-type .battle-dur { color:var(--tm); font-weight:700; }
+.battle-live { display:inline-flex; align-items:center; gap:5px; font-size:10px; font-weight:800; color:var(--danger); background:var(--danger-soft); padding:3px 8px; border-radius:var(--pill); letter-spacing:.08em; flex-shrink:0; }
+.battle-live::before { content:''; width:6px; height:6px; border-radius:50%; background:var(--danger); animation:battlePulse 1.4s ease-in-out infinite; }
+@keyframes battlePulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:.35; transform:scale(.7); } }
+.battle-row { display:flex; align-items:center; gap:10px; padding:5px 0; }
+.battle-row .lb-avatar { width:30px; height:30px; font-size:12px; border-width:2px; }
+.battle-name { flex:1; min-width:0; font-size:14px; font-weight:600; color:var(--tp); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.battle-you { font-size:10px; font-weight:700; color:var(--ts); background:var(--bo3); padding:1px 6px; border-radius:var(--pill); margin-left:6px; vertical-align:2px; }
+.battle-score { font-size:24px; font-weight:900; color:var(--tp); font-variant-numeric:tabular-nums; letter-spacing:-0.03em; line-height:1; }
+.battle-row.lead .battle-score { color:var(--accent); }
+.battle-score.bump { animation:battleBump .7s ease; }
+@keyframes battleBump { 0% { transform:scale(1); } 30% { transform:scale(1.28); color:var(--success); } 100% { transform:scale(1); } }
+.battle-bar { display:flex; height:6px; border-radius:var(--pill); overflow:hidden; background:var(--bo3); margin:10px 0; gap:2px; }
+.battle-bar-seg { height:100%; transition:width .5s ease; min-width:4px; }
+.battle-foot { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.battle-status { font-size:13px; font-weight:700; color:var(--tp); }
+.battle-status.behind { color:var(--dropset); }
+.battle-time { font-size:11px; font-weight:600; color:var(--ts); display:flex; align-items:center; gap:4px; flex-shrink:0; }
+.battle-time.soon { color:var(--danger); }
+.battle-result { font-size:14px; font-weight:900; letter-spacing:.05em; color:var(--tp); margin-bottom:2px; }
+.battle-result.won { color:var(--accent); }
+.battle-card.done .battle-row { padding:3px 0; }
+.battle-card.done .battle-score { font-size:16px; font-weight:800; }
+.battle-card.done .battle-row .lb-avatar { width:24px; height:24px; font-size:10px; }
+.battle-meta { font-size:12px; color:var(--ts); margin-top:8px; display:flex; justify-content:space-between; gap:8px; }
+.battle-meta strong { color:var(--tp); font-weight:700; }
+.battle-empty { text-align:center; padding:2rem 1rem; background:var(--bp); border:1px dashed var(--bo2); border-radius:var(--r3); margin-bottom:16px; }
+.battle-empty i { font-size:32px; color:var(--accent); display:block; margin-bottom:8px; }
+.battle-empty-title { font-size:15px; font-weight:700; color:var(--tp); margin-bottom:4px; }
+.battle-empty-sub { font-size:13px; color:var(--ts); }
+.bc-result-avatar .lb-avatar { width:28px; height:28px; font-size:11px; }
+.battle-card.invite { border-color:rgba(79,140,255,.45); }
+.battle-invite-from { font-size:15px; font-weight:700; color:var(--tp); margin:2px 0 10px; line-height:1.35; }
+.battle-avatars { display:flex; align-items:center; margin-bottom:12px; padding-left:2px; }
+.battle-avatars .lb-avatar { width:30px; height:30px; font-size:12px; border-width:2px; margin-left:-6px; box-shadow:0 0 0 2px var(--bp); }
+.battle-avatars .lb-avatar:first-child { margin-left:0; }
+.battle-actions { display:flex; gap:8px; }
+.battle-actions .modal-btn { flex:1; text-align:center; }
+.battle-pending-tag { font-size:10px; font-weight:800; color:var(--ts); background:var(--bo3); padding:3px 8px; border-radius:var(--pill); letter-spacing:.08em; flex-shrink:0; }
+.battle-wait { font-size:13px; color:var(--ts); flex:1; min-width:0; }
+.battle-link-btn { background:none; border:none; color:var(--ts); font-size:13px; font-weight:600; cursor:pointer; font-family:var(--font); padding:0; flex-shrink:0; }
+#btab-battles { position:relative; }
+.btab .btab-badge { position:absolute; top:2px; left:50%; margin-left:6px; min-width:16px; height:16px; padding:0 4px; background:#E24B4A; color:#fff; font-size:10px; font-weight:700; border-radius:10px; display:flex; align-items:center; justify-content:center; border:1.5px solid var(--bs); }
+.bc-types { display:flex; flex-direction:column; gap:8px; margin-bottom:1.25rem; }
+.bc-type { display:flex; align-items:center; gap:12px; padding:11px 12px; border:1px solid var(--bo3); border-radius:var(--r2); background:var(--input-bg); cursor:pointer; text-align:left; font-family:var(--font); }
+.bc-type i { font-size:20px; color:var(--ts); width:24px; text-align:center; }
+.bc-type-name { font-size:14px; font-weight:700; color:var(--tp); }
+.bc-type-desc { font-size:12px; color:var(--ts); }
+.bc-type.sel { border-color:var(--accent); background:var(--accent-soft); }
+.bc-type.sel i { color:var(--accent); }
+.bc-pills { display:flex; gap:6px; margin-bottom:1.25rem; }
+.bc-pill { flex:1; padding:9px 4px; border:1px solid var(--bo3); border-radius:var(--pill); background:var(--input-bg); color:var(--ts); font-size:13px; font-weight:700; cursor:pointer; font-family:var(--font); }
+.bc-pill.sel { border-color:var(--accent); background:var(--accent-soft); color:var(--accent); }
+.bc-summary { background:var(--bs); border:1px solid var(--bo3); border-radius:var(--r2); padding:14px; text-align:center; }
+.bc-summary-type { font-size:12px; font-weight:800; color:var(--accent); text-transform:uppercase; letter-spacing:.08em; }
+.bc-summary-vs { font-size:17px; font-weight:800; color:var(--tp); margin:4px 0 2px; letter-spacing:-0.01em; }
+.bc-summary-dur { font-size:13px; color:var(--ts); margin-bottom:12px; }
+.bc-start { width:100%; padding:13px; background:var(--accent); color:#fff; border:none; border-radius:var(--r2); font-size:15px; font-weight:800; cursor:pointer; font-family:var(--font); }
+.bc-start:disabled { background:var(--bo2); color:var(--tm); cursor:default; }
+.profile-link-card { display:flex; align-items:center; gap:12px; background:var(--bs); border-radius:var(--r2); border:0.5px solid var(--bo3); padding:12px 14px; margin-bottom:10px; cursor:pointer; }
+.profile-link-card > i:first-child { font-size:20px; color:var(--accent); }
+.profile-link-title { font-size:14px; font-weight:700; color:var(--tp); }
+.profile-link-sub { font-size:12px; color:var(--ts); }
+.subpage-hdr { display:flex; align-items:center; gap:10px; padding:5px 0 12px; border-bottom:0.5px solid var(--bo3); margin-bottom:14px; }
+.subpage-back { background:none; border:none; color:var(--accent); font-size:14px; font-weight:600; font-family:var(--font); cursor:pointer; display:flex; align-items:center; gap:4px; padding:0; }
+.subpage-title { font-size:17px; font-weight:700; color:var(--tp); }
 </style>
 <div id="rotate-overlay" style="display:none;position:fixed;inset:0;background:var(--bs);z-index:9999;flex-direction:column;align-items:center;justify-content:center;gap:16px;">
   <i class="ti ti-rotate" style="font-size:48px;color:var(--tp);"></i>
@@ -1170,7 +1249,7 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
   <div class="tabs">
     <button class="tab active" onclick="switchTab('friends')">Activity</button>
     <button class="tab" onclick="switchTab('log')">Today</button>
-    <button class="tab" onclick="switchTab('lookup')">Progress</button>
+    <button class="tab" onclick="switchTab('battles')">Battles</button>
     <button class="tab" onclick="switchTab('history')">History</button>
   </div>
 
@@ -1260,6 +1339,10 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
   </div>
 
   <div id="tab-lookup" style="display:none;">
+    <div class="subpage-hdr">
+      <button class="subpage-back" onclick="switchTab('profile')"><i class="ti ti-arrow-left"></i> Profile</button>
+      <div class="subpage-title">Progress</div>
+    </div>
     <div class="progress-subtabs">
       <button class="progress-subtab active" id="psub-exercises" onclick="switchProgressSub('exercises')">Exercises</button>
       <button class="progress-subtab" id="psub-stats" onclick="switchProgressSub('stats')">Stats</button>
@@ -1269,6 +1352,14 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
       <div id="lookup-content"></div>
     </div>
     <div id="progress-stats-content" style="display:none;"></div>
+  </div>
+
+  <div id="tab-battles" style="display:none;">
+    <div class="battles-hdr">
+      <div class="battles-title">Battles</div>
+      <button class="battle-create-btn" onclick="openCreateBattle()"><i class="ti ti-swords"></i> Create Battle</button>
+    </div>
+    <div id="battles-content"></div>
   </div>
 
   <div id="tab-history" style="display:none;">
@@ -1315,9 +1406,10 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
     <i class="ti ti-activity"></i>
     <span>Activity</span>
   </button>
-  <button class="btab" id="btab-lookup" onclick="switchTab('lookup')">
-    <i class="ti ti-chart-line"></i>
-    <span>Progress</span>
+  <button class="btab" id="btab-battles" onclick="switchTab('battles')">
+    <i class="ti ti-swords"></i>
+    <span class="btab-badge" id="battles-badge" style="display:none;"></span>
+    <span>Battles</span>
   </button>
   <button class="btab-plus" onclick="switchTab('log')">
     <div class="btab-plus-circle"><i class="ti ti-plus"></i></div>
@@ -1334,6 +1426,29 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
 </div>
 
 <!-- Modals -->
+<div class="modal-bg" id="battle-create-modal"><div class="modal" style="max-width:400px;">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+    <div class="modal-title" style="margin:0;">New Battle</div>
+    <button class="icon-btn" onclick="closeModal('battle-create-modal')"><i class="ti ti-x"></i></button>
+  </div>
+  <div class="modal-lbl">Challenge</div>
+  <div class="tag-search-row" style="margin-top:0;">
+    <input type="text" id="bc-friend-search" placeholder="Search friends by name or @username..." autocomplete="off" oninput="renderBattleFriendOptions()">
+  </div>
+  <div class="tag-results" id="bc-friend-results"></div>
+  <div class="tag-friends-selected" id="bc-friend-selected"></div>
+  <div style="height:1.25rem;"></div>
+  <div class="modal-lbl">Battle type</div>
+  <div class="bc-types" id="bc-types"></div>
+  <div class="modal-lbl">Duration</div>
+  <div class="bc-pills" id="bc-durations"></div>
+  <div id="bc-custom-row" style="display:none;margin-top:-0.5rem;">
+    <input type="number" class="modal-inp" id="bc-custom-days" inputmode="numeric" min="2" max="90" placeholder="Number of days (2–90)" oninput="renderBattleSummary()">
+  </div>
+  <div id="bc-error" class="modal-warn" style="display:none;"></div>
+  <div class="bc-summary" id="bc-summary"></div>
+</div></div>
+
 <div class="modal-bg" id="cat-modal"><div class="modal">
   <div class="modal-title">Manage categories</div>
   <div class="cat-list" id="cat-list"></div>
@@ -1539,7 +1654,7 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 });
 
 // ── App version — update this with every release ──────────
-const APP_VERSION = '1.5.4';
+const APP_VERSION = '1.5.5';
 
 // Keep session alive across tab/app restores
 sb.auth.onAuthStateChange(function(event, session){
@@ -1726,6 +1841,7 @@ async function doSignOut(){
   document.getElementById('notif-bell-btn').style.display = 'none';
   closeNotifPanel();
   stopNotifPolling();
+  resetBattles();
 
   // ── Clear all user state ──
   currentUser = null;
@@ -1916,7 +2032,7 @@ function renderNotifList(){
 var NOTIF_ICONS = {
   like: '❤️', comment: '💬', comment_reply: '💬',
   friend_request: '🤝', friend_accept: '✅', tag: '👥',
-  leaderboard: '🏆', reminder: '💪'
+  leaderboard: '🏆', reminder: '💪', battle: '⚔️'
 };
 
 function formatNotifTime(ts){
@@ -1987,6 +2103,9 @@ function deepLinkNotif(n){
     case 'leaderboard':
       switchTab('friends');
       setTimeout(function(){ switchLBTab('consistency'); }, 200);
+      break;
+    case 'battle':
+      switchTab('battles');
       break;
     default:
       break;
@@ -2171,6 +2290,7 @@ async function onAuthSuccess(user){
   document.getElementById('notif-bell-btn').style.display = 'flex';
   await loadNotifUnreadCount();
   startNotifPolling();
+  refreshBattles();
   checkLeaderboardChanges();
   registerPushNotifications();
   hideLoadingScreen();
@@ -2351,6 +2471,11 @@ async function renderProfileTab(){
       '</div>';
     })() +
     renderProfileStatsRow(history, true) +
+    '<div class="profile-link-card" onclick="switchTab(\'lookup\')">' +
+      '<i class="ti ti-chart-line"></i>' +
+      '<div style="flex:1;"><div class="profile-link-title">Progress</div><div class="profile-link-sub">Exercise history, charts &amp; stats</div></div>' +
+      '<i class="ti ti-chevron-right" style="color:var(--tm);"></i>' +
+    '</div>' +
     '<div id="profile-tab-inner"></div>';
 
   // Render sub-tabs inline
@@ -8531,11 +8656,673 @@ function selectLBBadge(idx){
   renderLBContent();
 }
 
+// ═══════════════════════════════════════════
+// BATTLES
+// ═══════════════════════════════════════════
+// A metric turns one participant's workouts inside the battle window into a
+// score. Adding a battle type = adding an entry here (and to the order list).
+// countsLive: whether the user's unsaved in-progress workout counts toward it.
+var BATTLE_METRICS = {
+  workouts: {
+    label: 'Most Workouts', icon: 'ti-barbell', unit: ['workout', 'workouts'],
+    desc: 'Every workout you save counts', countsLive: false,
+    score: function(workouts){ return workouts.length; }
+  },
+  exercises: {
+    label: 'Most Exercises', icon: 'ti-list-check', unit: ['exercise', 'exercises'],
+    desc: 'Every exercise you log counts', countsLive: true,
+    score: function(workouts){ return battleSum(workouts, battleCountExercises); }
+  },
+  sets: {
+    label: 'Most Sets', icon: 'ti-stack-2', unit: ['set', 'sets'],
+    desc: 'Every set you log counts', countsLive: true,
+    score: function(workouts){ return battleSum(workouts, battleCountSets); }
+  }
+};
+var BATTLE_METRIC_ORDER = ['workouts', 'exercises', 'sets'];
+var BATTLE_DURATIONS = [{days:1, label:'1 Day'}, {days:7, label:'7 Days'}, {days:30, label:'30 Days'}, {days:0, label:'Custom'}];
+var BATTLE_MAX_FRIENDS = 5;
+// Late offline uploads can still land after a battle ends, so the final
+// snapshot waits a few hours before being frozen.
+var BATTLE_FINALIZE_GRACE_MS = 6 * 3600000;
+var BATTLE_COLORS = ['var(--accent)', 'var(--superset)', 'var(--dropset)', 'var(--success)', '#f472b6', '#22d3ee'];
+
+var _battles = [];
+var _battleProfiles = {};
+var _battleWorkouts = {};
+var _battlesLoadedAt = 0;
+var _battlesError = null;
+var _battlesLoading = null;
+var _battlePrevScores = {};
+var _battlePollInterval = null;
+var _currentTab = 'friends';
+
+function battleSum(workouts, fn){
+  return workouts.reduce(function(total, w){ return total + fn(w.blocks || []); }, 0);
+}
+function battleSetLogged(s){
+  return (parseFloat(s.w) || 0) > 0 || (parseFloat(s.r) || 0) > 0 || (parseFloat(s.d_done) || 0) > 0;
+}
+function battleExerciseSets(ex){
+  if(ex.dropSets) return ex.dropSets.filter(function(drops){ return drops.some(battleSetLogged); }).length;
+  return (ex.sets || []).filter(battleSetLogged).length;
+}
+function battleCountSets(blocks){
+  var n = 0;
+  blocks.forEach(function(b){ (b.exercises || []).forEach(function(ex){ n += battleExerciseSets(ex); }); });
+  return n;
+}
+function battleCountExercises(blocks){
+  var n = 0;
+  blocks.forEach(function(b){
+    if(b.type === 'cardio'){ n++; return; }
+    (b.exercises || []).forEach(function(ex){ if(battleExerciseSets(ex) > 0) n++; });
+  });
+  return n;
+}
+
+function battleEsc(s){
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[c];
+  });
+}
+function battlePlural(metric, n){ return metric.unit[n === 1 ? 0 : 1]; }
+function battleFirstName(uid){
+  var p = _battleProfiles[uid];
+  var full = (p && (p.name || p.username)) || (uid === (currentUser && currentUser.id) ? 'You' : 'Friend');
+  return full.trim().split(/\s+/)[0];
+}
+function battleAvatar(uid, color){
+  var p = _battleProfiles[uid] || {};
+  var initial = battleEsc(battleFirstName(uid).charAt(0).toUpperCase());
+  var inner = p.avatar_url
+    ? '<img src="' + battleEsc(p.avatar_url) + '" onerror="this.parentNode.textContent=this.parentNode.dataset.i">'
+    : initial;
+  return '<div class="lb-avatar" data-i="' + initial + '" style="border-color:' + color + ';">' + inner + '</div>';
+}
+function battleDurLabel(days){ return days + (days === 1 ? ' Day' : ' Days'); }
+function battleIsActive(b){ return b.status === 'active' && Date.now() < Date.parse(b.ends_at); }
+function battleIsEnded(b){ return b.status === 'active' && Date.now() >= Date.parse(b.ends_at); }
+function battleIsInvite(b){ return b.status === 'pending' && b.accepted_ids.indexOf(currentUser.id) === -1; }
+
+function resetBattles(){
+  _battles = []; _battleProfiles = {}; _battleWorkouts = {};
+  _battlesLoadedAt = 0; _battlesError = null; _battlePrevScores = {};
+  stopBattlePolling();
+  updateBattlesBadge();
+}
+
+function updateBattlesBadge(){
+  var el = document.getElementById('battles-badge');
+  if(!el) return;
+  var n = currentUser ? _battles.filter(battleIsInvite).length : 0;
+  el.textContent = n > 9 ? '9+' : n;
+  el.style.display = n ? 'flex' : 'none';
+}
+
+async function loadBattles(){
+  if(!currentUser) return;
+  var res = await sb.from('battles').select('*')
+    .contains('participant_ids', [currentUser.id])
+    .order('created_at', {ascending: false});
+  if(res.error){
+    console.error('Battles load error:', res.error);
+    _battlesError = res.error;
+    _battlesLoadedAt = Date.now();
+    return;
+  }
+  _battlesError = null;
+  var battles = res.data || [];
+
+  var allIds = {}, scoringIds = {}, minStart = Infinity, maxEnd = 0;
+  battles.forEach(function(b){
+    b.participant_ids.concat(b.declined_ids || []).forEach(function(id){ allIds[id] = true; });
+    if(b.status !== 'active' || b.final_scores) return;
+    b.participant_ids.forEach(function(id){ scoringIds[id] = true; });
+    minStart = Math.min(minStart, Date.parse(b.starts_at));
+    maxEnd = Math.max(maxEnd, Date.parse(b.ends_at));
+  });
+
+  var idList = Object.keys(allIds), scoringList = Object.keys(scoringIds);
+  var [profRes, wRes] = await Promise.all([
+    idList.length ? sb.from('profiles').select('id,name,username,avatar_url').in('id', idList) : Promise.resolve({data: []}),
+    scoringList.length
+      ? sb.from('workouts').select('user_id,ts,blocks,duration_seconds,weight_unit')
+          .in('user_id', scoringList)
+          .gte('ts', new Date(minStart).toISOString())
+          .lt('ts', new Date(maxEnd).toISOString())
+      : Promise.resolve({data: []})
+  ]);
+  if(profRes.error) console.error('Battle profiles load error:', profRes.error);
+  if(wRes.error) console.error('Battle workouts load error:', wRes.error);
+
+  (profRes.data || []).forEach(function(p){ _battleProfiles[p.id] = p; });
+  var byUser = {};
+  (wRes.data || []).forEach(function(w){ (byUser[w.user_id] = byUser[w.user_id] || []).push(w); });
+  _battleWorkouts = byUser;
+  _battles = battles;
+  _battlesLoadedAt = Date.now();
+  finalizeEndedBattles();
+}
+
+async function refreshBattles(){
+  if(!currentUser) return;
+  if(!_battlesLoading){
+    _battlesLoading = loadBattles().finally(function(){ _battlesLoading = null; });
+  }
+  await _battlesLoading;
+  renderBattleSurfaces();
+}
+
+function renderBattleSurfaces(){
+  if(_currentTab === 'battles') renderBattlesTab();
+  updateBattlesBadge();
+  updateBattlePolling();
+}
+
+// Own workouts come from local history too, so a just-saved (or still
+// queued offline) workout counts immediately.
+function battleWorkoutsFor(b, uid, includeLive){
+  var start = Date.parse(b.starts_at), end = Date.parse(b.ends_at);
+  var list = (_battleWorkouts[uid] || []).slice();
+  if(currentUser && uid === currentUser.id){
+    var seen = {};
+    list.forEach(function(w){ seen[Date.parse(w.ts)] = true; });
+    history.forEach(function(w){ if(w.ts && !seen[Date.parse(w.ts)]) list.push(w); });
+  }
+  list = list.filter(function(w){ var t = Date.parse(w.ts); return t >= start && t < end; });
+  if(includeLive) list.push({ts: new Date().toISOString(), blocks: blocks, live: true});
+  return list;
+}
+
+function battleScores(b){
+  if(b.final_scores) return {scores: b.final_scores, live: false};
+  var metric = BATTLE_METRICS[b.metric];
+  var active = battleIsActive(b);
+  var liveEligible = active && metric && metric.countsLive && blocks.length > 0;
+  var scores = {}, live = false;
+  b.participant_ids.forEach(function(uid){
+    if(!metric){ scores[uid] = 0; return; }
+    var isMe = currentUser && uid === currentUser.id;
+    var saved = metric.score(battleWorkoutsFor(b, uid, false));
+    if(isMe && liveEligible){
+      var withLive = metric.score(battleWorkoutsFor(b, uid, true));
+      if(withLive > saved) live = true;
+      saved = withLive;
+    }
+    scores[uid] = saved;
+  });
+  if(active && !live){
+    // Someone saved a workout in the last hour — the battle is heating up.
+    var hourAgo = Date.now() - 3600000;
+    live = b.participant_ids.some(function(uid){
+      return battleWorkoutsFor(b, uid, false).some(function(w){ return Date.parse(w.ts) > hourAgo; });
+    });
+  }
+  return {scores: scores, live: live};
+}
+
+function battleRanked(b, scores){
+  var me = currentUser && currentUser.id;
+  return b.participant_ids.slice().sort(function(a, c){
+    var d = (scores[c] || 0) - (scores[a] || 0);
+    if(d) return d;
+    return a === me ? -1 : c === me ? 1 : 0;
+  });
+}
+
+function finalizeEndedBattles(){
+  var now = Date.now();
+  _battles.forEach(function(b){
+    if(b.status !== 'active' || b.final_scores || now < Date.parse(b.ends_at) + BATTLE_FINALIZE_GRACE_MS) return;
+    var scores = battleScores(b).scores;
+    b.final_scores = scores;
+    sb.from('battles').update({final_scores: scores}).eq('id', b.id).is('final_scores', null)
+      .then(function(r){ if(r.error) console.error('Battle finalize error:', r.error); });
+  });
+}
+
+function battleTimeLeft(b){
+  var ms = Date.parse(b.ends_at) - Date.now();
+  if(ms <= 0) return 'Ending now';
+  var hrs = Math.floor(ms / 3600000);
+  if(hrs >= 48) return Math.floor(hrs / 24) + ' days remaining';
+  if(hrs >= 1) return hrs + (hrs === 1 ? ' hr remaining' : ' hrs remaining');
+  var mins = Math.max(1, Math.floor(ms / 60000));
+  return mins + ' min remaining';
+}
+
+function battleDateRange(b){
+  var opts = {month: 'short', day: 'numeric'};
+  var s = new Date(b.starts_at), e = new Date(Date.parse(b.ends_at) - 1);
+  var a = s.toLocaleDateString('en-US', opts), z = e.toLocaleDateString('en-US', opts);
+  return a === z ? a : a + ' – ' + z;
+}
+
+function battleBarHtml(b, ranked, scores, colorOf){
+  var total = ranked.reduce(function(t, uid){ return t + (scores[uid] || 0); }, 0);
+  // Fixed participant order so segments grow/shrink in place instead of swapping.
+  var segs = b.participant_ids.map(function(uid){
+    var pct = total ? (scores[uid] || 0) / total * 100 : 100 / b.participant_ids.length;
+    return '<div class="battle-bar-seg" style="width:' + pct + '%;background:' + colorOf[uid] + ';opacity:' + (total ? 1 : .35) + ';"></div>';
+  });
+  return '<div class="battle-bar">' + segs.join('') + '</div>';
+}
+
+function battleColorMap(b){
+  var me = currentUser && currentUser.id, map = {}, i = 1;
+  b.participant_ids.forEach(function(uid){ map[uid] = uid === me ? BATTLE_COLORS[0] : BATTLE_COLORS[i++ % BATTLE_COLORS.length]; });
+  return map;
+}
+
+function battleStatusText(b, ranked, scores){
+  var me = currentUser.id;
+  var top = scores[ranked[0]] || 0;
+  if(top === 0) return {text: '⚔️ Game on — first to log takes the lead', behind: false};
+  var myScore = scores[me] || 0;
+  var leaders = ranked.filter(function(uid){ return (scores[uid] || 0) === top; });
+  if(leaders.length > 1 && leaders.indexOf(me) !== -1) return {text: '🤝 Tied at ' + top, behind: false};
+  if(ranked[0] === me){
+    return {text: '🔥 You\'re ahead by ' + (myScore - (scores[ranked[1]] || 0)), behind: false};
+  }
+  return {text: '💪 ' + battleEsc(battleFirstName(ranked[0])) + ' leads by ' + (top - myScore), behind: true};
+}
+
+function renderActiveBattleCard(b){
+  var metric = BATTLE_METRICS[b.metric] || {label: b.metric, icon: 'ti-swords', unit: ['pt', 'pts']};
+  var result = battleScores(b), scores = result.scores;
+  var ranked = battleRanked(b, scores), colorOf = battleColorMap(b);
+  var me = currentUser.id;
+  var status = battleStatusText(b, ranked, scores);
+  var soon = Date.parse(b.ends_at) - Date.now() < 86400000;
+  var winning = ranked[0] === me && (scores[me] || 0) > (scores[ranked[1]] || 0);
+
+  var rows = ranked.map(function(uid){
+    var key = b.id + ':' + uid, score = scores[uid] || 0;
+    var bump = _battlePrevScores[key] !== undefined && score > _battlePrevScores[key];
+    _battlePrevScores[key] = score;
+    var lead = score > 0 && score === (scores[ranked[0]] || 0);
+    return '<div class="battle-row' + (lead ? ' lead' : '') + '">' +
+      battleAvatar(uid, colorOf[uid]) +
+      '<div class="battle-name">' + battleEsc(battleFirstName(uid)) + (uid === me ? '<span class="battle-you">You</span>' : '') + '</div>' +
+      '<div class="battle-score' + (bump ? ' bump' : '') + '">' + score + '</div>' +
+    '</div>';
+  }).join('');
+
+  return '<div class="battle-card' + (winning ? ' winning' : '') + '">' +
+    '<div class="battle-card-top">' +
+      battleTypeLabel(b) +
+      (result.live ? '<span class="battle-live">LIVE</span>' : '') +
+    '</div>' +
+    rows +
+    battleBarHtml(b, ranked, scores, colorOf) +
+    '<div class="battle-foot">' +
+      '<div class="battle-status' + (status.behind ? ' behind' : '') + '">' + status.text + '</div>' +
+      '<div class="battle-time' + (soon ? ' soon' : '') + '"><i class="ti ti-clock"></i>' + battleTimeLeft(b) + '</div>' +
+    '</div>' +
+  '</div>';
+}
+
+function renderCompletedBattleCard(b){
+  var metric = BATTLE_METRICS[b.metric] || {label: b.metric, icon: 'ti-swords', unit: ['pt', 'pts']};
+  var scores = battleScores(b).scores;
+  var ranked = battleRanked(b, scores), colorOf = battleColorMap(b);
+  var me = currentUser.id;
+  var top = scores[ranked[0]] || 0, second = scores[ranked[1]] || 0;
+  var tie = top === second;
+  var margin = top - second;
+  var headline, won = false;
+  if(tie){
+    headline = '🤝 DRAW';
+  } else if(ranked[0] === me){
+    headline = '🏆 YOU WON'; won = true;
+  } else {
+    headline = '🏆 ' + battleEsc(battleFirstName(ranked[0]).toUpperCase()) + ' WON';
+  }
+  var rows = ranked.map(function(uid){
+    return '<div class="battle-row' + (!tie && uid === ranked[0] ? ' lead' : '') + '">' +
+      battleAvatar(uid, colorOf[uid]) +
+      '<div class="battle-name">' + battleEsc(battleFirstName(uid)) + (uid === me ? '<span class="battle-you">You</span>' : '') + '</div>' +
+      '<div class="battle-score">' + (scores[uid] || 0) + '</div>' +
+    '</div>';
+  }).join('');
+  var marginText = tie ? 'Tied at ' + top + ' ' + battlePlural(metric, top) : 'Won by ' + margin + ' ' + battlePlural(metric, margin);
+  return '<div class="battle-card done">' +
+    '<div class="battle-card-top" style="margin-bottom:6px;">' +
+      '<div><div class="battle-result' + (won ? ' won' : '') + '">' + headline + '</div>' +
+      '<div class="battle-type" style="font-size:11px;color:var(--ts);"><i class="ti ' + metric.icon + '" style="font-size:13px;"></i>' + battleEsc(metric.label) + '</div></div>' +
+    '</div>' +
+    rows +
+    '<div class="battle-meta"><strong>' + marginText + '</strong><span>' + battleDateRange(b) + '</span></div>' +
+  '</div>';
+}
+
+function renderBattlesTab(){
+  var el = document.getElementById('battles-content');
+  if(!el) return;
+  if(!currentUser){ el.innerHTML = '<div class="empty">Sign in to battle your friends.</div>'; return; }
+  if(!_battlesLoadedAt){ el.innerHTML = '<div class="tab-loader"><div class="tab-loader-ring"></div></div>'; return; }
+  if(_battlesError && !_battles.length){
+    el.innerHTML = '<div class="battle-empty"><i class="ti ti-cloud-off"></i><div class="battle-empty-title">Couldn\'t load battles</div><div class="battle-empty-sub">Check your connection and try again.</div></div>';
+    return;
+  }
+  var invites = _battles.filter(battleIsInvite);
+  var active = _battles.filter(battleIsActive).sort(function(a, b){ return Date.parse(a.ends_at) - Date.parse(b.ends_at); });
+  var pending = _battles.filter(function(b){ return b.status === 'declined' || (b.status === 'pending' && !battleIsInvite(b)); });
+  var done = _battles.filter(battleIsEnded).sort(function(a, b){ return Date.parse(b.ends_at) - Date.parse(a.ends_at); });
+
+  var html = '';
+  if(invites.length){
+    html += battleSectionLabel('Invites', invites.length) + invites.map(renderInviteBattleCard).join('');
+  }
+  html += battleSectionLabel('Active', active.length);
+  if(active.length){
+    html += active.map(renderActiveBattleCard).join('');
+  } else {
+    html += '<div class="battle-empty" onclick="openCreateBattle()" style="cursor:pointer;">' +
+      '<i class="ti ti-swords"></i>' +
+      '<div class="battle-empty-title">No active battles</div>' +
+      '<div class="battle-empty-sub">Challenge a friend — your workouts do the rest.</div>' +
+    '</div>';
+  }
+  if(pending.length){
+    html += battleSectionLabel('Pending', pending.length) + pending.map(renderPendingBattleCard).join('');
+  }
+  if(done.length){
+    html += battleSectionLabel('Completed', done.length) + done.map(renderCompletedBattleCard).join('');
+  }
+  el.innerHTML = html;
+}
+
+function battleSectionLabel(label, count){
+  return '<div class="battle-sec-lbl" style="margin-top:' + (label === 'Invites' ? 4 : 20) + 'px;">' + label +
+    (count ? ' <span class="battle-sec-count">' + count + '</span>' : '') + '</div>';
+}
+
+function battleTypeLabel(b){
+  var metric = BATTLE_METRICS[b.metric] || {label: b.metric, icon: 'ti-swords'};
+  return '<div class="battle-type"><i class="ti ' + metric.icon + '"></i>' + battleEsc(metric.label) +
+    ' <span class="battle-dur">· ' + battleDurLabel(b.duration_days) + '</span></div>';
+}
+
+function battleNameList(names){
+  if(names.length <= 1) return names.join('');
+  return names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1];
+}
+
+function battleAvatarStack(b, ids){
+  var colorOf = battleColorMap(b);
+  return '<div class="battle-avatars">' + ids.map(function(uid){ return battleAvatar(uid, colorOf[uid] || 'var(--bo3)'); }).join('') + '</div>';
+}
+
+function renderInviteBattleCard(b){
+  var me = currentUser.id;
+  var others = b.participant_ids.filter(function(uid){ return uid !== me && uid !== b.created_by; });
+  var targets = ['you'].concat(others.map(function(uid){ return battleEsc(battleFirstName(uid)); }));
+  return '<div class="battle-card invite">' +
+    '<div class="battle-card-top">' + battleTypeLabel(b) +
+      '<span class="battle-pending-tag" style="color:var(--accent);background:var(--accent-soft);">INVITE</span>' +
+    '</div>' +
+    battleAvatarStack(b, b.participant_ids) +
+    '<div class="battle-invite-from">' + battleEsc(battleFirstName(b.created_by)) + ' challenged ' + battleNameList(targets) + '</div>' +
+    '<div class="battle-actions">' +
+      '<button class="modal-btn" onclick="declineBattle(\'' + b.id + '\')">Decline</button>' +
+      '<button class="modal-btn primary" onclick="acceptBattle(\'' + b.id + '\', this)">Accept</button>' +
+    '</div>' +
+  '</div>';
+}
+
+function renderPendingBattleCard(b){
+  var me = currentUser.id;
+  var isCreator = b.created_by === me;
+  if(b.status === 'declined'){
+    var decliners = (b.declined_ids || []).map(function(uid){ return battleEsc(battleFirstName(uid)); });
+    return '<div class="battle-card">' +
+      '<div class="battle-card-top">' + battleTypeLabel(b) + '<span class="battle-pending-tag">DECLINED</span></div>' +
+      '<div class="battle-foot">' +
+        '<div class="battle-wait">' + (decliners.length ? battleNameList(decliners) : 'Your friend') + ' declined your challenge</div>' +
+        '<button class="battle-link-btn" onclick="dismissBattle(\'' + b.id + '\')">Dismiss</button>' +
+      '</div>' +
+    '</div>';
+  }
+  var waitingOn = b.participant_ids.filter(function(uid){ return b.accepted_ids.indexOf(uid) === -1; })
+    .map(function(uid){ return battleEsc(battleFirstName(uid)); });
+  return '<div class="battle-card">' +
+    '<div class="battle-card-top">' + battleTypeLabel(b) + '<span class="battle-pending-tag">PENDING</span></div>' +
+    battleAvatarStack(b, b.participant_ids) +
+    '<div class="battle-foot">' +
+      '<div class="battle-wait">Waiting for ' + battleNameList(waitingOn) + ' to accept</div>' +
+      (isCreator ? '<button class="battle-link-btn" onclick="withdrawBattle(\'' + b.id + '\')">Cancel</button>' : '') +
+    '</div>' +
+  '</div>';
+}
+
+async function acceptBattle(id, btn){
+  var actions = btn && btn.parentNode;
+  if(actions) actions.querySelectorAll('button').forEach(function(x){ x.disabled = true; });
+  if(btn) btn.textContent = 'Accepting...';
+  var res = await sb.rpc('respond_to_battle', {p_battle_id: id, p_accept: true});
+  if(res.error){
+    console.error('Battle accept error:', res.error);
+    alert('Couldn\'t accept the battle: ' + res.error.message);
+    refreshBattles();
+    return;
+  }
+  _battles = _battles.map(function(b){ return b.id === id ? res.data : b; });
+  refreshBattles();
+}
+
+function declineBattle(id){
+  var b = _battles.find(function(x){ return x.id === id; });
+  var from = b ? battleFirstName(b.created_by) : 'your friend';
+  showConfirm('Decline battle?', 'You won\'t compete against ' + from + ' in this one.', 'Decline', async function(){
+    var res = await sb.rpc('respond_to_battle', {p_battle_id: id, p_accept: false});
+    if(res.error){
+      console.error('Battle decline error:', res.error);
+      alert('Couldn\'t decline the battle: ' + res.error.message);
+    } else {
+      _battles = _battles.filter(function(x){ return x.id !== id; });
+    }
+    refreshBattles();
+  }, true);
+}
+
+async function deleteBattle(id){
+  // RLS silently skips rows it won't delete, so confirm a row actually went.
+  var res = await sb.from('battles').delete().eq('id', id).select('id');
+  if(res.error || !(res.data || []).length){
+    if(res.error) console.error('Battle delete error:', res.error);
+    alert(res.error ? 'Couldn\'t remove the battle: ' + res.error.message : 'This battle has already started.');
+  } else {
+    _battles = _battles.filter(function(x){ return x.id !== id; });
+  }
+  refreshBattles();
+}
+
+function withdrawBattle(id){
+  showConfirm('Cancel challenge?', 'This battle invite will be withdrawn.', 'Cancel challenge', function(){ deleteBattle(id); }, true);
+}
+function dismissBattle(id){ deleteBattle(id); }
+
+function startBattlePolling(){
+  if(_battlePollInterval) return;
+  _battlePollInterval = setInterval(function(){
+    if(document.visibilityState === 'visible') refreshBattles();
+  }, 30000);
+}
+function stopBattlePolling(){
+  if(_battlePollInterval){ clearInterval(_battlePollInterval); _battlePollInterval = null; }
+}
+function updateBattlePolling(){
+  if(currentUser && _currentTab === 'battles') startBattlePolling(); else stopBattlePolling();
+}
+// Returning to the app is when new invites most likely matter (nav badge).
+document.addEventListener('visibilitychange', function(){
+  if(document.visibilityState === 'visible' && currentUser) refreshBattles();
+});
+
+// ── Create battle flow ──
+var _bcFriends = [];
+var _bcFriendsLoading = false;
+var _bcState = {friends: [], metric: null, days: 7, custom: false};
+
+async function openCreateBattle(){
+  if(!currentUser) return;
+  _bcState = {friends: [], metric: null, days: 7, custom: false};
+  if(currentProfile) _battleProfiles[currentUser.id] = currentProfile;
+  document.getElementById('bc-custom-days').value = '';
+  document.getElementById('bc-friend-search').value = '';
+  document.getElementById('bc-error').style.display = 'none';
+  _bcFriendsLoading = true;
+  renderBattleFriendOptions();
+  renderBattleTypeOptions();
+  renderBattleDurationOptions();
+  renderBattleSummary();
+  openModal('battle-create-modal');
+
+  var res = await sb.from('friendships')
+    .select('requester_id,addressee_id, requester:profiles!friendships_requester_id_fkey(id,name,username,avatar_url), addressee:profiles!friendships_addressee_id_fkey(id,name,username,avatar_url)')
+    .or('requester_id.eq.' + currentUser.id + ',addressee_id.eq.' + currentUser.id)
+    .eq('status', 'accepted');
+  if(res.error) console.error('Battle friends load error:', res.error);
+  _bcFriends = (res.data || []).map(function(f){
+    return f.requester_id === currentUser.id ? f.addressee : f.requester;
+  }).filter(Boolean);
+  _bcFriends.forEach(function(p){ _battleProfiles[p.id] = p; });
+  _bcFriendsLoading = false;
+  renderBattleFriendOptions();
+}
+
+function renderBattleFriendOptions(){
+  var results = document.getElementById('bc-friend-results');
+  var hint = function(html){ results.innerHTML = '<div style="font-size:13px;color:var(--ts);padding:4px 0;">' + html + '</div>'; };
+
+  document.getElementById('bc-friend-selected').innerHTML = _bcState.friends.map(function(id){
+    var p = _battleProfiles[id] || {};
+    return '<span class="tag-chip">' + battleEsc(p.name || p.username || 'Friend') +
+      '<button onclick="toggleBattleFriend(\'' + id + '\')"><i class="ti ti-x"></i></button></span>';
+  }).join('');
+
+  if(_bcFriendsLoading){ results.innerHTML = '<div class="tab-loader"><div class="tab-loader-ring"></div></div>'; return; }
+  if(!_bcFriends.length){
+    hint('Add friends to start a battle. <a href="#" onclick="closeModal(\'battle-create-modal\');openManageFriendsModal();return false;" style="color:var(--accent);font-weight:600;">Find friends</a>');
+    return;
+  }
+  var raw = document.getElementById('bc-friend-search').value.trim();
+  var q = raw.toLowerCase().replace(/^@/, '');
+  if(!q){ results.innerHTML = ''; return; }
+  if(_bcState.friends.length >= BATTLE_MAX_FRIENDS){ hint('Battles can have up to ' + BATTLE_MAX_FRIENDS + ' friends.'); return; }
+  var matches = _bcFriends.filter(function(p){
+    return _bcState.friends.indexOf(p.id) === -1 &&
+      ((p.username || '').toLowerCase().startsWith(q) || (p.name || '').toLowerCase().includes(q));
+  }).slice(0, 5);
+  if(!matches.length){ hint('No friends found matching "' + battleEsc(raw) + '".'); return; }
+  results.innerHTML = matches.map(function(p){
+    return '<div class="tag-result-item" onclick="toggleBattleFriend(\'' + p.id + '\')">' +
+      '<span class="bc-result-avatar">' + battleAvatar(p.id, 'var(--bo3)') + '</span>' +
+      '<span class="tag-result-name">' + battleEsc(p.name || p.username) +
+        (p.username ? ' <span class="tag-result-username">@' + battleEsc(p.username) + '</span>' : '') + '</span>' +
+      '<i class="ti ti-plus" style="color:var(--ts);font-size:16px;"></i>' +
+    '</div>';
+  }).join('');
+}
+
+function toggleBattleFriend(id){
+  var i = _bcState.friends.indexOf(id);
+  if(i !== -1) _bcState.friends.splice(i, 1);
+  else if(_bcState.friends.length < BATTLE_MAX_FRIENDS){
+    _bcState.friends.push(id);
+    document.getElementById('bc-friend-search').value = '';
+  }
+  renderBattleFriendOptions();
+  renderBattleSummary();
+}
+
+function renderBattleTypeOptions(){
+  document.getElementById('bc-types').innerHTML = BATTLE_METRIC_ORDER.map(function(key){
+    var m = BATTLE_METRICS[key];
+    return '<button class="bc-type' + (_bcState.metric === key ? ' sel' : '') + '" onclick="selectBattleMetric(\'' + key + '\')">' +
+      '<i class="ti ' + m.icon + '"></i>' +
+      '<div><div class="bc-type-name">' + m.label + '</div><div class="bc-type-desc">' + m.desc + '</div></div>' +
+    '</button>';
+  }).join('');
+}
+function selectBattleMetric(key){ _bcState.metric = key; renderBattleTypeOptions(); renderBattleSummary(); }
+
+function renderBattleDurationOptions(){
+  document.getElementById('bc-durations').innerHTML = BATTLE_DURATIONS.map(function(d){
+    var sel = d.days === 0 ? _bcState.custom : (!_bcState.custom && _bcState.days === d.days);
+    return '<button class="bc-pill' + (sel ? ' sel' : '') + '" onclick="selectBattleDuration(' + d.days + ')">' + d.label + '</button>';
+  }).join('');
+  document.getElementById('bc-custom-row').style.display = _bcState.custom ? '' : 'none';
+}
+function selectBattleDuration(days){
+  _bcState.custom = days === 0;
+  if(days) _bcState.days = days;
+  renderBattleDurationOptions();
+  renderBattleSummary();
+  if(_bcState.custom) document.getElementById('bc-custom-days').focus();
+}
+
+function battleChosenDays(){
+  if(!_bcState.custom) return _bcState.days;
+  var n = parseInt(document.getElementById('bc-custom-days').value, 10);
+  return n >= 2 && n <= 90 ? n : 0;
+}
+
+function renderBattleSummary(){
+  var days = battleChosenDays();
+  var metric = _bcState.metric && BATTLE_METRICS[_bcState.metric];
+  var ready = metric && _bcState.friends.length && days;
+  var names = [battleFirstName(currentUser.id)].concat(_bcState.friends.map(battleFirstName));
+  var invitees = battleNameList(_bcState.friends.map(function(id){ return battleEsc(battleFirstName(id)); }));
+  document.getElementById('bc-summary').innerHTML =
+    '<div class="bc-summary-type">' + (metric ? metric.label : 'Pick a battle type') + '</div>' +
+    '<div class="bc-summary-vs">' + (_bcState.friends.length ? names.map(battleEsc).join(' vs ') : 'Pick a friend') + '</div>' +
+    '<div class="bc-summary-dur">' + (days ? battleDurLabel(days) : 'Enter 2–90 days') +
+      (_bcState.friends.length ? ' · starts when ' + invitees + (_bcState.friends.length > 1 ? ' accept' : ' accepts') : '') + '</div>' +
+    '<button class="bc-start" id="bc-start-btn" onclick="sendBattleChallenge()"' + (ready ? '' : ' disabled') + '>Send Challenge</button>';
+}
+
+async function sendBattleChallenge(){
+  var days = battleChosenDays();
+  var metric = _bcState.metric;
+  if(!metric || !_bcState.friends.length || !days) return;
+  var btn = document.getElementById('bc-start-btn');
+  btn.disabled = true; btn.textContent = 'Sending...';
+  var row = {
+    created_by: currentUser.id,
+    metric: metric,
+    participant_ids: [currentUser.id].concat(_bcState.friends),
+    accepted_ids: [currentUser.id],
+    duration_days: days
+  };
+  var res = await sb.from('battles').insert(row).select('*').single();
+  if(res.error){
+    console.error('Battle create error:', res.error);
+    var err = document.getElementById('bc-error');
+    err.textContent = 'Couldn\'t send the challenge: ' + res.error.message;
+    err.style.display = '';
+    btn.disabled = false; btn.textContent = 'Send Challenge';
+    return;
+  }
+  _battles.unshift(res.data);
+  closeModal('battle-create-modal');
+  var myName = (currentProfile && currentProfile.name) || 'A friend';
+  _bcState.friends.forEach(function(fid){
+    createNotification(fid, 'battle', 'Battle invite', '⚔️ ' + myName + ' challenged you to ' + BATTLE_METRICS[metric].label + ' — ' + battleDurLabel(days) + '. Tap to accept.', {battle_id: res.data.id});
+  });
+  switchTab('battles');
+  refreshBattles();
+}
+
 function switchTab(tab){
-  ['friends','log','lookup','history','profile'].forEach(t => document.getElementById('tab-'+t).style.display = t===tab?'':'none');
-  const map = {friends:'btab-friends', lookup:'btab-lookup', history:'btab-history', profile:'btab-profile'};
+  ['friends','log','lookup','battles','history','profile'].forEach(t => document.getElementById('tab-'+t).style.display = t===tab?'':'none');
+  // Progress lives under Profile now, so keep Profile highlighted there.
+  const map = {friends:'btab-friends', battles:'btab-battles', lookup:'btab-profile', history:'btab-history', profile:'btab-profile'};
   document.querySelectorAll('.btab').forEach(b => b.classList.remove('active'));
   if(map[tab]) document.getElementById(map[tab]).classList.add('active');
+  _currentTab = tab;
   // Show add-friends button only on activity tab
   const afb = document.getElementById('add-friends-btn');
   if(afb) afb.style.display = tab==='friends' ? 'flex' : 'none';
@@ -8543,6 +9330,8 @@ function switchTab(tab){
   if(tab==='history'){ renderLeaderboard(); }
   if(tab==='friends') renderFeed();
   if(tab==='profile') renderProfileTab();
+  if(tab==='battles'){ renderBattlesTab(); refreshBattles(); }
+  updateBattlePolling();
 }
 
 document.addEventListener('DOMContentLoaded', function(){ window._loadStart = Date.now(); localStorage.removeItem('wl_profile_stats'); init(); });
