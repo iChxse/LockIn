@@ -1684,7 +1684,7 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 
 // profiles.email isn't readable by app users (see sql/hide_emails.sql), so
 // select('*') on profiles fails. Add new profile columns here.
-const PROFILE_COLS = 'id,name,username,avatar_url,created_at,stat_prefs,xp,reminder_enabled,reminder_time,weight_unit,default_sets,battles_won,battles_played';
+const PROFILE_COLS = 'id,name,username,avatar_url,created_at,stat_prefs,xp,reminder_enabled,reminder_time,weight_unit,default_sets,battles_won,battles_played,timezone';
 
 // ── App version — update this with every release ──────────
 const APP_VERSION = '1.5.6';
@@ -2307,6 +2307,13 @@ async function onAuthSuccess(user){
   if(profile.weight_unit) {
     setWeightUnit(profile.weight_unit);
   }
+  // The daily-reminder function uses this to tell what "today" is for the user.
+  var tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  if(tz && profile.timezone !== tz){
+    profile.timezone = tz;
+    sb.from('profiles').update({ timezone: tz }).eq('id', user.id)
+      .then(function(r){ if(r.error) console.error('Timezone save error:', r.error); });
+  }
   updateGreeting();
   await loadFromSupabase();
   // ── XP: always derive from history on login to stay in sync ──
@@ -2359,7 +2366,8 @@ async function registerPushNotifications(){
     // before the listener exists, the event is missed entirely.
     PushNotifications.addListener('registration', async function(token){
       if(!currentUser || !token?.value) return;
-      await sb.from('push_tokens').upsert({ user_id: currentUser.id, token: token.value, platform: 'ios' }, { onConflict: 'user_id,token' });
+      const { error: tokErr } = await sb.from('push_tokens').upsert({ user_id: currentUser.id, token: token.value, platform: 'ios' }, { onConflict: 'user_id,token' });
+      if(tokErr) console.error('Push token save error:', tokErr);
     });
     PushNotifications.addListener('registrationError', function(err){
       console.error('Push registration error:', err);
