@@ -6840,6 +6840,20 @@ var BADGE_CATEGORIES = [
       { icon:'🫁', name:'Iron Lungs VII', desc:'Log 200 hours of cardio', threshold:200, check: function(h){ var m=0; h.forEach(function(e){e.blocks.forEach(function(b){if(b.type==='cardio'&&b.cardio){m+=(b.cardio.hours||0)*60+(b.cardio.minutes||0)+Math.floor((b.cardio.seconds||0)/60);}})}); return Math.floor(m/60)>=200; } },
     ]
   },
+  // Keep new categories at the end: profiles.stat_prefs stores badges by index.
+  {
+    id: 'battles',
+    getValue: function(h){ return battlesWonFor(h); },
+    tiers: [
+      { icon:'⚔️', name:'Battle Tested I',   desc:'Win 1 battle',    threshold:1,   check: function(h){ return battlesWonFor(h) >= 1; } },
+      { icon:'⚔️', name:'Battle Tested II',  desc:'Win 3 battles',   threshold:3,   check: function(h){ return battlesWonFor(h) >= 3; } },
+      { icon:'⚔️', name:'Battle Tested III', desc:'Win 10 battles',  threshold:10,  check: function(h){ return battlesWonFor(h) >= 10; } },
+      { icon:'⚔️', name:'Battle Tested IV',  desc:'Win 25 battles',  threshold:25,  check: function(h){ return battlesWonFor(h) >= 25; } },
+      { icon:'⚔️', name:'Battle Tested V',   desc:'Win 50 battles',  threshold:50,  check: function(h){ return battlesWonFor(h) >= 50; } },
+      { icon:'⚔️', name:'Battle Tested VI',  desc:'Win 100 battles', threshold:100, check: function(h){ return battlesWonFor(h) >= 100; } },
+    ]
+    // XP: flat 75 per tier; beyond VI, a new tier every 50 wins
+  },
 ];
 
 function gradeLabel(g){
@@ -7040,6 +7054,16 @@ function totalVolumeAll(h){
     }); });
   });
   return Math.round(total);
+}
+
+// Badges are computed from a user's workout list, but battle wins live on
+// their profile. Workout rows from the DB carry user_id; local history is ours.
+var _battlesWon = {};
+function battlesWonFor(h){
+  if(!h || !h.length) return 0;
+  var uid = h[0].user_id || (currentUser && currentUser.id);
+  if(currentUser && uid === currentUser.id) return (currentProfile && currentProfile.battles_won) || 0;
+  return _battlesWon[uid] || 0;
 }
 
 function countTotalTags(h){
@@ -7341,6 +7365,7 @@ async function viewUserProfile(userId){
   var profile_res = await sb.from('profiles').select('*').eq('id', userId).single();
   var profile = profile_res.data;
   if(profile){
+    _battlesWon[profile.id] = profile.battles_won || 0;
     document.getElementById('upm-name').textContent = profile.name || 'Unknown';
     document.getElementById('upm-username').textContent = profile.username ? '@'+profile.username : '';
     document.getElementById('upm-avatar').innerHTML = getAvatarHtml(profile, 56);
@@ -8473,11 +8498,13 @@ async function loadLBData(){
 
   // Fetch profiles + workouts for all users in parallel
   var [profilesRes, workoutsRes] = await Promise.all([
-    sb.from('profiles').select('id,name,username,avatar_url,xp').in('id', allIds),
+    sb.from('profiles').select('id,name,username,avatar_url,xp,battles_won').in('id', allIds),
     sb.from('workouts').select('user_id,ts,blocks,tagged,duration_seconds').in('user_id', allIds).order('ts',{ascending:false})
   ]);
 
+  if(profilesRes.error) console.error('Leaderboard profiles load error:', profilesRes.error);
   var profiles = profilesRes.data || [];
+  profiles.forEach(function(p){ _battlesWon[p.id] = p.battles_won || 0; });
   var allWorkouts = workoutsRes.data || [];
 
   // Group workouts by user
@@ -8682,9 +8709,6 @@ var BATTLE_METRICS = {
 var BATTLE_METRIC_ORDER = ['workouts', 'exercises', 'sets'];
 var BATTLE_DURATIONS = [{days:1, label:'1 Day'}, {days:7, label:'7 Days'}, {days:30, label:'30 Days'}, {days:0, label:'Custom'}];
 var BATTLE_MAX_FRIENDS = 5;
-// Late offline uploads can still land after a battle ends, so the final
-// snapshot waits a few hours before being frozen.
-var BATTLE_FINALIZE_GRACE_MS = 6 * 3600000;
 var BATTLE_COLORS = ['var(--accent)', 'var(--superset)', 'var(--dropset)', 'var(--success)', '#f472b6', '#22d3ee'];
 
 var _battles = [];
@@ -8746,9 +8770,10 @@ function battleIsEnded(b){ return b.status === 'active' && Date.now() >= Date.pa
 function battleIsInvite(b){ return b.status === 'pending' && b.accepted_ids.indexOf(currentUser.id) === -1; }
 
 function resetBattles(){
-  _battles = []; _battleProfiles = {}; _battleWorkouts = {};
+  _battles = []; _battleProfiles = {}; _battleWorkouts = {}; _battlesWon = {};
   _battlesLoadedAt = 0; _battlesError = null; _battlePrevScores = {};
   stopBattlePolling();
+  clearTimeout(_battleEndTimer);
   updateBattlesBadge();
 }
 
@@ -8785,7 +8810,7 @@ async function loadBattles(){
 
   var idList = Object.keys(allIds), scoringList = Object.keys(scoringIds);
   var [profRes, wRes] = await Promise.all([
-    idList.length ? sb.from('profiles').select('id,name,username,avatar_url').in('id', idList) : Promise.resolve({data: []}),
+    idList.length ? sb.from('profiles').select('id,name,username,avatar_url,battles_won').in('id', idList) : Promise.resolve({data: []}),
     scoringList.length
       ? sb.from('workouts').select('user_id,ts,blocks,duration_seconds,weight_unit')
           .in('user_id', scoringList)
@@ -8796,7 +8821,13 @@ async function loadBattles(){
   if(profRes.error) console.error('Battle profiles load error:', profRes.error);
   if(wRes.error) console.error('Battle workouts load error:', wRes.error);
 
-  (profRes.data || []).forEach(function(p){ _battleProfiles[p.id] = p; });
+  (profRes.data || []).forEach(function(p){
+    _battleProfiles[p.id] = p;
+    _battlesWon[p.id] = p.battles_won || 0;
+  });
+  // A friend's client may have frozen a battle we won since we last looked.
+  var mine = (profRes.data || []).find(function(p){ return p.id === currentUser.id; });
+  if(mine) applyMyBattlesWon(mine.battles_won || 0);
   var byUser = {};
   (wRes.data || []).forEach(function(w){ (byUser[w.user_id] = byUser[w.user_id] || []).push(w); });
   _battleWorkouts = byUser;
@@ -8818,6 +8849,20 @@ function renderBattleSurfaces(){
   if(_currentTab === 'battles') renderBattlesTab();
   updateBattlesBadge();
   updateBattlePolling();
+  scheduleBattleEndRefresh();
+}
+
+// Reload right as the next battle ends so it's frozen and moves to Completed
+// on time, whichever tab the user is on.
+var _battleEndTimer = null;
+function scheduleBattleEndRefresh(){
+  clearTimeout(_battleEndTimer);
+  _battleEndTimer = null;
+  if(!currentUser) return;
+  var next = Math.min.apply(null, _battles.filter(battleIsActive).map(function(b){ return Date.parse(b.ends_at); }));
+  if(!isFinite(next)) return;
+  var ms = next - Date.now() + 1000;
+  if(ms < 2147483647) _battleEndTimer = setTimeout(refreshBattles, ms);
 }
 
 // Own workouts come from local history too, so a just-saved (or still
@@ -8874,12 +8919,30 @@ function battleRanked(b, scores){
 function finalizeEndedBattles(){
   var now = Date.now();
   _battles.forEach(function(b){
-    if(b.status !== 'active' || b.final_scores || now < Date.parse(b.ends_at) + BATTLE_FINALIZE_GRACE_MS) return;
+    if(b.status !== 'active' || b.final_scores || now < Date.parse(b.ends_at)) return;
     var scores = battleScores(b).scores;
     b.final_scores = scores;
     sb.from('battles').update({final_scores: scores}).eq('id', b.id).is('final_scores', null)
-      .then(function(r){ if(r.error) console.error('Battle finalize error:', r.error); });
+      .then(function(r){
+        if(r.error){ console.error('Battle finalize error:', r.error); return; }
+        syncMyBattlesWon();
+      });
   });
+}
+
+// The DB recounts battles_won when a battle is frozen; pull ours back so the
+// Battle Tested badge and its XP update without a reload.
+async function syncMyBattlesWon(){
+  if(!currentUser) return;
+  var res = await sb.from('profiles').select('battles_won').eq('id', currentUser.id).single();
+  if(res.error){ console.error('Battles won sync error:', res.error); return; }
+  applyMyBattlesWon(res.data.battles_won || 0);
+}
+
+function applyMyBattlesWon(n){
+  if(!currentProfile || n === (currentProfile.battles_won || 0)) return;
+  currentProfile.battles_won = n;
+  backfillXp();
 }
 
 function battleTimeLeft(b){
