@@ -15,6 +15,8 @@ alter table public.profiles add column if not exists default_sets int;
 
 -- ── 1. profiles.email comes from auth, not the app ───────────────────────
 -- Keeps the column filled (and unspoofable) for any server-side jobs.
+-- Only pre-1.5.6 app builds still send email, via a login-time upsert that
+-- would overwrite the display name once they can't read profiles; keep it.
 create or replace function public.profiles_fill_email()
 returns trigger
 language plpgsql
@@ -23,6 +25,7 @@ set search_path = public
 as $$
 begin
   select u.email into new.email from auth.users u where u.id = new.id;
+  if tg_op = 'UPDATE' then new.name := old.name; end if;
   return new;
 end;
 $$;
