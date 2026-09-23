@@ -1682,6 +1682,10 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   }
 });
 
+// profiles.email isn't readable by app users (see sql/hide_emails.sql), so
+// select('*') on profiles fails. Add new profile columns here.
+const PROFILE_COLS = 'id,name,username,avatar_url,created_at,stat_prefs,xp,reminder_enabled,reminder_time,weight_unit,default_sets,battles_won,battles_played';
+
 // ── App version — update this with every release ──────────
 const APP_VERSION = '1.5.5';
 
@@ -1757,14 +1761,21 @@ async function doLogin(){
   setAuthMsg('Signing in...');
   let email = identifier;
   if(!identifier.includes('@') || identifier.startsWith('@')){
+    // Emails aren't readable by other users; the server hands ours back only
+    // once the password matches.
     const username = identifier.replace(/^@/, '').toLowerCase();
-    const { data: profile } = await sb.from('profiles').select('email').eq('username', username).maybeSingle();
-    if(!profile){
-      setAuthMsg('No account found with that username. Try signing in with your email instead.','error');
+    const { data: found, error: lookupErr } = await sb.rpc('email_for_login', { p_username: username, p_password: pass });
+    if(lookupErr){
+      setAuthMsg(lookupErr.message, 'error');
       setAuthLoading(false, 'login-btn');
       return;
     }
-    email = profile.email;
+    if(!found){
+      setAuthMsg('Incorrect username or password.','error');
+      setAuthLoading(false, 'login-btn');
+      return;
+    }
+    email = found;
   }
   const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
   setAuthLoading(false, 'login-btn');
@@ -1796,7 +1807,7 @@ async function doSignup(){
   if(error){ setAuthMsg(friendlyAuthError(error.message),'error'); setAuthLoading(false,'signup-btn'); return; }
   if(data.user){
     // Always create profile row immediately so username lookup works after email confirmation
-    await sb.from('profiles').upsert({ id: data.user.id, name, username, email });
+    await sb.from('profiles').upsert({ id: data.user.id, name, username });
     if(data.session){
       // Email confirmation OFF — sign straight in
       setAuthMsg('Account created! Signing you in...','success');
@@ -1817,14 +1828,11 @@ async function doSignup(){
 }
 
 async function doForgotPassword(){
-  let identifier = document.getElementById('login-email').value.trim();
-  if(!identifier){ setAuthMsg('Enter your email or username first.','error'); return; }
-  let email = identifier;
-  if(!identifier.includes('@') || identifier.startsWith('@')){
-    const username = identifier.replace(/^@/, '').toLowerCase();
-    const { data: profile } = await sb.from('profiles').select('email').eq('username', username).maybeSingle();
-    if(!profile){ setAuthMsg('No account found with that username.','error'); return; }
-    email = profile.email;
+  const email = document.getElementById('login-email').value.trim();
+  // Usernames can't be turned into emails without a password, so resets need the email.
+  if(!email || !email.includes('@') || email.startsWith('@')){
+    setAuthMsg('Enter the email on your account above, then tap Forgot password.','error');
+    return;
   }
   setAuthMsg('Sending reset email...');
   const { error } = await sb.auth.resetPasswordForEmail(email, {
@@ -2284,10 +2292,10 @@ async function onAuthSuccess(user){
   currentUser = user;
   document.getElementById('auth-screen').classList.remove('show');
   // Load or create profile
-  let { data: profile } = await sb.from('profiles').select('*').eq('id', user.id).maybeSingle();
+  let { data: profile } = await sb.from('profiles').select(PROFILE_COLS).eq('id', user.id).maybeSingle();
   if(!profile){
     const name = user.user_metadata?.name || user.email.split('@')[0];
-    await sb.from('profiles').upsert({ id: user.id, name, email: user.email });
+    await sb.from('profiles').upsert({ id: user.id, name });
     profile = { id: user.id, name, email: user.email };
   }
   currentProfile = profile;
@@ -2436,7 +2444,7 @@ async function renderProfileTab(){
   const el = document.getElementById('tab-profile');
   el.innerHTML = '<div class="tab-loader"><div class="tab-loader-ring"></div></div>';
 
-  const { data: profile } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
+  const { data: profile } = await sb.from('profiles').select(PROFILE_COLS).eq('id', currentUser.id).single();
   if(profile) currentProfile = profile;
 
   const { data: workouts } = await sb.from('workouts').select('*').eq('user_id', currentUser.id).order('ts',{ascending:false}).limit(50);
@@ -2724,7 +2732,7 @@ async function saveProfile(){
   const reminderTimeUTC = localTimeToUTC(reminderTimeLocal);
   const { error: updErr } = await sb.from('profiles').update({ name, username: username || null, reminder_enabled: reminderEnabled, reminder_time: reminderTimeUTC, default_sets: newDefaultSets, weight_unit: _weightUnit }).eq('id', currentUser.id);
   if(updErr){ console.error('Profile save error:', updErr); alert('Failed to save profile: ' + updErr.message); return; }
-  const { data: fresh } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
+  const { data: fresh } = await sb.from('profiles').select(PROFILE_COLS).eq('id', currentUser.id).single();
   if(fresh) currentProfile = fresh;
   else { currentProfile.name = name; currentProfile.username = username; currentProfile.reminder_enabled = reminderEnabled; currentProfile.reminder_time = reminderTimeUTC; currentProfile.default_sets = newDefaultSets; }
   updateGreeting();
@@ -7400,7 +7408,7 @@ async function viewUserProfile(userId){
   document.getElementById('upm-pbs').innerHTML = '';
   switchUPMTab('workouts');
 
-  var profile_res = await sb.from('profiles').select('*').eq('id', userId).single();
+  var profile_res = await sb.from('profiles').select(PROFILE_COLS).eq('id', userId).single();
   var profile = profile_res.data;
   if(profile){
     _battlesWon[profile.id] = profile.battles_won || 0;
