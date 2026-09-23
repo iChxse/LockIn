@@ -1204,6 +1204,9 @@ body:not(.dark-mode) .mode-btn.active, body:not(.dark-mode) .cat-tab.active, bod
 .battle-actions .modal-btn { flex:1; text-align:center; }
 .battle-pending-tag { font-size:10px; font-weight:800; color:var(--ts); background:var(--bo3); padding:3px 8px; border-radius:var(--pill); letter-spacing:.08em; flex-shrink:0; }
 .battle-wait { font-size:13px; color:var(--ts); flex:1; min-width:0; }
+.battle-leave-btn { background:none; border:none; color:var(--tm); font-size:17px; cursor:pointer; padding:2px; line-height:1; display:flex; }
+.battle-row.left { opacity:.45; }
+.battle-left-tag { font-size:11px; font-weight:700; color:var(--ts); text-transform:uppercase; letter-spacing:.06em; }
 .battle-link-btn { background:none; border:none; color:var(--ts); font-size:13px; font-weight:600; cursor:pointer; font-family:var(--font); padding:0; flex-shrink:0; }
 #btab-battles { position:relative; }
 .btab .btab-badge { position:absolute; top:2px; left:50%; margin-left:6px; min-width:16px; height:16px; padding:0 4px; background:#E24B4A; color:#fff; font-size:10px; font-weight:700; border-radius:10px; display:flex; align-items:center; justify-content:center; border:1.5px solid var(--bs); }
@@ -8765,8 +8768,17 @@ function battleAvatar(uid, color){
   return '<div class="lb-avatar" data-i="' + initial + '" style="border-color:' + color + ';">' + inner + '</div>';
 }
 function battleDurLabel(days){ return days + (days === 1 ? ' Day' : ' Days'); }
-function battleIsActive(b){ return b.status === 'active' && Date.now() < Date.parse(b.ends_at); }
-function battleIsEnded(b){ return b.status === 'active' && Date.now() >= Date.parse(b.ends_at); }
+function battleForfeited(b){ return b.forfeited_ids || []; }
+function battleInIds(b){
+  var out = battleForfeited(b);
+  return b.participant_ids.filter(function(uid){ return out.indexOf(uid) === -1; });
+}
+function battleILeft(b){ return battleForfeited(b).indexOf(currentUser.id) !== -1; }
+// Everyone else left, so the last player standing wins by forfeit.
+function battleByForfeit(b){ return battleForfeited(b).length > 0 && battleInIds(b).length <= 1; }
+// A battle you left is over for you, even if it's still running for others.
+function battleIsActive(b){ return b.status === 'active' && Date.now() < Date.parse(b.ends_at) && !battleILeft(b); }
+function battleIsEnded(b){ return b.status === 'active' && (Date.now() >= Date.parse(b.ends_at) || battleILeft(b)); }
 function battleIsInvite(b){ return b.status === 'pending' && b.accepted_ids.indexOf(currentUser.id) === -1; }
 
 function resetBattles(){
@@ -8886,7 +8898,7 @@ function battleScores(b){
   var active = battleIsActive(b);
   var liveEligible = active && metric && metric.countsLive && blocks.length > 0;
   var scores = {}, live = false;
-  b.participant_ids.forEach(function(uid){
+  battleInIds(b).forEach(function(uid){
     if(!metric){ scores[uid] = 0; return; }
     var isMe = currentUser && uid === currentUser.id;
     var saved = metric.score(battleWorkoutsFor(b, uid, false));
@@ -8900,7 +8912,7 @@ function battleScores(b){
   if(active && !live){
     // Someone saved a workout in the last hour — the battle is heating up.
     var hourAgo = Date.now() - 3600000;
-    live = b.participant_ids.some(function(uid){
+    live = battleInIds(b).some(function(uid){
       return battleWorkoutsFor(b, uid, false).some(function(w){ return Date.parse(w.ts) > hourAgo; });
     });
   }
@@ -8909,7 +8921,7 @@ function battleScores(b){
 
 function battleRanked(b, scores){
   var me = currentUser && currentUser.id;
-  return b.participant_ids.slice().sort(function(a, c){
+  return battleInIds(b).sort(function(a, c){
     var d = (scores[c] || 0) - (scores[a] || 0);
     if(d) return d;
     return a === me ? -1 : c === me ? 1 : 0;
@@ -8965,8 +8977,9 @@ function battleDateRange(b){
 function battleBarHtml(b, ranked, scores, colorOf){
   var total = ranked.reduce(function(t, uid){ return t + (scores[uid] || 0); }, 0);
   // Fixed participant order so segments grow/shrink in place instead of swapping.
-  var segs = b.participant_ids.map(function(uid){
-    var pct = total ? (scores[uid] || 0) / total * 100 : 100 / b.participant_ids.length;
+  var inIds = battleInIds(b);
+  var segs = inIds.map(function(uid){
+    var pct = total ? (scores[uid] || 0) / total * 100 : 100 / inIds.length;
     return '<div class="battle-bar-seg" style="width:' + pct + '%;background:' + colorOf[uid] + ';opacity:' + (total ? 1 : .35) + ';"></div>';
   });
   return '<div class="battle-bar">' + segs.join('') + '</div>';
@@ -9015,9 +9028,12 @@ function renderActiveBattleCard(b){
   return '<div class="battle-card' + (winning ? ' winning' : '') + '">' +
     '<div class="battle-card-top">' +
       battleTypeLabel(b) +
-      (result.live ? '<span class="battle-live">LIVE</span>' : '') +
+      '<div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">' +
+        (result.live ? '<span class="battle-live">LIVE</span>' : '') +
+        '<button class="battle-leave-btn" onclick="leaveBattle(\'' + b.id + '\')" title="Leave battle" aria-label="Leave battle"><i class="ti ti-door-exit"></i></button>' +
+      '</div>' +
     '</div>' +
-    rows +
+    rows + battleLeftRowsHtml(b, colorOf) +
     battleBarHtml(b, ranked, scores, colorOf) +
     '<div class="battle-foot">' +
       '<div class="battle-status' + (status.behind ? ' behind' : '') + '">' + status.text + '</div>' +
@@ -9032,24 +9048,28 @@ function renderCompletedBattleCard(b){
   var ranked = battleRanked(b, scores), colorOf = battleColorMap(b);
   var me = currentUser.id;
   var top = scores[ranked[0]] || 0, second = scores[ranked[1]] || 0;
-  var tie = top === second;
-  var margin = top - second;
-  var headline, won = false;
-  if(tie){
+  var byForfeit = battleByForfeit(b);
+  var stillRunning = battleILeft(b) && Date.now() < Date.parse(b.ends_at);
+  var tie = !byForfeit && !stillRunning && top === second;
+  var headline, marginText, won = false;
+  if(stillRunning){
+    headline = '🏳️ YOU LEFT';
+    marginText = 'Still going without you';
+  } else if(tie){
     headline = '🤝 DRAW';
-  } else if(ranked[0] === me){
-    headline = '🏆 YOU WON'; won = true;
+    marginText = 'Tied at ' + top + ' ' + battlePlural(metric, top);
   } else {
-    headline = '🏆 ' + battleEsc(battleFirstName(ranked[0]).toUpperCase()) + ' WON';
+    won = ranked[0] === me;
+    headline = won ? '🏆 YOU WON' : '🏆 ' + battleEsc(battleFirstName(ranked[0]).toUpperCase()) + ' WON';
+    marginText = byForfeit ? 'Won by forfeit' : 'Won by ' + (top - second) + ' ' + battlePlural(metric, top - second);
   }
   var rows = ranked.map(function(uid){
-    return '<div class="battle-row' + (!tie && uid === ranked[0] ? ' lead' : '') + '">' +
+    return '<div class="battle-row' + (!tie && !stillRunning && uid === ranked[0] ? ' lead' : '') + '">' +
       battleAvatar(uid, colorOf[uid]) +
       '<div class="battle-name">' + battleEsc(battleFirstName(uid)) + (uid === me ? '<span class="battle-you">You</span>' : '') + '</div>' +
       '<div class="battle-score">' + (scores[uid] || 0) + '</div>' +
     '</div>';
-  }).join('');
-  var marginText = tie ? 'Tied at ' + top + ' ' + battlePlural(metric, top) : 'Won by ' + margin + ' ' + battlePlural(metric, margin);
+  }).join('') + battleLeftRowsHtml(b, colorOf);
   return '<div class="battle-card done">' +
     '<div class="battle-card-top" style="margin-bottom:6px;">' +
       '<div><div class="battle-result' + (won ? ' won' : '') + '">' + headline + '</div>' +
@@ -9200,6 +9220,40 @@ async function deleteBattle(id){
     _battles = _battles.filter(function(x){ return x.id !== id; });
   }
   refreshBattles();
+}
+
+function battleLeftRowsHtml(b, colorOf){
+  var me = currentUser.id;
+  return battleForfeited(b).map(function(uid){
+    return '<div class="battle-row left">' +
+      battleAvatar(uid, colorOf[uid] || 'var(--bo3)') +
+      '<div class="battle-name">' + battleEsc(battleFirstName(uid)) + (uid === me ? '<span class="battle-you">You</span>' : '') + '</div>' +
+      '<div class="battle-left-tag">Left</div>' +
+    '</div>';
+  }).join('');
+}
+
+function leaveBattle(id){
+  var b = _battles.find(function(x){ return x.id === id; });
+  if(!b) return;
+  var others = battleInIds(b).filter(function(uid){ return uid !== currentUser.id; });
+  var body = others.length === 1
+    ? battleFirstName(others[0]) + ' will win by forfeit. Forfeit wins don\'t count toward Battle Tested.'
+    : 'You\'ll be out of this battle. ' + battleNameList(others.map(battleFirstName)) + ' will keep going.';
+  showConfirm('Leave battle?', body, 'Leave', async function(){
+    var res = await sb.rpc('leave_battle', {p_battle_id: id});
+    if(res.error){
+      console.error('Battle leave error:', res.error);
+      alert('Couldn\'t leave the battle: ' + res.error.message);
+    } else {
+      _battles = _battles.map(function(x){ return x.id === id ? res.data : x; });
+      if(others.length === 1){
+        var myName = (currentProfile && currentProfile.name) || 'Your opponent';
+        createNotification(others[0], 'battle', 'Battle won', '🏆 ' + myName + ' left your ' + BATTLE_METRICS[b.metric].label + ' battle — you win by forfeit.', {battle_id: id});
+      }
+    }
+    refreshBattles();
+  }, true);
 }
 
 function withdrawBattle(id){

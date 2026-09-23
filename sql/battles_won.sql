@@ -2,8 +2,10 @@
 -- Run after battles.sql. Safe to re-run.
 --
 -- A battle is won when its frozen final_scores has a single top scorer (a tie
--- at the top is a draw). Counts are recomputed rather than incremented so
--- re-finalizing or deleting a battle can never double-count.
+-- at the top is a draw). final_scores only holds players who didn't leave.
+-- Wins by forfeit (one player left standing) don't count, so friends can't
+-- farm the badge by creating and quitting battles. Counts are recomputed
+-- rather than incremented so re-finalizing or deleting can't double-count.
 
 alter table public.profiles add column if not exists battles_won int not null default 0;
 
@@ -28,6 +30,7 @@ as $$
   select count(*)::int from public.battles b
   where b.final_scores is not null
     and b.participant_ids @> array[p_user]
+    and cardinality(b.participant_ids) - cardinality(b.forfeited_ids) >= 2
     and public.battle_winner(b.final_scores) = p_user;
 $$;
 

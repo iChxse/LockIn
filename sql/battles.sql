@@ -4,6 +4,9 @@
 --
 -- Lifecycle: pending (waiting on invitees) -> active (clock running) -> ended
 -- (active + ends_at passed). A battle whose invitees all decline -> declined.
+-- Leaving a live battle adds you to forfeited_ids; you stay in participant_ids
+-- so it remains in your history. If one player is left, it ends right away
+-- and they win by forfeit (which doesn't count toward Battle Tested).
 -- Safe to re-run, including on top of the earlier version of this table.
 
 create table if not exists public.battles (
@@ -13,6 +16,7 @@ create table if not exists public.battles (
   participant_ids uuid[] not null,
   accepted_ids uuid[] not null default '{}',
   declined_ids uuid[] not null default '{}',
+  forfeited_ids uuid[] not null default '{}',
   status text not null default 'pending',
   duration_days int not null,
   starts_at timestamptz,
@@ -23,6 +27,7 @@ create table if not exists public.battles (
 
 alter table public.battles add column if not exists accepted_ids uuid[] not null default '{}';
 alter table public.battles add column if not exists declined_ids uuid[] not null default '{}';
+alter table public.battles add column if not exists forfeited_ids uuid[] not null default '{}';
 alter table public.battles add column if not exists status text not null default 'pending';
 alter table public.battles add column if not exists duration_days int;
 
@@ -58,6 +63,7 @@ create policy "battles_insert_with_friends" on public.battles
     and auth.uid() = any(participant_ids)
     and accepted_ids = array[auth.uid()]
     and declined_ids = '{}'
+    and forfeited_ids = '{}'
     and status = 'pending'
     and starts_at is null and ends_at is null and final_scores is null
     and duration_days between 1 and 90
@@ -144,3 +150,41 @@ $$;
 
 revoke all on function public.respond_to_battle(uuid, boolean) from public, anon;
 grant execute on function public.respond_to_battle(uuid, boolean) to authenticated;
+
+create or replace function public.leave_battle(p_battle_id uuid)
+returns public.battles
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  b public.battles;
+  me uuid := auth.uid();
+begin
+  select * into b from public.battles where id = p_battle_id for update;
+  if b.id is null or me is null or not (me = any(b.participant_ids)) then
+    raise exception 'Battle not found';
+  end if;
+  if b.status <> 'active' or b.final_scores is not null or b.ends_at <= now() then
+    raise exception 'This battle has already ended';
+  end if;
+  if me = any(b.forfeited_ids) then
+    raise exception 'You already left this battle';
+  end if;
+
+  b.forfeited_ids := array_append(b.forfeited_ids, me);
+  if cardinality(b.participant_ids) - cardinality(b.forfeited_ids) <= 1 then
+    b.ends_at := now();
+  end if;
+
+  update public.battles
+     set forfeited_ids = b.forfeited_ids,
+         ends_at = b.ends_at
+   where id = b.id
+  returning * into b;
+  return b;
+end;
+$$;
+
+revoke all on function public.leave_battle(uuid) from public, anon;
+grant execute on function public.leave_battle(uuid) to authenticated;
